@@ -21,8 +21,11 @@ interface NavItem { label: string; icon: string; path: string; }
     <mat-sidenav-container class="shell">
       <mat-sidenav #snav mode="side" opened class="sidenav">
         <div class="brand">
-          <mat-icon>storefront</mat-icon>
-          <span>Label_Vihitha</span>
+          <div class="emblem">V</div>
+          <div class="brand-text">
+            <div class="name">Vihitha</div>
+            <div class="tag">Every thread · every style</div>
+          </div>
         </div>
         <mat-nav-list>
           @for (item of nav; track item.path) {
@@ -35,7 +38,7 @@ interface NavItem { label: string; icon: string; path: string; }
       </mat-sidenav>
 
       <mat-sidenav-content>
-        <mat-toolbar color="primary" class="topbar">
+        <mat-toolbar class="topbar">
           <button mat-icon-button (click)="snav.toggle()"><mat-icon>menu</mat-icon></button>
           <span class="spacer"></span>
           <button mat-button [matMenuTriggerFor]="menu">
@@ -58,16 +61,55 @@ interface NavItem { label: string; icon: string; path: string; }
   `,
   styles: [`
     .shell { height: 100vh; }
-    .sidenav { width: 240px; background: #1e1e2d; color: #cfd0e0; border: none; }
-    .brand {
-      display: flex; align-items: center; gap: 10px; padding: 20px 16px;
-      font-size: 18px; font-weight: 600; color: #fff;
+    .sidenav {
+      width: 256px; border: none; color: #f6e9ef;
+      background: linear-gradient(185deg, #5a1a38 0%, #3f1228 100%);
     }
-    mat-nav-list a { color: #cfd0e0; }
-    mat-nav-list mat-icon { color: #9fa1bd; }
-    .active-link { background: rgba(255,255,255,.08); color: #fff !important; }
-    .active-link mat-icon { color: #fff; }
-    .topbar { position: sticky; top: 0; z-index: 10; }
+
+    /* Brand lockup — echoes the circular gold-on-wine logo */
+    .brand { display: flex; align-items: center; gap: 14px; padding: 24px 20px 18px; }
+    .emblem {
+      width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto;
+      display: grid; place-items: center;
+      font-family: "Cormorant Garamond", Georgia, serif; font-weight: 700; font-size: 26px;
+      color: #f7efe0; border: 2px solid #c39a3e;
+      background: radial-gradient(circle at 32% 28%, rgba(201,154,62,.35), rgba(201,154,62,.05));
+      box-shadow: 0 0 0 4px rgba(201,154,62,.08);
+    }
+    .brand .name {
+      font-family: "Cormorant Garamond", Georgia, serif; font-size: 24px; font-weight: 700;
+      color: #fff; line-height: 1;
+    }
+    .brand .tag {
+      font-size: 9.5px; letter-spacing: 1.6px; text-transform: uppercase;
+      color: #d9b24c; margin-top: 5px;
+    }
+
+    /* Nav — high-contrast labels fix the readability issue */
+    mat-nav-list { padding-top: 6px; }
+    mat-nav-list a {
+      color: #f3e4ec !important; border-radius: 12px; margin: 3px 12px;
+      --mdc-list-list-item-label-text-color: #f3e4ec;
+      --mdc-list-list-item-hover-label-text-color: #ffffff;
+    }
+    mat-nav-list a span[matListItemTitle] { font-weight: 500; letter-spacing: .2px; }
+    mat-nav-list mat-icon { color: #e4b7cb; }
+    mat-nav-list a:hover { background: rgba(255,255,255,.06); }
+    .active-link {
+      background: rgba(201,154,62,.16) !important;
+      box-shadow: inset 3px 0 0 #c39a3e;
+    }
+    .active-link, .active-link span[matListItemTitle] { color: #ffffff !important; }
+    .active-link mat-icon { color: #e9c877; }
+
+    /* Toolbar — ivory bar with wine text (premium, matches the logo ground) */
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      background: #fffdfa; color: var(--lv-wine);
+      border-bottom: 1px solid var(--lv-line);
+      box-shadow: 0 2px 10px rgba(110,31,62,.04);
+    }
+    .topbar button, .topbar .mat-icon { color: var(--lv-wine); }
     .menu-roles { padding: 8px 16px; font-size: 12px; color: rgba(0,0,0,.6); }
     main { display: block; }
   `]

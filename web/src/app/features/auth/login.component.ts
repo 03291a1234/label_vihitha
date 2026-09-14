@@ -23,9 +23,9 @@ import { Notify } from '../../core/services/notify.service';
         @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
         <mat-card-content>
           <div class="logo">
-            <mat-icon>storefront</mat-icon>
-            <h1>Label_Vihitha</h1>
-            <p class="muted">Order & Inventory Management</p>
+            <div class="emblem">V</div>
+            <h1>Vihitha</h1>
+            <p class="tag">Every thread · every style · every story</p>
           </div>
           <form [formGroup]="form" (ngSubmit)="submit()">
             <mat-form-field class="full">
@@ -46,14 +46,34 @@ import { Notify } from '../../core/services/notify.service';
     </div>
   `,
   styles: [`
-    .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px;
-      background: linear-gradient(135deg, #1e1e2d, #3a3a5a); }
-    .login-card { width: 360px; max-width: 100%; border-radius: 16px; overflow: hidden; }
-    .logo { text-align: center; margin: 12px 0 20px; }
-    .logo mat-icon { font-size: 44px; height: 44px; width: 44px; color: #5b5bd6; }
-    .logo h1 { margin: 8px 0 0; font-size: 22px; }
+    .login-wrap {
+      min-height: 100vh; display: grid; place-items: center; padding: 16px;
+      background:
+        radial-gradient(1200px 600px at 50% -10%, rgba(201,154,62,.18), transparent 60%),
+        linear-gradient(160deg, #6e1f3e 0%, #3f1228 100%);
+    }
+    .login-card {
+      width: 372px; max-width: 100%; border-radius: 20px; overflow: hidden;
+      background: #fffdfa; box-shadow: 0 24px 60px rgba(0,0,0,.35);
+    }
+    .logo { text-align: center; margin: 16px 0 22px; }
+    .emblem {
+      width: 68px; height: 68px; border-radius: 50%; margin: 0 auto;
+      display: grid; place-items: center;
+      font-family: "Cormorant Garamond", Georgia, serif; font-weight: 700; font-size: 40px;
+      color: #6e1f3e; border: 2px solid #c39a3e;
+      background: radial-gradient(circle at 32% 28%, rgba(201,154,62,.28), rgba(201,154,62,.05));
+    }
+    .logo h1 {
+      font-family: "Cormorant Garamond", Georgia, serif; font-weight: 700;
+      margin: 12px 0 0; font-size: 34px; color: #6e1f3e; letter-spacing: .5px;
+    }
+    .logo .tag {
+      margin: 4px 0 0; font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase;
+      color: #c39a3e;
+    }
     .full { width: 100%; }
-    .hint { text-align: center; font-size: 12px; margin-top: 8px; }
+    .hint { text-align: center; font-size: 12px; margin-top: 10px; }
   `]
 })
 export class LoginComponent {

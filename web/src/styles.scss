@@ -1,18 +1,64 @@
-/* Global styles */
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background: #f5f5f7; }
+@use '@angular/material' as mat;
 
-.page { padding: 24px; max-width: 1200px; margin: 0 auto; }
+@include mat.core();
+
+/* Material 3 theme — rose primary reads soft & feminine and complements the wine brand. */
+$lv-theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$rose-palette,
+    tertiary: mat.$violet-palette,
+  ),
+  density: (scale: 0),
+));
+
+html {
+  @include mat.all-component-themes($lv-theme);
+}
+
+/* ---- Label_Vihitha brand palette (from the logo) ---- */
+:root {
+  --lv-wine: #6e1f3e;         /* deep burgundy */
+  --lv-wine-deep: #3f1228;    /* near-black plum */
+  --lv-wine-mid: #5a1a38;
+  --lv-rose: #a83b63;
+  --lv-rose-soft: #f4e6ec;
+  --lv-gold: #c39a3e;         /* logo gold */
+  --lv-gold-light: #e0be6a;
+  --lv-cream: #faf5ec;        /* ivory ground */
+  --lv-cream-2: #f3ead9;
+  --lv-ink: #3a2530;          /* plum-brown text */
+  --lv-line: #ecdfe6;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background: var(--lv-cream);
+  color: var(--lv-ink);
+}
+
+.serif { font-family: "Cormorant Garamond", Georgia, serif; }
+
+.page { padding: 28px; max-width: 1200px; margin: 0 auto; }
 
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
   flex-wrap: wrap;
 }
-.page-header h1 { font-size: 24px; font-weight: 500; margin: 0; }
+.page-header h1 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  color: var(--lv-wine);
+  margin: 0;
+}
 
 .toolbar-row {
   display: flex;
@@ -25,28 +71,60 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background:
 .spacer { flex: 1 1 auto; }
 .mono { font-variant-numeric: tabular-nums; }
 .text-right { text-align: right; }
-.muted { color: rgba(0,0,0,.55); }
+.muted { color: rgba(58, 37, 48, .58); }
 
 table.full { width: 100%; }
-.card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 16px; }
+.card {
+  background: #fff;
+  border: 1px solid var(--lv-line);
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(110, 31, 62, .06);
+  padding: 18px;
+}
 
-.empty-state { text-align: center; padding: 48px 16px; color: rgba(0,0,0,.5); }
+.empty-state { text-align: center; padding: 48px 16px; color: rgba(58, 37, 48, .5); }
+
+/* Material table header — warm tint */
+.mat-mdc-header-cell { color: var(--lv-wine) !important; font-weight: 600; }
+.mat-mdc-row:hover { background: #fbf4f7; }
 
 .snack-success { --mdc-snackbar-container-color: #2e7d32; }
-.snack-error { --mdc-snackbar-container-color: #c62828; }
+.snack-error { --mdc-snackbar-container-color: #b0324f; }
 
-/* Status chips */
-.chip {
-  display: inline-block; padding: 2px 10px; border-radius: 12px;
-  font-size: 12px; font-weight: 600; white-space: nowrap;
+/* ---- Brand-colored buttons (override M3 rose primary → wine for CTAs) ---- */
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-unelevated-button.mat-primary,
+.mat-mdc-fab.mat-primary,
+.mat-mdc-mini-fab.mat-primary {
+  background-color: var(--lv-wine) !important;
+  color: #fff !important;
+  --mdc-filled-button-container-color: var(--lv-wine);
+  --mdc-protected-button-container-color: var(--lv-wine);
+  --mdc-filled-button-label-text-color: #fff;
 }
-.chip.Pending, .chip.Unpaid, .chip.Open { background: #fff3e0; color: #e65100; }
-.chip.Confirmed, .chip.PartiallyPaid, .chip.InProgress { background: #e3f2fd; color: #1565c0; }
-.chip.Fulfilled, .chip.Paid, .chip.Resolved { background: #e8f5e9; color: #2e7d32; }
-.chip.Cancelled, .chip.Refunded { background: #fafafa; color: #616161; }
+.mat-mdc-button.mat-primary,
+.mat-mdc-icon-button.mat-primary,
+.mat-mdc-outlined-button.mat-primary {
+  color: var(--lv-wine) !important;
+}
+.mat-mdc-raised-button.mat-accent,
+.mat-mdc-unelevated-button.mat-accent {
+  background-color: var(--lv-gold) !important;
+  color: #40260a !important;
+}
 
-.low-stock { color: #c62828; font-weight: 600; }
-.overdue { color: #c62828; font-weight: 600; }
+/* ---- Status chips ---- */
+.chip {
+  display: inline-block; padding: 3px 11px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap; letter-spacing: .2px;
+}
+.chip.Pending, .chip.Unpaid, .chip.Open { background: #fbe7d6; color: #9a5a12; }
+.chip.Confirmed, .chip.PartiallyPaid, .chip.InProgress { background: var(--lv-rose-soft); color: var(--lv-wine); }
+.chip.Fulfilled, .chip.Paid, .chip.Resolved { background: #e5f3e8; color: #226b39; }
+.chip.Cancelled, .chip.Refunded { background: #efe7ea; color: #6b5560; }
+
+.low-stock { color: #b0324f; font-weight: 600; }
+.overdue { color: #b0324f; font-weight: 600; }
 
 .dialog-form { display: flex; flex-direction: column; gap: 4px; min-width: 360px; }
 .form-row { display: flex; gap: 12px; }
