@@ -96,8 +96,8 @@ are allowed by default).
 
 - [x] **Phase 1 — Core Data & API**: Category + Product CRUD, EF migrations, JWT auth, seed data. *(all entities & the full DB schema are defined up front; CRUD endpoints ship per phase)*
 - [x] **Phase 2 — Order & Invoicing**: Customer CRUD; Orders with price snapshots, stock control & status transitions; Invoice generation + partial/split Payments; OrderFollowUp create/resolve + dashboard.
-- [x] **Phase 3 — Angular web UI** (`web/`): Angular 18 standalone + Material. JWT login, role-aware nav shell, and feature screens for Categories, Inventory, Customers, Orders (list / create wizard / detail with line editing, status actions, invoicing & follow-ups), Invoicing (list / detail / record payment), and a Follow-ups dashboard. Analytics screen is a placeholder until Phase 4.
-- [ ] Phase 4 — Analytics reports + dashboard
+- [x] **Phase 3 — Angular web UI** (`web/`): Angular 18 standalone + Material. JWT login, role-aware nav shell, and feature screens for Categories, Inventory, Customers, Orders (list / create wizard / detail with line editing, status actions, invoicing & follow-ups), Invoicing (list / detail / record payment), and a Follow-ups dashboard.
+- [x] **Phase 4 — Analytics**: Owner-only `ReportsController` / `AnalyticsService` (summary KPIs, margin by category & date bucket, sales-by-category, discounts, inventory valuation, payment-methods, top/slow movers, follow-ups). Angular dashboard with KPI cards and Chart.js charts (margin bars, revenue-share & payment doughnuts, inventory bars, margin-trend line), mover tables, and a date-range filter.
 - [ ] Phase 5 — .NET MAUI mobile app
 
 ## EF migrations

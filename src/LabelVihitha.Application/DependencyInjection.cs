@@ -6,6 +6,7 @@ using LabelVihitha.Application.Features.FollowUps;
 using LabelVihitha.Application.Features.Invoices;
 using LabelVihitha.Application.Features.Orders;
 using LabelVihitha.Application.Features.Products;
+using LabelVihitha.Application.Features.Reports;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LabelVihitha.Application;
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IFollowUpService, FollowUpService>();
+        services.AddScoped<IAnalyticsService, AnalyticsService>();
 
         return services;
     }
