@@ -20,13 +20,13 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
   template: `
     <mat-sidenav-container class="shell">
       <mat-sidenav #snav mode="side" opened class="sidenav">
-        <div class="brand">
+        <a class="brand" [routerLink]="homePath()" title="Home">
           <span class="emblem"><img src="logo.jpeg" alt="Vihitha" /></span>
           <div class="brand-text">
             <div class="name">Vihitha</div>
             <div class="tag">Every thread · every style</div>
           </div>
-        </div>
+        </a>
         <mat-nav-list>
           @for (item of nav; track item.path) {
             @if (item.show()) {
@@ -69,7 +69,7 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
     }
 
     /* Brand lockup — echoes the circular gold-on-wine logo */
-    .brand { display: flex; align-items: center; gap: 14px; padding: 24px 20px 18px; }
+    .brand { display: flex; align-items: center; gap: 14px; padding: 24px 20px 18px; text-decoration: none; }
     .emblem {
       width: 50px; height: 50px; border-radius: 50%; flex: 0 0 auto;
       display: grid; place-items: center; overflow: hidden; background: #fbf5ea;
@@ -116,6 +116,10 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
 })
 export class ShellComponent {
   auth = inject(AuthService);
+
+  /** Clicking the logo goes to the product catalog (home). */
+  homePath() { return '/products'; }
+
   nav: NavItem[] = [
     { label: 'Analytics', icon: 'insights', path: '/analytics', show: () => this.auth.canViewReports() },
     { label: 'Orders', icon: 'receipt_long', path: '/orders', show: () => this.auth.canManageSales() },

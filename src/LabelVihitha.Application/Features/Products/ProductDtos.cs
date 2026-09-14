@@ -57,6 +57,12 @@ public record UpdateProductRequest(
     bool IsActive,
     string RowVersion);   // base64 concurrency token
 
+// ---- Inventory count summary (by category → subcategory) ----
+public record SubCategoryCount(int? SubCategoryId, string SubCategoryName, int ProductCount, int TotalUnits);
+public record CategoryCount(int CategoryId, string CategoryName, int ProductCount, int TotalUnits,
+    IReadOnlyList<SubCategoryCount> SubCategories);
+public record InventorySummary(int TotalProducts, int TotalUnits, IReadOnlyList<CategoryCount> Categories);
+
 public record ProductQuery(
     int? CategoryId = null,
     int? SubCategoryId = null,

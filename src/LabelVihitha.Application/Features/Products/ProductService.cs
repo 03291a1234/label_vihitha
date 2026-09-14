@@ -51,6 +51,38 @@ public class ProductService : IProductService
         };
     }
 
+    public async Task<InventorySummary> GetInventorySummaryAsync(CancellationToken ct = default)
+    {
+        // Flat rows (a translatable join), then group in memory by category → subcategory.
+        var rows = await _db.Products.AsNoTracking()
+            .Where(p => !p.IsDeleted)
+            .Select(p => new
+            {
+                p.CategoryId,
+                CategoryName = p.Category.Name,
+                p.SubCategoryId,
+                SubCategoryName = p.SubCategory != null ? p.SubCategory.Name : null,
+                p.QuantityOnHand
+            })
+            .ToListAsync(ct);
+
+        var categories = rows
+            .GroupBy(r => new { r.CategoryId, r.CategoryName })
+            .Select(cg => new CategoryCount(
+                cg.Key.CategoryId, cg.Key.CategoryName, cg.Count(), cg.Sum(x => x.QuantityOnHand),
+                cg.GroupBy(x => new { x.SubCategoryId, x.SubCategoryName })
+                    .Select(sg => new SubCategoryCount(
+                        sg.Key.SubCategoryId,
+                        sg.Key.SubCategoryName ?? "Unassigned",
+                        sg.Count(), sg.Sum(x => x.QuantityOnHand)))
+                    .OrderByDescending(s => s.ProductCount).ThenBy(s => s.SubCategoryName)
+                    .ToList()))
+            .OrderBy(c => c.CategoryName)
+            .ToList();
+
+        return new InventorySummary(rows.Count, rows.Sum(r => r.QuantityOnHand), categories);
+    }
+
     public async Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
         var entity = await _db.Products.AsNoTracking()

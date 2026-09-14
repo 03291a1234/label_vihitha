@@ -2,10 +2,25 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
+      "name": "lv-api",
+      "runtimeExecutable": "/usr/local/bin/dotnet",
+      "runtimeArgs": ["run", "--project", "/Users/uchintha/Desktop/label_vihitha/src/LabelVihitha.Api", "--", "--urls", "http://localhost:5080"],
+      "port": 5080,
+      "autoPort": false
+    },
+    {
+      "name": "lv-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web", "start", "--", "--host", "127.0.0.1", "--port", "4200"],
-      "port": 4200
+      "runtimeArgs": ["--prefix", "/Users/uchintha/Desktop/label_vihitha/web", "start", "--", "--host", "127.0.0.1", "--port", "4200"],
+      "port": 4200,
+      "autoPort": false
+    },
+    {
+      "name": "lv-mobile",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/uchintha/Desktop/label_vihitha/mobile", "start", "--", "--host", "127.0.0.1", "--port", "8100"],
+      "port": 8100,
+      "autoPort": false
     }
   ]
 }

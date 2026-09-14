@@ -20,6 +20,10 @@ public class ProductsController : ControllerBase
         [FromQuery] ProductQuery query, CancellationToken ct)
         => Ok(await _service.GetAsync(query, ct));
 
+    [HttpGet("inventory-summary")]
+    public async Task<ActionResult<InventorySummary>> InventorySummary(CancellationToken ct)
+        => Ok(await _service.GetInventorySummaryAsync(ct));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ProductDto>> GetById(int id, CancellationToken ct)
         => Ok(await _service.GetByIdAsync(id, ct));

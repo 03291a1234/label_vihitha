@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  Category, SubCategory, Inventory, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
+  Category, SubCategory, Inventory, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus
 } from '../models';
 
@@ -90,6 +90,7 @@ export class ProductApi {
     return this.http.get<PagedResult<Product>>(`${base}/products`, { params: toParams(filters as Record<string, unknown>) });
   }
   get(id: number) { return this.http.get<Product>(`${base}/products/${id}`); }
+  inventorySummary() { return this.http.get<InventorySummary>(`${base}/products/inventory-summary`); }
   create(body: unknown) { return this.http.post<Product>(`${base}/products`, body); }
   update(id: number, body: unknown) { return this.http.put<Product>(`${base}/products/${id}`, body); }
   remove(id: number) { return this.http.delete<void>(`${base}/products/${id}`); }

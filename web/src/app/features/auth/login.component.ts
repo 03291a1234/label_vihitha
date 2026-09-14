@@ -23,7 +23,7 @@ import { Notify } from '../../core/services/notify.service';
         @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
         <mat-card-content>
           <div class="logo">
-            <span class="emblem"><img src="logo.jpeg" alt="Vihitha" /></span>
+            <a routerLink="/shop" title="Visit the store"><span class="emblem"><img src="logo.jpeg" alt="Vihitha" /></span></a>
             <h1>Vihitha</h1>
             <p class="tag">Every thread · every style · every story</p>
           </div>

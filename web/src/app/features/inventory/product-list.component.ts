@@ -16,7 +16,7 @@ import { ActivatedRoute } from '@angular/router';
 import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Category, SubCategory, Inventory, Product } from '../../core/models';
+import { Category, SubCategory, Inventory, InventorySummary, Product } from '../../core/models';
 import { ProductEditDialog } from './product-edit.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
@@ -39,10 +39,38 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
         }
       </div>
 
+      <!-- Inventory summary by category → subcategory -->
+      @if (summary(); as s) {
+        <div class="card summary">
+          <div class="summary-head" (click)="showSummary.set(!showSummary())">
+            <span><mat-icon>insights</mat-icon> Inventory summary — <strong>{{ s.totalProducts }}</strong> products · <strong>{{ s.totalUnits }}</strong> units in stock</span>
+            <mat-icon>{{ showSummary() ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </div>
+          @if (showSummary()) {
+            <div class="summary-body">
+              @for (c of s.categories; track c.categoryId) {
+                <div class="cat-block">
+                  <div class="cat-head">
+                    <strong>{{ c.categoryName }}</strong>
+                    <span class="muted">{{ c.productCount }} products · {{ c.totalUnits }} units</span>
+                  </div>
+                  <div class="subs">
+                    @for (sub of c.subCategories; track sub.subCategoryName) {
+                      <span class="sub-chip">{{ sub.subCategoryName }} · {{ sub.productCount }}<span class="u"> ({{ sub.totalUnits }} u)</span></span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
       <div class="toolbar-row">
         <mat-form-field>
           <mat-label>Search</mat-label>
           <input matInput [(ngModel)]="search" (keyup.enter)="reload()" placeholder="Name or SKU" />
+          <button matSuffix mat-icon-button (click)="reload()" aria-label="Search"><mat-icon>search</mat-icon></button>
         </mat-form-field>
         <mat-form-field>
           <mat-label>Category</mat-label>
@@ -66,7 +94,6 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
           </mat-select>
         </mat-form-field>
         <mat-slide-toggle [(ngModel)]="lowStockOnly" (change)="reload()">Low stock only</mat-slide-toggle>
-        <button mat-button (click)="reload()"><mat-icon>search</mat-icon> Apply</button>
       </div>
 
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
@@ -141,6 +168,15 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .product-cell .thumb img { width: 100%; height: 100%; object-fit: cover; }
     .product-cell .thumb mat-icon { color: #b8b8c0; font-size: 22px; height: 22px; width: 22px; }
     .inv-icon { font-size: 14px; height: 14px; width: 14px; vertical-align: -2px; }
+    .summary { margin-bottom: 16px; padding: 0; overflow: hidden; }
+    .summary-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; }
+    .summary-head span { display: flex; align-items: center; gap: 8px; color: var(--lv-wine); }
+    .summary-body { padding: 4px 18px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+    .cat-block { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px; background: #fffdfb; }
+    .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .subs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sub-chip { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+    .sub-chip .u { font-weight: 400; opacity: .75; }
   `]
 })
 export class ProductListComponent {
@@ -160,6 +196,8 @@ export class ProductListComponent {
   categories = signal<Category[]>([]);
   subCategories = signal<SubCategory[]>([]);
   inventories = signal<Inventory[]>([]);
+  summary = signal<InventorySummary | null>(null);
+  showSummary = signal(true);
   total = signal(0);
   loading = signal(false);
 
@@ -181,6 +219,11 @@ export class ProductListComponent {
     const invParam = this.route.snapshot.queryParamMap.get('inventoryId');
     if (invParam) this.inventoryId = Number(invParam);
     this.load();
+    this.loadSummary();
+  }
+
+  loadSummary() {
+    this.api.inventorySummary().subscribe({ next: (s) => this.summary.set(s) });
   }
 
   onCategoryFilter() {
@@ -219,7 +262,7 @@ export class ProductListComponent {
 
   openEdit(p: Product | null) {
     this.dialog.open(ProductEditDialog, { data: p, width: '640px' }).afterClosed()
-      .subscribe(ok => { if (ok) this.load(); });
+      .subscribe(ok => { if (ok) { this.load(); this.loadSummary(); } });
   }
 
   remove(p: Product) {
@@ -228,7 +271,7 @@ export class ProductListComponent {
     }).afterClosed().subscribe(ok => {
       if (!ok) return;
       this.api.remove(p.id).subscribe({
-        next: () => { this.notify.success('Product deleted'); this.load(); },
+        next: () => { this.notify.success('Product deleted'); this.load(); this.loadSummary(); },
         error: (e) => this.notify.error(e)
       });
     });

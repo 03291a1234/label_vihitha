@@ -48,6 +48,25 @@ export interface Inventory {
   productCount: number;
 }
 
+export interface SubCategoryCount {
+  subCategoryId?: number | null;
+  subCategoryName: string;
+  productCount: number;
+  totalUnits: number;
+}
+export interface CategoryCount {
+  categoryId: number;
+  categoryName: string;
+  productCount: number;
+  totalUnits: number;
+  subCategories: SubCategoryCount[];
+}
+export interface InventorySummary {
+  totalProducts: number;
+  totalUnits: number;
+  categories: CategoryCount[];
+}
+
 export interface Product {
   id: number;
   categoryId: number;

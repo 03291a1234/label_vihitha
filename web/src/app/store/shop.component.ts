@@ -27,7 +27,7 @@ type View = 'shop' | 'checkout' | 'done';
   template: `
     <div class="store">
       <header class="topbar">
-        <div class="brand">
+        <div class="brand" (click)="goHome()" title="Home">
           <span class="emblem"><img src="logo.jpeg" alt="Vihitha" /></span>
           <div>
             <div class="name">Vihitha</div>
@@ -161,7 +161,7 @@ type View = 'shop' | 'checkout' | 'done';
       position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between;
       gap: 16px; padding: 12px 24px; background: linear-gradient(160deg, #6e1f3e, #3f1228); color: #fff;
     }
-    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 12px; cursor: pointer; }
     .emblem { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
       background: #fbf5ea; border: 2px solid #c39a3e; flex: 0 0 auto; }
     .emblem img { width: 122%; height: 122%; object-fit: cover; }
@@ -250,6 +250,7 @@ export class ShopComponent {
   inc(id: number, qty: number, available: number) { if (qty < available) this.cart.setQty(id, qty + 1); }
   dec(id: number, qty: number) { if (qty > 1) this.cart.setQty(id, qty - 1); else this.cart.remove(id); }
 
+  goHome() { this.view.set('shop'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* ignore */ } }
   goCheckout() { if (this.cart.count() > 0) this.view.set('checkout'); }
 
   placeOrder() {
