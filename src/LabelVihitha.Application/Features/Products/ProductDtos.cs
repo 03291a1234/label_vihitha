@@ -59,5 +59,7 @@ public record ProductQuery(
     bool? IsActive = null,
     bool LowStockOnly = false,
     string? Search = null,
+    string? SortBy = null,
+    string? SortDir = null,
     int Page = 1,
     int PageSize = 25);

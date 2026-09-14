@@ -9,17 +9,19 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { FollowUpApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { FollowUp, FollowUpStatus } from '../../core/models';
+import { sortRows } from '../../shared/sort';
 
 @Component({
   selector: 'app-followup-dashboard',
   standalone: true,
   imports: [
     DatePipe, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatSelectModule, MatSlideToggleModule, MatProgressBarModule
+    MatFormFieldModule, MatSelectModule, MatSlideToggleModule, MatProgressBarModule, MatSortModule
   ],
   template: `
     <div class="page">
@@ -39,22 +41,22 @@ import { FollowUp, FollowUpStatus } from '../../core/models';
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       <div class="card">
-        <table mat-table [dataSource]="rows()" class="full">
+        <table mat-table [dataSource]="rows()" class="full" matSort (matSortChange)="onSort($event)">
           <ng-container matColumnDef="note">
-            <th mat-header-cell *matHeaderCellDef>Follow-up</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Follow-up</th>
             <td mat-cell *matCellDef="let f">
               <strong>{{ f.note }}</strong>
               <div class="muted">{{ f.productName ? f.productName : 'Whole order' }} · by {{ f.createdBy || '—' }}</div>
             </td>
           </ng-container>
           <ng-container matColumnDef="orderNumber">
-            <th mat-header-cell *matHeaderCellDef>Order</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Order</th>
             <td mat-cell *matCellDef="let f" class="mono">
               <a [routerLink]="['/orders', f.orderId]">{{ f.orderNumber }}</a>
             </td>
           </ng-container>
           <ng-container matColumnDef="followUpDate">
-            <th mat-header-cell *matHeaderCellDef>Due</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Due</th>
             <td mat-cell *matCellDef="let f">
               @if (f.followUpDate) {
                 <span [class.overdue]="f.isOverdue">{{ f.followUpDate | date:'mediumDate' }}</span>
@@ -62,7 +64,7 @@ import { FollowUp, FollowUpStatus } from '../../core/models';
             </td>
           </ng-container>
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
             <td mat-cell *matCellDef="let f">
               <span class="chip {{f.status}}">{{ f.status }}</span>
               @if (f.isOverdue) { <span class="overdue"> OVERDUE</span> }
@@ -99,6 +101,9 @@ export class FollowUpDashboardComponent {
   statuses: FollowUpStatus[] = ['Open', 'InProgress', 'Resolved'];
   cols = ['note', 'orderNumber', 'followUpDate', 'status', 'actions'];
 
+  private data: FollowUp[] = [];
+  private sort: Sort = { active: '', direction: '' };
+
   constructor() { this.load(); }
 
   load() {
@@ -109,10 +114,13 @@ export class FollowUpDashboardComponent {
       openOnly: this.status === null,
       pageSize: 100
     }).subscribe({
-      next: (r) => { this.rows.set(r.items); this.loading.set(false); },
+      next: (r) => { this.data = r.items; this.applyView(); this.loading.set(false); },
       error: (e) => { this.loading.set(false); this.notify.error(e); }
     });
   }
+
+  onSort(s: Sort) { this.sort = s; this.applyView(); }
+  private applyView() { this.rows.set(sortRows(this.data, this.sort)); }
 
   reload() { this.load(); }
 

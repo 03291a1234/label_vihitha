@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { OrderApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -21,7 +22,7 @@ import { OrderListItem, OrderStatus } from '../../core/models';
   imports: [
     CurrencyPipe, DatePipe, FormsModule, RouterLink, MatTableModule, MatButtonModule,
     MatIconModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatPaginatorModule, MatProgressBarModule
+    MatPaginatorModule, MatProgressBarModule, MatSortModule
   ],
   template: `
     <div class="page">
@@ -50,21 +51,21 @@ import { OrderListItem, OrderStatus } from '../../core/models';
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       <div class="card">
-        <table mat-table [dataSource]="rows()" class="full">
+        <table mat-table [dataSource]="rows()" class="full" matSort (matSortChange)="onSort($event)">
           <ng-container matColumnDef="orderNumber">
-            <th mat-header-cell *matHeaderCellDef>Order #</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Order #</th>
             <td mat-cell *matCellDef="let o" class="mono"><strong>{{ o.orderNumber }}</strong></td>
           </ng-container>
           <ng-container matColumnDef="customerName">
-            <th mat-header-cell *matHeaderCellDef>Customer</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Customer</th>
             <td mat-cell *matCellDef="let o">{{ o.customerName }}</td>
           </ng-container>
           <ng-container matColumnDef="orderDate">
-            <th mat-header-cell *matHeaderCellDef>Date</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
             <td mat-cell *matCellDef="let o">{{ o.orderDate | date:'mediumDate' }}</td>
           </ng-container>
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
             <td mat-cell *matCellDef="let o"><span class="chip {{o.status}}">{{ o.status }}</span></td>
           </ng-container>
           <ng-container matColumnDef="itemCount">
@@ -72,7 +73,7 @@ import { OrderListItem, OrderStatus } from '../../core/models';
             <td mat-cell *matCellDef="let o" class="text-right mono">{{ o.itemCount }}</td>
           </ng-container>
           <ng-container matColumnDef="grandTotal">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Total</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Total</th>
             <td mat-cell *matCellDef="let o" class="text-right mono">{{ o.grandTotal | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="invoice">
@@ -107,6 +108,8 @@ export class OrderListComponent {
   search = '';
   status: OrderStatus | null = null;
   statuses: OrderStatus[] = ['Pending', 'Confirmed', 'Fulfilled', 'Cancelled'];
+  sortBy: string | null = null;
+  sortDir: string | null = null;
   page = 1;
   pageSize = 25;
   cols = ['orderNumber', 'customerName', 'orderDate', 'status', 'itemCount', 'grandTotal', 'invoice'];
@@ -115,13 +118,21 @@ export class OrderListComponent {
 
   load() {
     this.loading.set(true);
-    this.api.list({ search: this.search || undefined, status: this.status, page: this.page, pageSize: this.pageSize })
-      .subscribe({
-        next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
-        error: (e) => { this.loading.set(false); this.notify.error(e); }
-      });
+    this.api.list({
+      search: this.search || undefined, status: this.status,
+      sortBy: this.sortBy, sortDir: this.sortDir,
+      page: this.page, pageSize: this.pageSize
+    }).subscribe({
+      next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
+      error: (e) => { this.loading.set(false); this.notify.error(e); }
+    });
   }
 
   reload() { this.page = 1; this.load(); }
   onPage(e: PageEvent) { this.page = e.pageIndex + 1; this.pageSize = e.pageSize; this.load(); }
+  onSort(s: Sort) {
+    this.sortBy = s.direction ? s.active : null;
+    this.sortDir = s.direction || null;
+    this.reload();
+  }
 }

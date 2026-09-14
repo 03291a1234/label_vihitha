@@ -34,10 +34,8 @@ public class ProductService : IProductService
         }
 
         var total = await q.CountAsync(ct);
-        var entities = await q
-            .Include(p => p.Category)
-            .Include(p => p.SubCategory)
-            .OrderBy(p => p.Name)
+        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory), query.SortBy, query.SortDir);
+        var entities = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
@@ -155,6 +153,20 @@ public class ProductService : IProductService
         entity.IsActive = false;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+    }
+
+    private static IQueryable<Product> ApplySort(IQueryable<Product> q, string? sortBy, string? dir)
+    {
+        var desc = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+        return sortBy?.ToLowerInvariant() switch
+        {
+            "sku" => desc ? q.OrderByDescending(p => p.SKU) : q.OrderBy(p => p.SKU),
+            "originalprice" => desc ? q.OrderByDescending(p => p.OriginalPrice) : q.OrderBy(p => p.OriginalPrice),
+            "saleprice" => desc ? q.OrderByDescending(p => p.SalePrice) : q.OrderBy(p => p.SalePrice),
+            "quantityonhand" => desc ? q.OrderByDescending(p => p.QuantityOnHand) : q.OrderBy(p => p.QuantityOnHand),
+            "name" => desc ? q.OrderByDescending(p => p.Name) : q.OrderBy(p => p.Name),
+            _ => q.OrderBy(p => p.Name)
+        };
     }
 
     /// <summary>A chosen subcategory (if any) must exist and belong to the product's category.</summary>

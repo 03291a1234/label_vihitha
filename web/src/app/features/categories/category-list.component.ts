@@ -6,11 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { FormsModule } from '@angular/forms';
 import { CategoryApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Category } from '../../core/models';
+import { sortRows } from '../../shared/sort';
 import { CategoryEditDialog } from './category-edit.dialog';
 import { SubCategoryManageDialog } from './subcategory-manage.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
@@ -20,7 +22,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   standalone: true,
   imports: [
     CurrencyPipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatDialogModule, MatProgressBarModule, MatSlideToggleModule
+    MatDialogModule, MatProgressBarModule, MatSlideToggleModule, MatSortModule
   ],
   template: `
     <div class="page">
@@ -39,9 +41,9 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       <div class="card">
-        <table mat-table [dataSource]="rows()" class="full">
+        <table mat-table [dataSource]="rows()" class="full" matSort (matSortChange)="onSort($event)">
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
             <td mat-cell *matCellDef="let c">
               <strong>{{ c.name }}</strong>
               @if (!c.isActive) { <span class="chip Cancelled">inactive</span> }
@@ -49,15 +51,15 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             </td>
           </ng-container>
           <ng-container matColumnDef="defaultOriginalPrice">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Default cost</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Default cost</th>
             <td mat-cell *matCellDef="let c" class="text-right mono">{{ c.defaultOriginalPrice | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="defaultSalePrice">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Default sale</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Default sale</th>
             <td mat-cell *matCellDef="let c" class="text-right mono">{{ c.defaultSalePrice | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="productCount">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Products</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Products</th>
             <td mat-cell *matCellDef="let c" class="text-right mono">{{ c.productCount }}</td>
           </ng-container>
           <ng-container matColumnDef="subcategories">
@@ -96,15 +98,21 @@ export class CategoryListComponent {
   includeInactive = false;
   cols = ['name', 'defaultOriginalPrice', 'defaultSalePrice', 'productCount', 'subcategories', 'actions'];
 
+  private data: Category[] = [];
+  private sort: Sort = { active: '', direction: '' };
+
   constructor() { this.load(); }
 
   load() {
     this.loading.set(true);
     this.api.list(this.includeInactive).subscribe({
-      next: (r) => { this.rows.set(r); this.loading.set(false); },
+      next: (r) => { this.data = r; this.applyView(); this.loading.set(false); },
       error: (e) => { this.loading.set(false); this.notify.error(e); }
     });
   }
+
+  onSort(s: Sort) { this.sort = s; this.applyView(); }
+  private applyView() { this.rows.set(sortRows(this.data, this.sort)); }
 
   openEdit(c: Category | null) {
     this.dialog.open(CategoryEditDialog, { data: c }).afterClosed().subscribe(ok => { if (ok) this.load(); });

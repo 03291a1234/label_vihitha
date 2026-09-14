@@ -60,6 +60,8 @@ export interface ProductFilters {
   isActive?: boolean | null;
   lowStockOnly?: boolean;
   search?: string;
+  sortBy?: string | null;
+  sortDir?: string | null;
   page?: number;
   pageSize?: number;
 }
@@ -100,6 +102,8 @@ export interface OrderFilters {
   fromDate?: string | null;
   toDate?: string | null;
   search?: string;
+  sortBy?: string | null;
+  sortDir?: string | null;
   page?: number;
   pageSize?: number;
 }
@@ -128,6 +132,8 @@ export interface InvoiceFilters {
   paymentMethod?: PaymentMethod | null;
   fromDate?: string | null;
   toDate?: string | null;
+  sortBy?: string | null;
+  sortDir?: string | null;
   page?: number;
   pageSize?: number;
 }

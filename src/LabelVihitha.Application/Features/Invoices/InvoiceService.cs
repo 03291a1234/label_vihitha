@@ -30,8 +30,7 @@ public class InvoiceService : IInvoiceService
         if (query.ToDate is DateTime to) q = q.Where(i => i.InvoiceDate <= to);
 
         var total = await q.CountAsync(ct);
-        var items = await q
-            .OrderByDescending(i => i.InvoiceDate)
+        var items = await ApplySort(q, query.SortBy, query.SortDir)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(i => new InvoiceListItemDto(
@@ -144,6 +143,23 @@ public class InvoiceService : IInvoiceService
     }
 
     // ---- helpers -------------------------------------------------------
+
+    private static IQueryable<Invoice> ApplySort(IQueryable<Invoice> q, string? sortBy, string? dir)
+    {
+        var desc = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+        return sortBy?.ToLowerInvariant() switch
+        {
+            "invoicenumber" => desc ? q.OrderByDescending(i => i.InvoiceNumber) : q.OrderBy(i => i.InvoiceNumber),
+            "ordernumber" => desc ? q.OrderByDescending(i => i.Order.OrderNumber) : q.OrderBy(i => i.Order.OrderNumber),
+            "customername" => desc ? q.OrderByDescending(i => i.Order.Customer.Name) : q.OrderBy(i => i.Order.Customer.Name),
+            "amountdue" => desc ? q.OrderByDescending(i => i.AmountDue) : q.OrderBy(i => i.AmountDue),
+            "amountpaid" => desc ? q.OrderByDescending(i => i.AmountPaid) : q.OrderBy(i => i.AmountPaid),
+            "paymentstatus" => desc ? q.OrderByDescending(i => i.PaymentStatus) : q.OrderBy(i => i.PaymentStatus),
+            "paymentmethod" => desc ? q.OrderByDescending(i => i.PaymentMethod) : q.OrderBy(i => i.PaymentMethod),
+            "invoicedate" => desc ? q.OrderByDescending(i => i.InvoiceDate) : q.OrderBy(i => i.InvoiceDate),
+            _ => q.OrderByDescending(i => i.InvoiceDate)
+        };
+    }
 
     private static void RecomputeStatus(Invoice invoice)
     {

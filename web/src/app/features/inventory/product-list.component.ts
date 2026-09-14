@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { CategoryApi, ProductApi, SubCategoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
@@ -24,7 +25,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   imports: [
     CurrencyPipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatSlideToggleModule,
-    MatPaginatorModule, MatProgressBarModule
+    MatPaginatorModule, MatProgressBarModule, MatSortModule
   ],
   template: `
     <div class="page">
@@ -63,13 +64,13 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       <div class="card">
-        <table mat-table [dataSource]="rows()" class="full">
+        <table mat-table [dataSource]="rows()" class="full" matSort (matSortChange)="onSort($event)">
           <ng-container matColumnDef="sku">
-            <th mat-header-cell *matHeaderCellDef>SKU</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>SKU</th>
             <td mat-cell *matCellDef="let p" class="mono">{{ p.sku }}</td>
           </ng-container>
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Product</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Product</th>
             <td mat-cell *matCellDef="let p">
               <div class="product-cell">
                 <div class="thumb">
@@ -85,15 +86,15 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             </td>
           </ng-container>
           <ng-container matColumnDef="originalPrice">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Cost</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Cost</th>
             <td mat-cell *matCellDef="let p" class="text-right mono">{{ p.originalPrice | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="salePrice">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Sale</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Sale</th>
             <td mat-cell *matCellDef="let p" class="text-right mono">{{ p.salePrice | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="quantityOnHand">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Stock</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Stock</th>
             <td mat-cell *matCellDef="let p" class="text-right mono" [class.low-stock]="p.isLowStock">
               {{ p.quantityOnHand }}
               @if (p.isLowStock) { <mat-icon class="warn-icon" title="At/under reorder threshold">warning</mat-icon> }
@@ -146,6 +147,8 @@ export class ProductListComponent {
   categoryId: number | null = null;
   subCategoryId: number | null = null;
   lowStockOnly = false;
+  sortBy: string | null = null;
+  sortDir: string | null = null;
   page = 1;
   pageSize = 25;
   cols = ['sku', 'name', 'originalPrice', 'salePrice', 'quantityOnHand', 'actions'];
@@ -170,6 +173,7 @@ export class ProductListComponent {
       categoryId: this.categoryId,
       subCategoryId: this.subCategoryId,
       lowStockOnly: this.lowStockOnly,
+      sortBy: this.sortBy, sortDir: this.sortDir,
       page: this.page, pageSize: this.pageSize
     }).subscribe({
       next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
@@ -181,6 +185,11 @@ export class ProductListComponent {
 
   reload() { this.page = 1; this.load(); }
   onPage(e: PageEvent) { this.page = e.pageIndex + 1; this.pageSize = e.pageSize; this.load(); }
+  onSort(s: Sort) {
+    this.sortBy = s.direction ? s.active : null;
+    this.sortDir = s.direction || null;
+    this.reload();
+  }
 
   openEdit(p: Product | null) {
     this.dialog.open(ProductEditDialog, { data: p, width: '640px' }).afterClosed()

@@ -6,10 +6,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { CustomerApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { sortRows } from '../../shared/sort';
 import { Customer } from '../../core/models';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
@@ -70,7 +72,7 @@ export class CustomerEditDialog {
   standalone: true,
   imports: [
     FormsModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatProgressBarModule
+    MatFormFieldModule, MatInputModule, MatProgressBarModule, MatSortModule
   ],
   template: `
     <div class="page">
@@ -91,21 +93,21 @@ export class CustomerEditDialog {
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       <div class="card">
-        <table mat-table [dataSource]="rows()" class="full">
+        <table mat-table [dataSource]="rows()" class="full" matSort (matSortChange)="onSort($event)">
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
             <td mat-cell *matCellDef="let c"><strong>{{ c.name }}</strong></td>
           </ng-container>
           <ng-container matColumnDef="phone">
-            <th mat-header-cell *matHeaderCellDef>Phone</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Phone</th>
             <td mat-cell *matCellDef="let c">{{ c.phone }}</td>
           </ng-container>
           <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Email</th>
             <td mat-cell *matCellDef="let c">{{ c.email }}</td>
           </ng-container>
           <ng-container matColumnDef="orderCount">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Orders</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Orders</th>
             <td mat-cell *matCellDef="let c" class="text-right mono">{{ c.orderCount }}</td>
           </ng-container>
           <ng-container matColumnDef="actions">
@@ -136,15 +138,21 @@ export class CustomerListComponent {
   search = '';
   cols = ['name', 'phone', 'email', 'orderCount', 'actions'];
 
+  private data: Customer[] = [];
+  private sort: Sort = { active: '', direction: '' };
+
   constructor() { this.load(); }
 
   load() {
     this.loading.set(true);
     this.api.list(this.search || undefined).subscribe({
-      next: (r) => { this.rows.set(r); this.loading.set(false); },
+      next: (r) => { this.data = r; this.applyView(); this.loading.set(false); },
       error: (e) => { this.loading.set(false); this.notify.error(e); }
     });
   }
+
+  onSort(s: Sort) { this.sort = s; this.applyView(); }
+  private applyView() { this.rows.set(sortRows(this.data, this.sort)); }
 
   openEdit(c: Customer | null) {
     this.dialog.open(CustomerEditDialog, { data: c }).afterClosed().subscribe(ok => { if (ok) this.load(); });

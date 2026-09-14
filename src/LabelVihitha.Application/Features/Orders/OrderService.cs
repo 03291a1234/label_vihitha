@@ -35,8 +35,7 @@ public class OrderService : IOrderService
         }
 
         var total = await q.CountAsync(ct);
-        var items = await q
-            .OrderByDescending(o => o.OrderDate)
+        var items = await ApplySort(q, query.SortBy, query.SortDir)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(o => new OrderListItemDto(
@@ -226,6 +225,20 @@ public class OrderService : IOrderService
             if (product is not null)
                 product.QuantityOnHand += item.Quantity;
         }
+    }
+
+    private static IQueryable<Order> ApplySort(IQueryable<Order> q, string? sortBy, string? dir)
+    {
+        var desc = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+        return sortBy?.ToLowerInvariant() switch
+        {
+            "ordernumber" => desc ? q.OrderByDescending(o => o.OrderNumber) : q.OrderBy(o => o.OrderNumber),
+            "customername" => desc ? q.OrderByDescending(o => o.Customer.Name) : q.OrderBy(o => o.Customer.Name),
+            "status" => desc ? q.OrderByDescending(o => o.Status) : q.OrderBy(o => o.Status),
+            "grandtotal" => desc ? q.OrderByDescending(o => o.GrandTotal) : q.OrderBy(o => o.GrandTotal),
+            "orderdate" => desc ? q.OrderByDescending(o => o.OrderDate) : q.OrderBy(o => o.OrderDate),
+            _ => q.OrderByDescending(o => o.OrderDate)
+        };
     }
 
     private static void RecalculateTotals(Order order)
