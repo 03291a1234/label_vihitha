@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{85C1CE01-3F59-4D5A-8116-921F3995E506}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabelVihitha.Api", "src\LabelVihitha.Api\LabelVihitha.Api.csproj", "{E7ACF240-E779-4F2E-A25D-20C9821A404A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabelVihitha.Application", "src\LabelVihitha.Application\LabelVihitha.Application.csproj", "{26DB1C37-5E66-4E14-AD4C-42A80ECC76D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabelVihitha.Domain", "src\LabelVihitha.Domain\LabelVihitha.Domain.csproj", "{3C13678C-87FE-472E-8155-E89B276497E5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabelVihitha.Infrastructure", "src\LabelVihitha.Infrastructure\LabelVihitha.Infrastructure.csproj", "{AC240179-758B-4654-835B-4181C4CA44FF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E7ACF240-E779-4F2E-A25D-20C9821A404A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7ACF240-E779-4F2E-A25D-20C9821A404A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7ACF240-E779-4F2E-A25D-20C9821A404A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7ACF240-E779-4F2E-A25D-20C9821A404A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{26DB1C37-5E66-4E14-AD4C-42A80ECC76D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{26DB1C37-5E66-4E14-AD4C-42A80ECC76D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{26DB1C37-5E66-4E14-AD4C-42A80ECC76D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{26DB1C37-5E66-4E14-AD4C-42A80ECC76D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C13678C-87FE-472E-8155-E89B276497E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C13678C-87FE-472E-8155-E89B276497E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C13678C-87FE-472E-8155-E89B276497E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C13678C-87FE-472E-8155-E89B276497E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC240179-758B-4654-835B-4181C4CA44FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC240179-758B-4654-835B-4181C4CA44FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC240179-758B-4654-835B-4181C4CA44FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC240179-758B-4654-835B-4181C4CA44FF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E7ACF240-E779-4F2E-A25D-20C9821A404A} = {85C1CE01-3F59-4D5A-8116-921F3995E506}
+		{26DB1C37-5E66-4E14-AD4C-42A80ECC76D5} = {85C1CE01-3F59-4D5A-8116-921F3995E506}
+		{3C13678C-87FE-472E-8155-E89B276497E5} = {85C1CE01-3F59-4D5A-8116-921F3995E506}
+		{AC240179-758B-4654-835B-4181C4CA44FF} = {85C1CE01-3F59-4D5A-8116-921F3995E506}
+	EndGlobalSection
+EndGlobal
