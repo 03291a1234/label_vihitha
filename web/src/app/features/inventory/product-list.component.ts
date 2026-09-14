@@ -12,7 +12,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -24,7 +24,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   selector: 'app-product-list',
   standalone: true,
   imports: [
-    CurrencyPipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
+    CurrencyPipe, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatSlideToggleModule,
     MatPaginatorModule, MatProgressBarModule, MatSortModule
   ],
@@ -50,13 +50,17 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <div class="summary-body">
               @for (c of s.categories; track c.categoryId) {
                 <div class="cat-block">
-                  <div class="cat-head">
+                  <a class="cat-head" [routerLink]="['/products']" [queryParams]="{ categoryId: c.categoryId }" title="Filter to these products">
                     <strong>{{ c.categoryName }}</strong>
                     <span class="muted">{{ c.productCount }} products · {{ c.totalUnits }} units</span>
-                  </div>
+                  </a>
                   <div class="subs">
                     @for (sub of c.subCategories; track sub.subCategoryName) {
-                      <span class="sub-chip">{{ sub.subCategoryName }} · {{ sub.productCount }}<span class="u"> ({{ sub.totalUnits }} u)</span></span>
+                      <a class="sub-chip" [routerLink]="['/products']"
+                         [queryParams]="sub.subCategoryId != null ? { categoryId: c.categoryId, subCategoryId: sub.subCategoryId } : { categoryId: c.categoryId }"
+                         title="Filter to these products">
+                        {{ sub.subCategoryName }} · {{ sub.productCount }}<span class="u"> ({{ sub.totalUnits }} u)</span>
+                      </a>
                     }
                   </div>
                 </div>
@@ -173,9 +177,14 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .summary-head span { display: flex; align-items: center; gap: 8px; color: var(--lv-wine); }
     .summary-body { padding: 4px 18px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     .cat-block { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px; background: #fffdfb; }
-    .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px;
+      text-decoration: none; color: inherit; border-radius: 6px; padding: 2px 4px; margin: -2px -4px 6px; transition: background .12s; }
+    .cat-head:hover { background: var(--lv-rose-soft); }
+    .cat-head strong { color: var(--lv-wine); }
     .subs { display: flex; flex-wrap: wrap; gap: 6px; }
-    .sub-chip { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+    .sub-chip { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600;
+      text-decoration: none; cursor: pointer; transition: background .12s, box-shadow .12s; }
+    .sub-chip:hover { background: #ecd4de; box-shadow: 0 1px 4px rgba(110,31,62,.15); }
     .sub-chip .u { font-weight: 400; opacity: .75; }
   `]
 })
@@ -215,10 +224,17 @@ export class ProductListComponent {
   constructor() {
     this.catApi.list(false).subscribe(cs => this.categories.set(cs));
     this.invApi.list(false).subscribe(inv => this.inventories.set(inv));
-    // Preselect the inventory filter when navigated from the Inventories screen.
-    const invParam = this.route.snapshot.queryParamMap.get('inventoryId');
-    if (invParam) this.inventoryId = Number(invParam);
-    this.load();
+    // Preselect filters when drilled in from another screen (e.g. Inventories).
+    this.route.queryParamMap.subscribe(q => {
+      const num = (k: string) => (q.get(k) ? Number(q.get(k)) : null);
+      this.inventoryId = num('inventoryId');
+      this.categoryId = num('categoryId');
+      this.subCategoryId = num('subCategoryId');
+      if (this.categoryId) this.subApi.list(this.categoryId, false).subscribe(s => this.subCategories.set(s));
+      else this.subCategories.set([]);
+      this.page = 1;
+      this.load();
+    });
     this.loadSummary();
   }
 

@@ -65,13 +65,17 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <div class="breakdown">
               @for (c of i.categories; track c.categoryId) {
                 <div class="cat-block">
-                  <div class="cat-head">
+                  <a class="cat-head" [routerLink]="['/products']"
+                     [queryParams]="{ inventoryId: i.id, categoryId: c.categoryId }" title="View these products">
                     <strong>{{ c.categoryName }}</strong>
                     <span class="muted">{{ c.productCount }} products · {{ c.totalUnits }} units</span>
-                  </div>
+                  </a>
                   <div class="subs">
                     @for (sub of c.subCategories; track sub.subCategoryName) {
-                      <span class="sub-chip">{{ sub.subCategoryName }} · {{ sub.productCount }}<span class="u"> ({{ sub.totalUnits }} u)</span></span>
+                      <a class="sub-chip" [routerLink]="['/products']"
+                         [queryParams]="subParams(i.id, c.categoryId, sub.subCategoryId)" title="View these products">
+                        {{ sub.subCategoryName }} · {{ sub.productCount }}<span class="u"> ({{ sub.totalUnits }} u)</span>
+                      </a>
                     }
                   </div>
                 </div>
@@ -99,9 +103,14 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .breakdown { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--lv-line);
       display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     .cat-block { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px; background: #fffdfb; }
-    .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px;
+      text-decoration: none; color: inherit; border-radius: 6px; padding: 2px 4px; margin: -2px -4px 6px; transition: background .12s; }
+    .cat-head:hover { background: var(--lv-rose-soft); }
+    .cat-head strong { color: var(--lv-wine); }
     .subs { display: flex; flex-wrap: wrap; gap: 6px; }
-    .sub-chip { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+    .sub-chip { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600;
+      text-decoration: none; cursor: pointer; transition: background .12s, box-shadow .12s; }
+    .sub-chip:hover { background: #ecd4de; box-shadow: 0 1px 4px rgba(110,31,62,.15); }
     .sub-chip .u { font-weight: 400; opacity: .75; }
     .no-stock { margin-top: 12px; }
   `]
@@ -117,6 +126,13 @@ export class InventoryListComponent {
   includeInactive = false;
 
   constructor() { this.load(); }
+
+  /** Build the /products query params, including subcategory only when it's a real one. */
+  subParams(inventoryId: number, categoryId: number, subCategoryId: number | null | undefined) {
+    return subCategoryId != null
+      ? { inventoryId, categoryId, subCategoryId }
+      : { inventoryId, categoryId };
+  }
 
   load() {
     this.loading.set(true);
