@@ -1,3 +1,5 @@
+using LabelVihitha.Application.Features.Products;
+
 namespace LabelVihitha.Application.Features.Inventories;
 
 public record InventoryDto(
@@ -5,7 +7,9 @@ public record InventoryDto(
     string Name,
     string? Description,
     bool IsActive,
-    int ProductCount);
+    int ProductCount,
+    int TotalUnits,
+    IReadOnlyList<CategoryCount> Categories);
 
 public record CreateInventoryRequest(string Name, string? Description);
 

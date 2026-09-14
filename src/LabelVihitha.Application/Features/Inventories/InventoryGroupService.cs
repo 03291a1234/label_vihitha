@@ -1,5 +1,6 @@
 using LabelVihitha.Application.Common.Exceptions;
 using LabelVihitha.Application.Common.Interfaces;
+using LabelVihitha.Application.Features.Products;
 using LabelVihitha.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,23 +17,71 @@ public class InventoryGroupService : IInventoryGroupService
         var q = _db.Inventories.AsNoTracking();
         if (!includeInactive) q = q.Where(i => i.IsActive);
 
-        return await q
-            .OrderBy(i => i.Name)
-            .Select(i => new InventoryDto(
-                i.Id, i.Name, i.Description, i.IsActive,
-                i.Products.Count(p => !p.IsDeleted)))
+        var inventories = await q.OrderBy(i => i.Name)
+            .Select(i => new { i.Id, i.Name, i.Description, i.IsActive })
             .ToListAsync(ct);
+        var ids = inventories.Select(i => i.Id).ToList();
+
+        var breakdown = await BuildBreakdownAsync(ids, ct);
+
+        return inventories.Select(i =>
+        {
+            var (units, cats) = breakdown.TryGetValue(i.Id, out var b) ? b : (0, new List<CategoryCount>());
+            var count = cats.Sum(c => c.ProductCount);
+            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, count, units, cats);
+        }).ToList();
     }
 
     public async Task<InventoryDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
-        var dto = await _db.Inventories.AsNoTracking()
-            .Where(i => i.Id == id)
-            .Select(i => new InventoryDto(
-                i.Id, i.Name, i.Description, i.IsActive,
-                i.Products.Count(p => !p.IsDeleted)))
-            .FirstOrDefaultAsync(ct);
-        return dto ?? throw new NotFoundException(nameof(Inventory), id);
+        var i = await _db.Inventories.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new { x.Id, x.Name, x.Description, x.IsActive })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException(nameof(Inventory), id);
+
+        var breakdown = await BuildBreakdownAsync(new List<int> { id }, ct);
+        var (units, cats) = breakdown.TryGetValue(id, out var b) ? b : (0, new List<CategoryCount>());
+        return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, cats.Sum(c => c.ProductCount), units, cats);
+    }
+
+    /// <summary>Per-inventory category → subcategory stock breakdown.</summary>
+    private async Task<Dictionary<int, (int Units, List<CategoryCount> Categories)>> BuildBreakdownAsync(
+        List<int> inventoryIds, CancellationToken ct)
+    {
+        if (inventoryIds.Count == 0)
+            return new();
+
+        var rows = await _db.Products.AsNoTracking()
+            .Where(p => !p.IsDeleted && p.InventoryId != null && inventoryIds.Contains(p.InventoryId.Value))
+            .Select(p => new
+            {
+                InventoryId = p.InventoryId!.Value,
+                p.CategoryId,
+                CategoryName = p.Category.Name,
+                p.SubCategoryId,
+                SubCategoryName = p.SubCategory != null ? p.SubCategory.Name : null,
+                p.QuantityOnHand
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.InventoryId)
+            .ToDictionary(
+                g => g.Key,
+                g => (
+                    g.Sum(x => x.QuantityOnHand),
+                    g.GroupBy(x => new { x.CategoryId, x.CategoryName })
+                        .Select(cg => new CategoryCount(
+                            cg.Key.CategoryId, cg.Key.CategoryName, cg.Count(), cg.Sum(x => x.QuantityOnHand),
+                            cg.GroupBy(x => new { x.SubCategoryId, x.SubCategoryName })
+                                .Select(sg => new SubCategoryCount(
+                                    sg.Key.SubCategoryId, sg.Key.SubCategoryName ?? "Unassigned",
+                                    sg.Count(), sg.Sum(x => x.QuantityOnHand)))
+                                .OrderByDescending(s => s.ProductCount).ThenBy(s => s.SubCategoryName)
+                                .ToList()))
+                        .OrderBy(c => c.CategoryName)
+                        .ToList()));
     }
 
     public async Task<InventoryDto> CreateAsync(CreateInventoryRequest request, CancellationToken ct = default)

@@ -46,6 +46,8 @@ export interface Inventory {
   description?: string | null;
   isActive: boolean;
   productCount: number;
+  totalUnits: number;
+  categories: CategoryCount[];
 }
 
 export interface SubCategoryCount {
