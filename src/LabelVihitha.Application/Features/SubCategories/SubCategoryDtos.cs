@@ -7,14 +7,17 @@ public record SubCategoryDto(
     string Name,
     string? Description,
     bool IsActive,
-    int ProductCount);
+    int ProductCount,
+    IReadOnlyList<string> Sizes);
 
 public record CreateSubCategoryRequest(
     int CategoryId,
     string Name,
-    string? Description);
+    string? Description,
+    IReadOnlyList<string>? Sizes);
 
 public record UpdateSubCategoryRequest(
     string Name,
     string? Description,
-    bool IsActive);
+    bool IsActive,
+    IReadOnlyList<string>? Sizes);

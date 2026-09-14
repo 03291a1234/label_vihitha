@@ -34,7 +34,8 @@ import { Category, SubCategory, Inventory, Product } from '../../core/models';
           </mat-form-field>
           <mat-form-field>
             <mat-label>Subcategory</mat-label>
-            <mat-select formControlName="subCategoryId" [disabled]="!form.controls.categoryId.value">
+            <mat-select formControlName="subCategoryId" [disabled]="!form.controls.categoryId.value"
+                        (selectionChange)="updateSizeOptions()">
               <mat-option [value]="null">— None —</mat-option>
               @for (s of subCategories(); track s.id) {
                 <mat-option [value]="s.id">{{ s.name }}</mat-option>
@@ -62,7 +63,18 @@ import { Category, SubCategory, Inventory, Product } from '../../core/models';
           </mat-form-field>
         </div>
         <div class="form-row">
-          <mat-form-field><mat-label>Size</mat-label><input matInput formControlName="size" /></mat-form-field>
+          @if (sizeOptions().length) {
+            <mat-form-field>
+              <mat-label>Size</mat-label>
+              <mat-select formControlName="size">
+                <mat-option [value]="''">—</mat-option>
+                @for (z of sizeOptions(); track z) { <mat-option [value]="z">{{ z }}</mat-option> }
+              </mat-select>
+              <mat-hint>From the subcategory</mat-hint>
+            </mat-form-field>
+          } @else {
+            <mat-form-field><mat-label>Size</mat-label><input matInput formControlName="size" /></mat-form-field>
+          }
           <mat-form-field><mat-label>Color</mat-label><input matInput formControlName="color" /></mat-form-field>
           <mat-form-field><mat-label>Material</mat-label><input matInput formControlName="material" /></mat-form-field>
         </div>
@@ -145,6 +157,7 @@ export class ProductEditDialog {
   categories = signal<Category[]>([]);
   subCategories = signal<SubCategory[]>([]);
   inventories = signal<Inventory[]>([]);
+  sizeOptions = signal<string[]>([]);
   saving = signal(false);
   uploading = signal(false);
   previewUrl = signal<string | null>(null);
@@ -183,8 +196,16 @@ export class ProductEditDialog {
   }
 
   private loadSubCategories(catId: number | null) {
-    if (!catId) { this.subCategories.set([]); return; }
-    this.subApi.list(catId, false).subscribe(s => this.subCategories.set(s));
+    if (!catId) { this.subCategories.set([]); this.sizeOptions.set([]); return; }
+    this.subApi.list(catId, false).subscribe(s => { this.subCategories.set(s); this.updateSizeOptions(); });
+  }
+
+  /** Size options come from the selected subcategory; keep the current value if it's not listed. */
+  updateSizeOptions() {
+    const subId = this.form.controls.subCategoryId.value;
+    const sizes = this.subCategories().find(s => s.id === subId)?.sizes ?? [];
+    const current = this.form.controls.size.value;
+    this.sizeOptions.set(current && !sizes.includes(current) ? [current, ...sizes] : sizes);
   }
 
   /** On create, prefill prices from the category's defaults; always refresh subcategories. */

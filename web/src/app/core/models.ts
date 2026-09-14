@@ -38,6 +38,7 @@ export interface SubCategory {
   description?: string | null;
   isActive: boolean;
   productCount: number;
+  sizes: string[];
 }
 
 export interface Inventory {

@@ -17,23 +17,22 @@ public class SubCategoryService : ISubCategoryService
         if (categoryId is int cid) q = q.Where(s => s.CategoryId == cid);
         if (!includeInactive) q = q.Where(s => s.IsActive);
 
-        return await q
+        var rows = await q
             .OrderBy(s => s.Category.Name).ThenBy(s => s.Name)
-            .Select(s => new SubCategoryDto(
-                s.Id, s.CategoryId, s.Category.Name, s.Name, s.Description, s.IsActive,
-                s.Products.Count(p => !p.IsDeleted)))
+            .Select(s => new Row(s.Id, s.CategoryId, s.Category.Name, s.Name, s.Description, s.IsActive,
+                s.Products.Count(p => !p.IsDeleted), s.Sizes))
             .ToListAsync(ct);
+        return rows.Select(Map).ToList();
     }
 
     public async Task<SubCategoryDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
-        var dto = await _db.SubCategories.AsNoTracking()
+        var row = await _db.SubCategories.AsNoTracking()
             .Where(s => s.Id == id)
-            .Select(s => new SubCategoryDto(
-                s.Id, s.CategoryId, s.Category.Name, s.Name, s.Description, s.IsActive,
-                s.Products.Count(p => !p.IsDeleted)))
+            .Select(s => new Row(s.Id, s.CategoryId, s.Category.Name, s.Name, s.Description, s.IsActive,
+                s.Products.Count(p => !p.IsDeleted), s.Sizes))
             .FirstOrDefaultAsync(ct);
-        return dto ?? throw new NotFoundException(nameof(SubCategory), id);
+        return row is null ? throw new NotFoundException(nameof(SubCategory), id) : Map(row);
     }
 
     public async Task<SubCategoryDto> CreateAsync(CreateSubCategoryRequest request, CancellationToken ct = default)
@@ -48,6 +47,7 @@ public class SubCategoryService : ISubCategoryService
             CategoryId = request.CategoryId,
             Name = request.Name.Trim(),
             Description = request.Description,
+            Sizes = JoinSizes(request.Sizes),
             IsActive = true
         };
         _db.SubCategories.Add(entity);
@@ -65,6 +65,7 @@ public class SubCategoryService : ISubCategoryService
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
         entity.IsActive = request.IsActive;
+        entity.Sizes = JoinSizes(request.Sizes);
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(id, ct);
@@ -93,5 +94,24 @@ public class SubCategoryService : ISubCategoryService
                  && (excludeId == null || s.Id != excludeId), ct);
         if (exists)
             throw new ConflictException($"A subcategory named '{normalized}' already exists in this category.");
+    }
+
+    // Materialized shape (raw Sizes string), mapped in memory so the comma list can be split.
+    private sealed record Row(int Id, int CategoryId, string CategoryName, string Name, string? Description,
+        bool IsActive, int ProductCount, string? Sizes);
+
+    private static SubCategoryDto Map(Row r) =>
+        new(r.Id, r.CategoryId, r.CategoryName, r.Name, r.Description, r.IsActive, r.ProductCount, SplitSizes(r.Sizes));
+
+    private static IReadOnlyList<string> SplitSizes(string? s) =>
+        string.IsNullOrWhiteSpace(s)
+            ? Array.Empty<string>()
+            : s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static string? JoinSizes(IReadOnlyList<string>? sizes)
+    {
+        if (sizes is null) return null;
+        var cleaned = sizes.Select(x => x.Trim()).Where(x => x.Length > 0).Distinct().ToList();
+        return cleaned.Count == 0 ? null : string.Join(",", cleaned);
     }
 }

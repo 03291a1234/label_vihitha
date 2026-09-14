@@ -69,6 +69,7 @@ public class SubCategoryConfiguration : IEntityTypeConfiguration<SubCategory>
     {
         b.Property(x => x.Name).IsRequired().HasMaxLength(100);
         b.Property(x => x.Description).HasMaxLength(500);
+        b.Property(x => x.Sizes).HasMaxLength(500);
 
         // Unique subcategory name within a category (among non-deleted rows).
         b.HasIndex(x => new { x.CategoryId, x.Name }).IsUnique().HasFilter("[IsDeleted] = 0");

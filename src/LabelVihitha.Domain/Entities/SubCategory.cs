@@ -15,5 +15,8 @@ public class SubCategory : BaseEntity
     public string? Description { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Comma-separated size options offered to products in this subcategory (e.g. "2.4,2.6,2.8").</summary>
+    public string? Sizes { get; set; }
+
     public ICollection<Product> Products { get; set; } = new List<Product>();
 }
