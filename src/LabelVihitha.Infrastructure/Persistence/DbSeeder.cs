@@ -59,41 +59,63 @@ public static class DbSeeder
             await users.AddToRoleAsync(owner, Roles.Owner);
     }
 
+    // Shape of the embedded seed-catalog.json (generated from the boutique's Excel inventory).
+    private sealed record SeedCatalog(List<SeedCategory> Categories, List<SeedProduct> Products);
+    private sealed record SeedCategory(string Name, string? Description, decimal? DefaultOriginalPrice, decimal? DefaultSalePrice);
+    private sealed record SeedProduct(string Category, string Sku, string Name, string? Description,
+        decimal OriginalPrice, decimal SalePrice, int QuantityOnHand, int ReorderThreshold);
+
     private static async Task SeedCatalogAsync(ApplicationDbContext db, ILogger logger)
     {
         if (await db.Categories.AnyAsync())
             return;
 
-        var categories = new List<Category>
+        var catalog = LoadCatalog();
+        if (catalog is null)
         {
-            new() { Name = "Sarees", Description = "Traditional sarees", DefaultOriginalPrice = 40m, DefaultSalePrice = 90m },
-            new() { Name = "Kurtis", Description = "Kurtis and tunics", DefaultOriginalPrice = 15m, DefaultSalePrice = 35m },
-            new() { Name = "Lehengas", Description = "Lehenga sets", DefaultOriginalPrice = 80m, DefaultSalePrice = 200m },
-            new() { Name = "Accessories", Description = "Jewelry and accessories", DefaultOriginalPrice = 5m, DefaultSalePrice = 15m },
-            new() { Name = "Blouses", Description = "Blouses and blouse pieces", DefaultOriginalPrice = 8m, DefaultSalePrice = 20m }
-        };
+            logger.LogWarning("Seed catalog not found; skipping catalog seed.");
+            return;
+        }
+
+        var categories = catalog.Categories.Select(c => new Category
+        {
+            Name = c.Name,
+            Description = c.Description,
+            DefaultOriginalPrice = c.DefaultOriginalPrice,
+            DefaultSalePrice = c.DefaultSalePrice
+        }).ToList();
         db.Categories.AddRange(categories);
         await db.SaveChangesAsync();
 
         Category Cat(string name) => categories.First(c => c.Name == name);
 
-        var products = new List<Product>
+        var products = catalog.Products.Select(p => new Product
         {
-            new() { Category = Cat("Sarees"), SKU = "SAR-001", Name = "Kanchipuram Silk Saree", Color = "Maroon", OriginalPrice = 60m, SalePrice = 140m, QuantityOnHand = 8, ReorderThreshold = 2 },
-            new() { Category = Cat("Sarees"), SKU = "SAR-002", Name = "Georgette Party Saree", Color = "Teal", OriginalPrice = 35m, SalePrice = 85m, QuantityOnHand = 12, ReorderThreshold = 3 },
-            new() { Category = Cat("Kurtis"), SKU = "KUR-001", Name = "Cotton Straight Kurti", Color = "Yellow", Size = "M", OriginalPrice = 12m, SalePrice = 30m, QuantityOnHand = 20, ReorderThreshold = 5 },
-            new() { Category = Cat("Kurtis"), SKU = "KUR-002", Name = "Anarkali Kurti", Color = "Navy", Size = "L", OriginalPrice = 18m, SalePrice = 42m, QuantityOnHand = 3, ReorderThreshold = 5 },
-            new() { Category = Cat("Lehengas"), SKU = "LEH-001", Name = "Bridal Lehenga Set", Color = "Red", OriginalPrice = 120m, SalePrice = 320m, QuantityOnHand = 2, ReorderThreshold = 1 },
-            new() { Category = Cat("Lehengas"), SKU = "LEH-002", Name = "Festive Lehenga", Color = "Pink", OriginalPrice = 70m, SalePrice = 180m, QuantityOnHand = 5, ReorderThreshold = 2 },
-            new() { Category = Cat("Accessories"), SKU = "ACC-001", Name = "Kundan Earrings", OriginalPrice = 6m, SalePrice = 18m, QuantityOnHand = 30, ReorderThreshold = 8 },
-            new() { Category = Cat("Accessories"), SKU = "ACC-002", Name = "Potli Bag", Color = "Gold", OriginalPrice = 4m, SalePrice = 14m, QuantityOnHand = 25, ReorderThreshold = 6 },
-            new() { Category = Cat("Blouses"), SKU = "BLO-001", Name = "Readymade Silk Blouse", Color = "Gold", Size = "M", OriginalPrice = 9m, SalePrice = 24m, QuantityOnHand = 15, ReorderThreshold = 4 },
-            new() { Category = Cat("Blouses"), SKU = "BLO-002", Name = "Embroidered Blouse Piece", Color = "Green", OriginalPrice = 7m, SalePrice = 19m, QuantityOnHand = 18, ReorderThreshold = 4 }
-        };
+            Category = Cat(p.Category),
+            SKU = p.Sku,
+            Name = p.Name,
+            Description = p.Description,
+            OriginalPrice = p.OriginalPrice,
+            SalePrice = p.SalePrice,
+            QuantityOnHand = p.QuantityOnHand,
+            ReorderThreshold = p.ReorderThreshold
+        }).ToList();
         db.Products.AddRange(products);
         await db.SaveChangesAsync();
 
-        logger.LogInformation("Seeded {Categories} categories and {Products} products.",
+        logger.LogInformation("Seeded {Categories} categories and {Products} products from the boutique inventory.",
             categories.Count, products.Count);
+    }
+
+    private static SeedCatalog? LoadCatalog()
+    {
+        var assembly = typeof(DbSeeder).Assembly;
+        var resource = assembly.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("seed-catalog.json", StringComparison.OrdinalIgnoreCase));
+        if (resource is null) return null;
+
+        using var stream = assembly.GetManifestResourceStream(resource)!;
+        return System.Text.Json.JsonSerializer.Deserialize<SeedCatalog>(stream,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 }

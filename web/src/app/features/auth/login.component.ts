@@ -23,7 +23,7 @@ import { Notify } from '../../core/services/notify.service';
         @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
         <mat-card-content>
           <div class="logo">
-            <div class="emblem">V</div>
+            <span class="emblem"><img src="logo.jpeg" alt="Vihitha" /></span>
             <h1>Vihitha</h1>
             <p class="tag">Every thread · every style · every story</p>
           </div>
@@ -58,12 +58,11 @@ import { Notify } from '../../core/services/notify.service';
     }
     .logo { text-align: center; margin: 16px 0 22px; }
     .emblem {
-      width: 68px; height: 68px; border-radius: 50%; margin: 0 auto;
-      display: grid; place-items: center;
-      font-family: "Cormorant Garamond", Georgia, serif; font-weight: 700; font-size: 40px;
-      color: #6e1f3e; border: 2px solid #c39a3e;
-      background: radial-gradient(circle at 32% 28%, rgba(201,154,62,.28), rgba(201,154,62,.05));
+      width: 108px; height: 108px; border-radius: 50%; margin: 0 auto;
+      display: grid; place-items: center; overflow: hidden; background: #fbf5ea;
+      border: 2px solid #c39a3e; box-shadow: 0 6px 18px rgba(110,31,62,.18);
     }
+    .emblem img { width: 122%; height: 122%; object-fit: cover; }
     .logo h1 {
       font-family: "Cormorant Garamond", Georgia, serif; font-weight: 700;
       margin: 12px 0 0; font-size: 34px; color: #6e1f3e; letter-spacing: .5px;

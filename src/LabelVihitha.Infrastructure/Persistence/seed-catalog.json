@@ -1,0 +1,198 @@
+{
+  "categories": [
+    {
+      "name": "Sarees",
+      "description": "Handloom & silk sarees",
+      "defaultOriginalPrice": null,
+      "defaultSalePrice": null
+    },
+    {
+      "name": "Accessories",
+      "description": "Bangles & accessories",
+      "defaultOriginalPrice": null,
+      "defaultSalePrice": null
+    }
+  ],
+  "products": [
+    {
+      "category": "Sarees",
+      "sku": "SAR-0001",
+      "name": "Pure Khaddi Georgette (Light Lavender)",
+      "description": "Updated selling price to 165$ as not expected quality",
+      "originalPrice": 121.0,
+      "salePrice": 165.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0002",
+      "name": "Raw Mango Saree (Red)",
+      "description": "Updated selling price to 150$",
+      "originalPrice": 89.0,
+      "salePrice": 150.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0003",
+      "name": "Green Tissue Organza",
+      "description": "updated selling price to 140$",
+      "originalPrice": 89.0,
+      "salePrice": 140.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0004",
+      "name": "Banarasi Silk Stripes (Peach & Purple)",
+      "description": null,
+      "originalPrice": 47.0,
+      "salePrice": 66.0,
+      "quantityOnHand": 2,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0005",
+      "name": "Banarasi Silk w/ Meenakari Flowers (Green/Brown)",
+      "description": "Updated the selling price to 50$",
+      "originalPrice": 21.0,
+      "salePrice": 50.0,
+      "quantityOnHand": 2,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0006",
+      "name": "Semi Banarasi (Red)",
+      "description": "Updated the selling price to 50$",
+      "originalPrice": 21.0,
+      "salePrice": 50.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0007",
+      "name": "Moong Tissue Borderless",
+      "description": null,
+      "originalPrice": 50.0,
+      "salePrice": 70.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0008",
+      "name": "Tussar Big Floral",
+      "description": null,
+      "originalPrice": 57.0,
+      "salePrice": 81.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0009",
+      "name": "Green Banarasi Floral Border",
+      "description": null,
+      "originalPrice": 57.0,
+      "salePrice": 81.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0010",
+      "name": "Pure Silk Uppada (Green)",
+      "description": "updated the selling price to 175$",
+      "originalPrice": 115.0,
+      "salePrice": 175.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0011",
+      "name": "Linen Jamdani Tissue",
+      "description": null,
+      "originalPrice": 108.0,
+      "salePrice": 150.0,
+      "quantityOnHand": 3,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0012",
+      "name": "Single Muniya",
+      "description": "updated the selling price to 165$",
+      "originalPrice": 104.0,
+      "salePrice": 165.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0013",
+      "name": "Semi Gadwal",
+      "description": "Sold: 1  sold at 40$",
+      "originalPrice": 28.0,
+      "salePrice": 40.0,
+      "quantityOnHand": 2,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0014",
+      "name": "Banarasi Silk Petit Point Embroidery",
+      "description": "Updated the selling price to 65$ · Sold: 2 sold at 65$",
+      "originalPrice": 26.0,
+      "salePrice": 65.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0015",
+      "name": "Mangalagiri Bandini w/ Applique",
+      "description": "Sold: 4 sold  at 35$",
+      "originalPrice": 27.0,
+      "salePrice": 36.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0016",
+      "name": "Bandini w/ Ajrakh Pallu (Work)",
+      "description": "Updated selling price to 150$",
+      "originalPrice": 95.0,
+      "salePrice": 150.0,
+      "quantityOnHand": 2,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Sarees",
+      "sku": "SAR-0017",
+      "name": "Bandini w/ Ajrakh Pallu",
+      "description": "Updated selling price to 75$",
+      "originalPrice": 42.0,
+      "salePrice": 75.0,
+      "quantityOnHand": 1,
+      "reorderThreshold": 1
+    },
+    {
+      "category": "Accessories",
+      "sku": "ACC-0001",
+      "name": "Thread bangles",
+      "description": "Ordered -another 44sets and waiting to deliver to Hyd. · Sold: 3 sets sold at 6$",
+      "originalPrice": 1.0,
+      "salePrice": 6.0,
+      "quantityOnHand": 41,
+      "reorderThreshold": 1
+    }
+  ]
+}

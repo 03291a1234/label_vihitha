@@ -21,7 +21,7 @@ interface NavItem { label: string; icon: string; path: string; }
     <mat-sidenav-container class="shell">
       <mat-sidenav #snav mode="side" opened class="sidenav">
         <div class="brand">
-          <div class="emblem">V</div>
+          <span class="emblem"><img src="logo.jpeg" alt="Vihitha" /></span>
           <div class="brand-text">
             <div class="name">Vihitha</div>
             <div class="tag">Every thread · every style</div>
@@ -69,13 +69,11 @@ interface NavItem { label: string; icon: string; path: string; }
     /* Brand lockup — echoes the circular gold-on-wine logo */
     .brand { display: flex; align-items: center; gap: 14px; padding: 24px 20px 18px; }
     .emblem {
-      width: 46px; height: 46px; border-radius: 50%; flex: 0 0 auto;
-      display: grid; place-items: center;
-      font-family: "Cormorant Garamond", Georgia, serif; font-weight: 700; font-size: 26px;
-      color: #f7efe0; border: 2px solid #c39a3e;
-      background: radial-gradient(circle at 32% 28%, rgba(201,154,62,.35), rgba(201,154,62,.05));
-      box-shadow: 0 0 0 4px rgba(201,154,62,.08);
+      width: 50px; height: 50px; border-radius: 50%; flex: 0 0 auto;
+      display: grid; place-items: center; overflow: hidden; background: #fbf5ea;
+      border: 2px solid #c39a3e; box-shadow: 0 0 0 4px rgba(201,154,62,.10);
     }
+    .emblem img { width: 122%; height: 122%; object-fit: cover; }
     .brand .name {
       font-family: "Cormorant Garamond", Georgia, serif; font-size: 24px; font-weight: 700;
       color: #fff; line-height: 1;
