@@ -82,7 +82,7 @@ src/
 ## Build phases
 
 - [x] **Phase 1 — Core Data & API**: Category + Product CRUD, EF migrations, JWT auth, seed data. *(all entities & the full DB schema are defined up front; CRUD endpoints ship per phase)*
-- [ ] Phase 2 — Order & Invoicing (Order/OrderItem/Invoice/Payment/FollowUp flows)
+- [x] **Phase 2 — Order & Invoicing**: Customer CRUD; Orders with price snapshots, stock control & status transitions; Invoice generation + partial/split Payments; OrderFollowUp create/resolve + dashboard.
 - [ ] Phase 3 — Angular web UI
 - [ ] Phase 4 — Analytics reports + dashboard
 - [ ] Phase 5 — .NET MAUI mobile app
