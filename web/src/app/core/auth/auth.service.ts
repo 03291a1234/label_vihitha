@@ -22,8 +22,13 @@ export class AuthService {
   readonly isLoggedIn = computed(() => this._user() !== null && !this.isExpired());
   readonly userName = computed(() => this._user()?.userName ?? '');
   readonly roles = computed(() => this._user()?.roles ?? []);
-  readonly isOwner = computed(() => this.roles().includes('Owner'));
-  readonly canManage = computed(() => this.roles().some(r => r === 'Owner' || r === 'Staff'));
+  readonly isAdmin = computed(() => this.roles().includes('Admin'));
+  /** Sees financial reports / analytics. */
+  readonly canViewReports = computed(() => this.roles().some(r => r === 'Admin' || r === 'Owner'));
+  /** Manages products, categories, subcategories, inventories. */
+  readonly canManageInventory = computed(() => this.roles().some(r => r === 'Admin' || r === 'Inventory'));
+  /** Manages orders, invoices, customers, follow-ups. */
+  readonly canManageSales = computed(() => this.roles().some(r => r === 'Admin' || r === 'Owner'));
 
   constructor(private http: HttpClient, private router: Router) {}
 

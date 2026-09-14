@@ -78,7 +78,7 @@ export class CustomerEditDialog {
     <div class="page">
       <div class="page-header">
         <h1>Customers</h1>
-        @if (auth.canManage()) {
+        @if (auth.canManageSales()) {
           <button mat-raised-button color="primary" (click)="openEdit(null)"><mat-icon>add</mat-icon> New customer</button>
         }
       </div>
@@ -113,7 +113,7 @@ export class CustomerEditDialog {
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let c" class="text-right">
-              @if (auth.canManage()) {
+              @if (auth.canManageSales()) {
                 <button mat-icon-button (click)="openEdit(c)"><mat-icon>edit</mat-icon></button>
                 <button mat-icon-button color="warn" (click)="remove(c)"><mat-icon>delete</mat-icon></button>
               }

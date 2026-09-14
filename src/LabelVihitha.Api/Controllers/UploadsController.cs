@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LabelVihitha.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Owner,Staff")]
+[Authorize(Roles = "Admin,Inventory")]
 [Route("api/uploads")]
 public class UploadsController : ControllerBase
 {

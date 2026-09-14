@@ -30,7 +30,7 @@ import { RecordPaymentDialog } from './record-payment.dialog';
             {{ inv.invoiceNumber }} <span class="chip {{inv.paymentStatus}}">{{ inv.paymentStatus }}</span>
           </h1>
           <div class="toolbar-row">
-            @if (auth.canManage() && inv.amountRemaining > 0 && inv.paymentStatus !== 'Refunded') {
+            @if (auth.canManageSales() && inv.amountRemaining > 0 && inv.paymentStatus !== 'Refunded') {
               <button mat-raised-button color="primary" (click)="recordPayment(inv)">
                 <mat-icon>add_card</mat-icon> Record payment
               </button>

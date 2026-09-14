@@ -11,7 +11,7 @@ namespace LabelVihitha.Api.Controllers;
 [Route("api/orders/{orderId:int}/follow-ups")]
 public class OrderFollowUpsController : ControllerBase
 {
-    private const string ManageRoles = "Owner,Staff";
+    private const string ManageRoles = "Admin,Owner";
     private readonly IFollowUpService _service;
 
     public OrderFollowUpsController(IFollowUpService service) => _service = service;
@@ -32,7 +32,7 @@ public class OrderFollowUpsController : ControllerBase
 [Route("api/follow-ups")]
 public class FollowUpsController : ControllerBase
 {
-    private const string ManageRoles = "Owner,Staff";
+    private const string ManageRoles = "Admin,Owner";
     private readonly IFollowUpService _service;
 
     public FollowUpsController(IFollowUpService service) => _service = service;

@@ -10,7 +10,7 @@ namespace LabelVihitha.Api.Controllers;
 [Route("api/inventories")]
 public class InventoriesController : ControllerBase
 {
-    private const string ManageRoles = "Owner,Staff";
+    private const string ManageRoles = "Admin,Inventory";
     private readonly IInventoryGroupService _service;
 
     public InventoriesController(IInventoryGroupService service) => _service = service;

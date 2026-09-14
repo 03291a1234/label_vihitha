@@ -33,7 +33,7 @@ import { FollowUpAddDialog } from './followup-add.dialog';
             {{ o.orderNumber }} <span class="chip {{o.status}}">{{ o.status }}</span>
           </h1>
           <div class="toolbar-row">
-            @if (auth.canManage()) {
+            @if (auth.canManageSales()) {
               @if (o.status === 'Pending') {
                 <button mat-raised-button color="primary" (click)="setStatus('Confirmed')">Confirm</button>
                 <button mat-stroked-button (click)="setStatus('Cancelled')">Cancel order</button>
@@ -66,7 +66,7 @@ import { FollowUpAddDialog } from './followup-add.dialog';
         <div class="card">
           <div class="page-header" style="margin-bottom:8px;">
             <h3 style="margin:0;">Line items</h3>
-            @if (editable(o) && auth.canManage()) {
+            @if (editable(o) && auth.canManageSales()) {
               <span class="muted">Editable while Pending</span>
             }
           </div>
@@ -106,7 +106,7 @@ import { FollowUpAddDialog } from './followup-add.dialog';
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let i" class="text-right">
-                @if (editable(o) && auth.canManage()) {
+                @if (editable(o) && auth.canManageSales()) {
                   <button mat-icon-button color="primary" title="Save line" (click)="saveItem(o, i.id)"><mat-icon>save</mat-icon></button>
                   <button mat-icon-button color="warn" title="Remove line" (click)="removeItem(o, i.id)"><mat-icon>delete</mat-icon></button>
                 }
@@ -127,7 +127,7 @@ import { FollowUpAddDialog } from './followup-add.dialog';
         <div class="card">
           <div class="page-header" style="margin-bottom:8px;">
             <h3 style="margin:0;">Follow-ups</h3>
-            @if (auth.canManage()) {
+            @if (auth.canManageSales()) {
               <button mat-stroked-button (click)="addFollowUp(o)"><mat-icon>add_task</mat-icon> Add follow-up</button>
             }
           </div>
@@ -145,7 +145,7 @@ import { FollowUpAddDialog } from './followup-add.dialog';
                   @if (f.resolutionNote) { · resolved: {{ f.resolutionNote }} }
                 </div>
               </div>
-              @if (auth.canManage() && f.status !== 'Resolved') {
+              @if (auth.canManageSales() && f.status !== 'Resolved') {
                 <button mat-button color="primary" (click)="resolve(f)">Resolve</button>
               }
             </div>

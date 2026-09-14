@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -14,7 +14,7 @@ import { Notify } from '../../core/services/notify.service';
   selector: 'app-login',
   standalone: true,
   imports: [
-    ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule,
+    ReactiveFormsModule, RouterLink, MatCardModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatIconModule, MatProgressBarModule
   ],
   template: `
@@ -40,7 +40,14 @@ import { Notify } from '../../core/services/notify.service';
               Sign in
             </button>
           </form>
-          <p class="hint muted">Seeded owner: <code>owner</code> / <code>Owner#12345</code></p>
+          <p class="hint muted">
+            Admin <code>owner</code>/<code>Owner#12345</code> ·
+            Owner <code>manager</code>/<code>Manager#12345</code> ·
+            Inventory <code>stock</code>/<code>Stock#12345</code>
+          </p>
+          <div class="shop-link">
+            <a routerLink="/shop"><mat-icon>storefront</mat-icon> Shop as a customer</a>
+          </div>
         </mat-card-content>
       </mat-card>
     </div>
@@ -72,7 +79,10 @@ import { Notify } from '../../core/services/notify.service';
       color: #c39a3e;
     }
     .full { width: 100%; }
-    .hint { text-align: center; font-size: 12px; margin-top: 10px; }
+    .hint { text-align: center; font-size: 11px; margin-top: 10px; line-height: 1.6; }
+    .shop-link { text-align: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid #eee; }
+    .shop-link a { color: #6e1f3e; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .shop-link mat-icon { font-size: 18px; height: 18px; width: 18px; }
   `]
 })
 export class LoginComponent {
@@ -92,7 +102,11 @@ export class LoginComponent {
     this.loading.set(true);
     const { userName, password } = this.form.getRawValue();
     this.auth.login(userName, password).subscribe({
-      next: () => { this.loading.set(false); this.router.navigate(['/orders']); },
+      next: () => {
+        this.loading.set(false);
+        // Land on a page the role can actually use.
+        this.router.navigate([this.auth.canManageSales() ? '/orders' : '/products']);
+      },
       error: (e) => { this.loading.set(false); this.notify.error(e, 'Login failed'); }
     });
   }

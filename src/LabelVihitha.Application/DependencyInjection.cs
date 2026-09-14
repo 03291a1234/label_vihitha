@@ -8,6 +8,7 @@ using LabelVihitha.Application.Features.Invoices;
 using LabelVihitha.Application.Features.Orders;
 using LabelVihitha.Application.Features.Products;
 using LabelVihitha.Application.Features.Reports;
+using LabelVihitha.Application.Features.Store;
 using LabelVihitha.Application.Features.SubCategories;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IFollowUpService, FollowUpService>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
+        services.AddScoped<IStoreService, StoreService>();
 
         return services;
     }

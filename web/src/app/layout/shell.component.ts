@@ -8,7 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { AuthService } from '../core/auth/auth.service';
 
-interface NavItem { label: string; icon: string; path: string; }
+interface NavItem { label: string; icon: string; path: string; show: () => boolean; }
 
 @Component({
   selector: 'app-shell',
@@ -29,10 +29,12 @@ interface NavItem { label: string; icon: string; path: string; }
         </div>
         <mat-nav-list>
           @for (item of nav; track item.path) {
+            @if (item.show()) {
             <a mat-list-item [routerLink]="item.path" routerLinkActive="active-link">
               <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
               <span matListItemTitle>{{ item.label }}</span>
             </a>
+            }
           }
         </mat-nav-list>
       </mat-sidenav>
@@ -115,13 +117,13 @@ interface NavItem { label: string; icon: string; path: string; }
 export class ShellComponent {
   auth = inject(AuthService);
   nav: NavItem[] = [
-    { label: 'Analytics', icon: 'insights', path: '/analytics' },
-    { label: 'Orders', icon: 'receipt_long', path: '/orders' },
-    { label: 'Invoicing', icon: 'payments', path: '/invoices' },
-    { label: 'Follow-ups', icon: 'task_alt', path: '/follow-ups' },
-    { label: 'Products', icon: 'inventory_2', path: '/products' },
-    { label: 'Inventories', icon: 'inventory', path: '/inventories' },
-    { label: 'Categories', icon: 'category', path: '/categories' },
-    { label: 'Customers', icon: 'group', path: '/customers' }
+    { label: 'Analytics', icon: 'insights', path: '/analytics', show: () => this.auth.canViewReports() },
+    { label: 'Orders', icon: 'receipt_long', path: '/orders', show: () => this.auth.canManageSales() },
+    { label: 'Invoicing', icon: 'payments', path: '/invoices', show: () => this.auth.canManageSales() },
+    { label: 'Follow-ups', icon: 'task_alt', path: '/follow-ups', show: () => this.auth.canManageSales() },
+    { label: 'Products', icon: 'inventory_2', path: '/products', show: () => true },
+    { label: 'Inventories', icon: 'inventory', path: '/inventories', show: () => true },
+    { label: 'Categories', icon: 'category', path: '/categories', show: () => true },
+    { label: 'Customers', icon: 'group', path: '/customers', show: () => this.auth.canManageSales() }
   ];
 }

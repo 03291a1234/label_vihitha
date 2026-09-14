@@ -73,7 +73,7 @@ import { sortRows } from '../../shared/sort';
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let f" class="text-right">
-              @if (auth.canManage() && f.status !== 'Resolved') {
+              @if (auth.canManageSales() && f.status !== 'Resolved') {
                 @if (f.status === 'Open') {
                   <button mat-button (click)="setStatus(f, 'InProgress')">Start</button>
                 }

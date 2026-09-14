@@ -28,7 +28,7 @@ import { OrderListItem, OrderStatus } from '../../core/models';
     <div class="page">
       <div class="page-header">
         <h1>Orders</h1>
-        @if (auth.canManage()) {
+        @if (auth.canManageSales()) {
           <button mat-raised-button color="primary" routerLink="/orders/new"><mat-icon>add</mat-icon> New order</button>
         }
       </div>

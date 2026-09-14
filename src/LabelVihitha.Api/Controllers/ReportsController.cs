@@ -6,7 +6,7 @@ namespace LabelVihitha.Api.Controllers;
 
 /// <summary>Financial/analytics reports — Owner only (margins are sensitive).</summary>
 [ApiController]
-[Authorize(Roles = "Owner")]
+[Authorize(Roles = "Admin,Owner")]
 [Route("api/reports")]
 public class ReportsController : ControllerBase
 {

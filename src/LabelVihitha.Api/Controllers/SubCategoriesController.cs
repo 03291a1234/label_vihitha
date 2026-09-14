@@ -9,7 +9,7 @@ namespace LabelVihitha.Api.Controllers;
 [Route("api/subcategories")]
 public class SubCategoriesController : ControllerBase
 {
-    private const string ManageRoles = "Owner,Staff";
+    private const string ManageRoles = "Admin,Inventory";
     private readonly ISubCategoryService _service;
 
     public SubCategoriesController(ISubCategoryService service) => _service = service;

@@ -32,7 +32,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     <div class="page">
       <div class="page-header">
         <h1>Products</h1>
-        @if (auth.canManage()) {
+        @if (auth.canManageInventory()) {
           <button mat-raised-button color="primary" (click)="openEdit(null)">
             <mat-icon>add</mat-icon> New product
           </button>
@@ -116,7 +116,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let p" class="text-right">
-              @if (auth.canManage()) {
+              @if (auth.canManageInventory()) {
                 <button mat-icon-button (click)="openEdit(p)"><mat-icon>edit</mat-icon></button>
                 <button mat-icon-button color="warn" (click)="remove(p)"><mat-icon>delete</mat-icon></button>
               }

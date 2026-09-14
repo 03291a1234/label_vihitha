@@ -9,9 +9,9 @@ public class ApplicationUser : IdentityUser
 
 public static class Roles
 {
-    public const string Owner = "Owner";     // sees financials/margins
-    public const string Staff = "Staff";      // orders/inventory
-    public const string ReadOnly = "ReadOnly"; // view only
+    public const string Admin = "Admin";         // full control incl. user management
+    public const string Owner = "Owner";         // business: orders, invoicing, financials/reports
+    public const string Inventory = "Inventory"; // products / inventory / categories only
 
-    public static readonly string[] All = { Owner, Staff, ReadOnly };
+    public static readonly string[] All = { Admin, Owner, Inventory };
 }

@@ -39,24 +39,32 @@ public static class DbSeeder
         var config = sp.GetRequiredService<IConfiguration>();
         var users = sp.GetRequiredService<UserManager<ApplicationUser>>();
 
-        var userName = config["Seed:OwnerUserName"] ?? "owner";
-        var email = config["Seed:OwnerEmail"] ?? "owner@labelvihitha.local";
-        var password = config["Seed:OwnerPassword"] ?? "Owner#12345";
+        // Primary account (login unchanged as "owner") holds the Admin role.
+        var adminName = config["Seed:OwnerUserName"] ?? "owner";
+        var adminEmail = config["Seed:OwnerEmail"] ?? "owner@labelvihitha.local";
+        var adminPassword = config["Seed:OwnerPassword"] ?? "Owner#12345";
 
-        if (await users.FindByNameAsync(userName) is not null)
-            return;
+        await EnsureUserAsync(users, adminName, adminEmail, adminPassword, "Boutique Admin", Roles.Admin);
+        // Demo accounts for the other two roles.
+        await EnsureUserAsync(users, "manager", "manager@labelvihitha.local", "Manager#12345", "Store Owner", Roles.Owner);
+        await EnsureUserAsync(users, "stock", "stock@labelvihitha.local", "Stock#12345", "Inventory Staff", Roles.Inventory);
+    }
 
-        var owner = new ApplicationUser
+    private static async Task EnsureUserAsync(
+        UserManager<ApplicationUser> users, string userName, string email, string password, string displayName, string role)
+    {
+        if (await users.FindByNameAsync(userName) is not null) return;
+
+        var user = new ApplicationUser
         {
             UserName = userName,
             Email = email,
             EmailConfirmed = true,
-            DisplayName = "Boutique Owner"
+            DisplayName = displayName
         };
-
-        var result = await users.CreateAsync(owner, password);
+        var result = await users.CreateAsync(user, password);
         if (result.Succeeded)
-            await users.AddToRoleAsync(owner, Roles.Owner);
+            await users.AddToRoleAsync(user, role);
     }
 
     // Shape of the embedded seed-catalog.json (generated from the boutique's Excel inventory).

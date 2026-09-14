@@ -9,7 +9,7 @@ namespace LabelVihitha.Api.Controllers;
 [Route("api/customers")]
 public class CustomersController : ControllerBase
 {
-    private const string ManageRoles = "Owner,Staff";
+    private const string ManageRoles = "Admin,Owner";
     private readonly ICustomerService _service;
 
     public CustomersController(ICustomerService service) => _service = service;

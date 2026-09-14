@@ -30,7 +30,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
         <h1>Categories</h1>
         <div class="toolbar-row">
           <mat-slide-toggle [(ngModel)]="includeInactive" (change)="load()">Show inactive</mat-slide-toggle>
-          @if (auth.canManage()) {
+          @if (auth.canManageInventory()) {
             <button mat-raised-button color="primary" (click)="openEdit(null)">
               <mat-icon>add</mat-icon> New category
             </button>
@@ -73,7 +73,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let c" class="text-right">
-              @if (auth.canManage()) {
+              @if (auth.canManageInventory()) {
                 <button mat-icon-button (click)="openEdit(c)"><mat-icon>edit</mat-icon></button>
                 <button mat-icon-button color="warn" (click)="remove(c)"><mat-icon>delete</mat-icon></button>
               }
