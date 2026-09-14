@@ -30,10 +30,22 @@ export interface Category {
   productCount: number;
 }
 
+export interface SubCategory {
+  id: number;
+  categoryId: number;
+  categoryName: string;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  productCount: number;
+}
+
 export interface Product {
   id: number;
   categoryId: number;
   categoryName: string;
+  subCategoryId?: number | null;
+  subCategoryName?: string | null;
   sku: string;
   name: string;
   description?: string | null;

@@ -8,9 +8,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { CategoryApi, ProductApi, resolveImageUrl } from '../../core/services/api.services';
+import { CategoryApi, ProductApi, SubCategoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
-import { Category, Product } from '../../core/models';
+import { Category, SubCategory, Product } from '../../core/models';
 
 @Component({
   selector: 'app-product-edit',
@@ -23,14 +23,26 @@ import { Category, Product } from '../../core/models';
     <h2 mat-dialog-title>{{ data ? 'Edit product' : 'New product' }}</h2>
     <mat-dialog-content>
       <form [formGroup]="form" class="dialog-form">
-        <mat-form-field>
-          <mat-label>Category</mat-label>
-          <mat-select formControlName="categoryId" (selectionChange)="onCategoryChange($event.value)">
-            @for (c of categories(); track c.id) {
-              <mat-option [value]="c.id">{{ c.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>Category</mat-label>
+            <mat-select formControlName="categoryId" (selectionChange)="onCategoryChange($event.value)">
+              @for (c of categories(); track c.id) {
+                <mat-option [value]="c.id">{{ c.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Subcategory</mat-label>
+            <mat-select formControlName="subCategoryId" [disabled]="!form.controls.categoryId.value">
+              <mat-option [value]="null">— None —</mat-option>
+              @for (s of subCategories(); track s.id) {
+                <mat-option [value]="s.id">{{ s.name }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>Optional</mat-hint>
+          </mat-form-field>
+        </div>
         <div class="form-row">
           <mat-form-field>
             <mat-label>SKU</mat-label>
@@ -117,16 +129,19 @@ export class ProductEditDialog {
   private fb = inject(FormBuilder);
   private api = inject(ProductApi);
   private catApi = inject(CategoryApi);
+  private subApi = inject(SubCategoryApi);
   private notify = inject(Notify);
   ref = inject(MatDialogRef<ProductEditDialog>);
 
   categories = signal<Category[]>([]);
+  subCategories = signal<SubCategory[]>([]);
   saving = signal(false);
   uploading = signal(false);
   previewUrl = signal<string | null>(null);
 
   form = this.fb.nonNullable.group({
     categoryId: [null as number | null, Validators.required],
+    subCategoryId: [null as number | null],
     sku: ['', [Validators.required, Validators.maxLength(50)]],
     name: ['', [Validators.required, Validators.maxLength(200)]],
     size: [''], color: [''], material: [''],
@@ -142,18 +157,29 @@ export class ProductEditDialog {
     this.catApi.list(false).subscribe(cs => this.categories.set(cs));
     if (data) {
       this.form.patchValue({
-        categoryId: data.categoryId, sku: data.sku, name: data.name,
+        categoryId: data.categoryId, subCategoryId: data.subCategoryId ?? null,
+        sku: data.sku, name: data.name,
         size: data.size ?? '', color: data.color ?? '', material: data.material ?? '',
         originalPrice: data.originalPrice, salePrice: data.salePrice,
         quantityOnHand: data.quantityOnHand, reorderThreshold: data.reorderThreshold,
         imageUrl: data.imageUrl ?? '', isActive: data.isActive
       });
       this.previewUrl.set(resolveImageUrl(data.imageUrl));
+      this.loadSubCategories(data.categoryId);
     }
   }
 
-  /** On create, prefill prices from the category's defaults when still zero/empty. */
+  private loadSubCategories(catId: number | null) {
+    if (!catId) { this.subCategories.set([]); return; }
+    this.subApi.list(catId, false).subscribe(s => this.subCategories.set(s));
+  }
+
+  /** On create, prefill prices from the category's defaults; always refresh subcategories. */
   onCategoryChange(catId: number) {
+    // Category changed → the previously chosen subcategory no longer applies.
+    this.form.controls.subCategoryId.setValue(null);
+    this.loadSubCategories(catId);
+
     if (this.data) return;
     const cat = this.categories().find(c => c.id === catId);
     if (!cat) return;

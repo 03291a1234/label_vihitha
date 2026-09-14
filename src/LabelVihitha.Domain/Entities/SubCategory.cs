@@ -1,0 +1,19 @@
+using LabelVihitha.Domain.Common;
+
+namespace LabelVihitha.Domain.Entities;
+
+/// <summary>
+/// A finer grouping under a <see cref="Category"/> (e.g. Sarees → Banarasi, Bandhani, Organza).
+/// A product may optionally belong to one subcategory of its category.
+/// </summary>
+public class SubCategory : BaseEntity
+{
+    public int CategoryId { get; set; }
+    public Category Category { get; set; } = null!;
+
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;
+
+    public ICollection<Product> Products { get; set; } = new List<Product>();
+}

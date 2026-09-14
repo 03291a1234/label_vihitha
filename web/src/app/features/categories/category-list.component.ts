@@ -12,6 +12,7 @@ import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Category } from '../../core/models';
 import { CategoryEditDialog } from './category-edit.dialog';
+import { SubCategoryManageDialog } from './subcategory-manage.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
 @Component({
@@ -59,6 +60,14 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <th mat-header-cell *matHeaderCellDef class="text-right">Products</th>
             <td mat-cell *matCellDef="let c" class="text-right mono">{{ c.productCount }}</td>
           </ng-container>
+          <ng-container matColumnDef="subcategories">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let c">
+              <button mat-stroked-button (click)="manageSubs(c)">
+                <mat-icon>account_tree</mat-icon> Subcategories
+              </button>
+            </td>
+          </ng-container>
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let c" class="text-right">
@@ -85,7 +94,7 @@ export class CategoryListComponent {
   rows = signal<Category[]>([]);
   loading = signal(false);
   includeInactive = false;
-  cols = ['name', 'defaultOriginalPrice', 'defaultSalePrice', 'productCount', 'actions'];
+  cols = ['name', 'defaultOriginalPrice', 'defaultSalePrice', 'productCount', 'subcategories', 'actions'];
 
   constructor() { this.load(); }
 
@@ -99,6 +108,12 @@ export class CategoryListComponent {
 
   openEdit(c: Category | null) {
     this.dialog.open(CategoryEditDialog, { data: c }).afterClosed().subscribe(ok => { if (ok) this.load(); });
+  }
+
+  manageSubs(c: Category) {
+    this.dialog.open(SubCategoryManageDialog, {
+      data: { categoryId: c.id, categoryName: c.name }, width: '480px'
+    }).afterClosed().subscribe(changed => { if (changed) this.load(); });
   }
 
   remove(c: Category) {

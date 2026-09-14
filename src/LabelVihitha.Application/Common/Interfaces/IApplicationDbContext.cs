@@ -9,6 +9,7 @@ public interface IApplicationDbContext
     EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;
 
     DbSet<Category> Categories { get; }
+    DbSet<SubCategory> SubCategories { get; }
     DbSet<Product> Products { get; }
     DbSet<Customer> Customers { get; }
     DbSet<Order> Orders { get; }

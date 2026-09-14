@@ -16,6 +16,7 @@
   "products": [
     {
       "category": "Sarees",
+      "subCategory": "Georgette",
       "sku": "SAR-0001",
       "name": "Pure Khaddi Georgette (Light Lavender)",
       "description": "Updated selling price to 165$ as not expected quality",
@@ -26,6 +27,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Designer",
       "sku": "SAR-0002",
       "name": "Raw Mango Saree (Red)",
       "description": "Updated selling price to 150$",
@@ -36,6 +38,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Organza",
       "sku": "SAR-0003",
       "name": "Green Tissue Organza",
       "description": "updated selling price to 140$",
@@ -46,6 +49,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Banarasi",
       "sku": "SAR-0004",
       "name": "Banarasi Silk Stripes (Peach & Purple)",
       "description": null,
@@ -56,6 +60,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Banarasi",
       "sku": "SAR-0005",
       "name": "Banarasi Silk w/ Meenakari Flowers (Green/Brown)",
       "description": "Updated the selling price to 50$",
@@ -66,6 +71,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Banarasi",
       "sku": "SAR-0006",
       "name": "Semi Banarasi (Red)",
       "description": "Updated the selling price to 50$",
@@ -76,6 +82,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Tissue",
       "sku": "SAR-0007",
       "name": "Moong Tissue Borderless",
       "description": null,
@@ -86,6 +93,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Tussar",
       "sku": "SAR-0008",
       "name": "Tussar Big Floral",
       "description": null,
@@ -96,6 +104,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Banarasi",
       "sku": "SAR-0009",
       "name": "Green Banarasi Floral Border",
       "description": null,
@@ -106,6 +115,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Uppada",
       "sku": "SAR-0010",
       "name": "Pure Silk Uppada (Green)",
       "description": "updated the selling price to 175$",
@@ -116,6 +126,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Jamdani",
       "sku": "SAR-0011",
       "name": "Linen Jamdani Tissue",
       "description": null,
@@ -126,6 +137,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Banarasi",
       "sku": "SAR-0012",
       "name": "Single Muniya",
       "description": "updated the selling price to 165$",
@@ -136,6 +148,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Gadwal",
       "sku": "SAR-0013",
       "name": "Semi Gadwal",
       "description": "Sold: 1  sold at 40$",
@@ -146,6 +159,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Banarasi",
       "sku": "SAR-0014",
       "name": "Banarasi Silk Petit Point Embroidery",
       "description": "Updated the selling price to 65$ · Sold: 2 sold at 65$",
@@ -156,6 +170,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Bandhani",
       "sku": "SAR-0015",
       "name": "Mangalagiri Bandini w/ Applique",
       "description": "Sold: 4 sold  at 35$",
@@ -166,6 +181,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Bandhani",
       "sku": "SAR-0016",
       "name": "Bandini w/ Ajrakh Pallu (Work)",
       "description": "Updated selling price to 150$",
@@ -176,6 +192,7 @@
     },
     {
       "category": "Sarees",
+      "subCategory": "Bandhani",
       "sku": "SAR-0017",
       "name": "Bandini w/ Ajrakh Pallu",
       "description": "Updated selling price to 75$",
@@ -186,6 +203,7 @@
     },
     {
       "category": "Accessories",
+      "subCategory": "Bangles",
       "sku": "ACC-0001",
       "name": "Thread bangles",
       "description": "Ordered -another 44sets and waiting to deliver to Hyd. · Sold: 3 sets sold at 6$",

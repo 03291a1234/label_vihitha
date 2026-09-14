@@ -38,6 +38,30 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasForeignKey(x => x.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        b.HasOne(x => x.SubCategory)
+            .WithMany(s => s.Products)
+            .HasForeignKey(x => x.SubCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public class SubCategoryConfiguration : IEntityTypeConfiguration<SubCategory>
+{
+    public void Configure(EntityTypeBuilder<SubCategory> b)
+    {
+        b.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        b.Property(x => x.Description).HasMaxLength(500);
+
+        // Unique subcategory name within a category (among non-deleted rows).
+        b.HasIndex(x => new { x.CategoryId, x.Name }).IsUnique().HasFilter("[IsDeleted] = 0");
+
+        b.HasOne(x => x.Category)
+            .WithMany(c => c.SubCategories)
+            .HasForeignKey(x => x.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

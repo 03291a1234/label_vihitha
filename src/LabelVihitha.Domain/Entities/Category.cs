@@ -19,4 +19,5 @@ public class Category : BaseEntity
     public decimal? DefaultSalePrice { get; set; }
 
     public ICollection<Product> Products { get; set; } = new List<Product>();
+    public ICollection<SubCategory> SubCategories { get; set; } = new List<SubCategory>();
 }

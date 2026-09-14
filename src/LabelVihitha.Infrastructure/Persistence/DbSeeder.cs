@@ -62,7 +62,7 @@ public static class DbSeeder
     // Shape of the embedded seed-catalog.json (generated from the boutique's Excel inventory).
     private sealed record SeedCatalog(List<SeedCategory> Categories, List<SeedProduct> Products);
     private sealed record SeedCategory(string Name, string? Description, decimal? DefaultOriginalPrice, decimal? DefaultSalePrice);
-    private sealed record SeedProduct(string Category, string Sku, string Name, string? Description,
+    private sealed record SeedProduct(string Category, string? SubCategory, string Sku, string Name, string? Description,
         decimal OriginalPrice, decimal SalePrice, int QuantityOnHand, int ReorderThreshold);
 
     private static async Task SeedCatalogAsync(ApplicationDbContext db, ILogger logger)
@@ -89,9 +89,24 @@ public static class DbSeeder
 
         Category Cat(string name) => categories.First(c => c.Name == name);
 
+        // Distinct subcategories per category, derived from the catalog.
+        var subCategories = catalog.Products
+            .Where(p => !string.IsNullOrWhiteSpace(p.SubCategory))
+            .Select(p => (Category: p.Category, Name: p.SubCategory!))
+            .Distinct()
+            .Select(x => new SubCategory { Category = Cat(x.Category), Name = x.Name })
+            .ToList();
+        db.SubCategories.AddRange(subCategories);
+        await db.SaveChangesAsync();
+
+        SubCategory? Sub(string category, string? name) => name is null
+            ? null
+            : subCategories.FirstOrDefault(s => s.Category.Name == category && s.Name == name);
+
         var products = catalog.Products.Select(p => new Product
         {
             Category = Cat(p.Category),
+            SubCategory = Sub(p.Category, p.SubCategory),
             SKU = p.Sku,
             Name = p.Name,
             Description = p.Description,
@@ -103,8 +118,9 @@ public static class DbSeeder
         db.Products.AddRange(products);
         await db.SaveChangesAsync();
 
-        logger.LogInformation("Seeded {Categories} categories and {Products} products from the boutique inventory.",
-            categories.Count, products.Count);
+        logger.LogInformation(
+            "Seeded {Categories} categories, {SubCategories} subcategories and {Products} products from the boutique inventory.",
+            categories.Count, subCategories.Count, products.Count);
     }
 
     private static SeedCatalog? LoadCatalog()

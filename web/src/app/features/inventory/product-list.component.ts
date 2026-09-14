@@ -11,10 +11,10 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { CategoryApi, ProductApi, resolveImageUrl } from '../../core/services/api.services';
+import { CategoryApi, ProductApi, SubCategoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Category, Product } from '../../core/models';
+import { Category, SubCategory, Product } from '../../core/models';
 import { ProductEditDialog } from './product-edit.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
@@ -44,9 +44,16 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
         </mat-form-field>
         <mat-form-field>
           <mat-label>Category</mat-label>
-          <mat-select [(ngModel)]="categoryId" (selectionChange)="reload()">
+          <mat-select [(ngModel)]="categoryId" (selectionChange)="onCategoryFilter()">
             <mat-option [value]="null">All</mat-option>
             @for (c of categories(); track c.id) { <mat-option [value]="c.id">{{ c.name }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Subcategory</mat-label>
+          <mat-select [(ngModel)]="subCategoryId" (selectionChange)="reload()" [disabled]="!categoryId">
+            <mat-option [value]="null">All</mat-option>
+            @for (s of subCategories(); track s.id) { <mat-option [value]="s.id">{{ s.name }}</mat-option> }
           </mat-select>
         </mat-form-field>
         <mat-slide-toggle [(ngModel)]="lowStockOnly" (change)="reload()">Low stock only</mat-slide-toggle>
@@ -72,7 +79,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
                 <div>
                   <strong>{{ p.name }}</strong>
                   @if (!p.isActive) { <span class="chip Cancelled">inactive</span> }
-                  <div class="muted">{{ p.categoryName }}@if (p.color) { · {{ p.color }} }</div>
+                  <div class="muted">{{ p.categoryName }}@if (p.subCategoryName) { · {{ p.subCategoryName }} }@if (p.color) { · {{ p.color }} }</div>
                 </div>
               </div>
             </td>
@@ -124,17 +131,20 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
 export class ProductListComponent {
   private api = inject(ProductApi);
   private catApi = inject(CategoryApi);
+  private subApi = inject(SubCategoryApi);
   private dialog = inject(MatDialog);
   private notify = inject(Notify);
   auth = inject(AuthService);
 
   rows = signal<Product[]>([]);
   categories = signal<Category[]>([]);
+  subCategories = signal<SubCategory[]>([]);
   total = signal(0);
   loading = signal(false);
 
   search = '';
   categoryId: number | null = null;
+  subCategoryId: number | null = null;
   lowStockOnly = false;
   page = 1;
   pageSize = 25;
@@ -145,11 +155,20 @@ export class ProductListComponent {
     this.load();
   }
 
+  onCategoryFilter() {
+    // Reset subcategory and reload its options when the category filter changes.
+    this.subCategoryId = null;
+    if (this.categoryId) this.subApi.list(this.categoryId, false).subscribe(s => this.subCategories.set(s));
+    else this.subCategories.set([]);
+    this.reload();
+  }
+
   load() {
     this.loading.set(true);
     this.api.list({
       search: this.search || undefined,
       categoryId: this.categoryId,
+      subCategoryId: this.subCategoryId,
       lowStockOnly: this.lowStockOnly,
       page: this.page, pageSize: this.pageSize
     }).subscribe({

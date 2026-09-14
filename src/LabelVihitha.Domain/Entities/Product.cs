@@ -12,6 +12,10 @@ public class Product : BaseEntity
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;
 
+    /// <summary>Optional finer grouping within the category.</summary>
+    public int? SubCategoryId { get; set; }
+    public SubCategory? SubCategory { get; set; }
+
     public string SKU { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
