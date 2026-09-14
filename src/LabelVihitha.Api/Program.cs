@@ -74,6 +74,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseStaticFiles(); // serves wwwroot (uploaded product photos under /uploads)
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();

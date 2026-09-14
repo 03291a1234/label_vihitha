@@ -9,6 +9,16 @@ import {
 
 const base = environment.apiUrl;
 
+/** API origin (apiUrl without the trailing /api), used to resolve served image paths. */
+export const apiOrigin = base.replace(/\/api\/?$/, '');
+
+/** Resolves a stored ImageUrl to a loadable URL: absolute http(s) as-is, root-relative against the API origin. */
+export function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  return apiOrigin + (url.startsWith('/') ? url : '/' + url);
+}
+
 function toParams(obj: Record<string, unknown>): HttpParams {
   let p = new HttpParams();
   for (const [k, v] of Object.entries(obj)) {
@@ -48,6 +58,12 @@ export class ProductApi {
   create(body: unknown) { return this.http.post<Product>(`${base}/products`, body); }
   update(id: number, body: unknown) { return this.http.put<Product>(`${base}/products/${id}`, body); }
   remove(id: number) { return this.http.delete<void>(`${base}/products/${id}`); }
+
+  uploadImage(file: File): Observable<{ url: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<{ url: string }>(`${base}/uploads/product-image`, form);
+  }
 }
 
 @Injectable({ providedIn: 'root' })

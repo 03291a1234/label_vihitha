@@ -11,7 +11,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { CategoryApi, ProductApi } from '../../core/services/api.services';
+import { CategoryApi, ProductApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Category, Product } from '../../core/models';
@@ -64,9 +64,17 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Product</th>
             <td mat-cell *matCellDef="let p">
-              <strong>{{ p.name }}</strong>
-              @if (!p.isActive) { <span class="chip Cancelled">inactive</span> }
-              <div class="muted">{{ p.categoryName }}@if (p.color) { · {{ p.color }} }</div>
+              <div class="product-cell">
+                <div class="thumb">
+                  @if (img(p.imageUrl); as src) { <img [src]="src" alt="" /> }
+                  @else { <mat-icon>image</mat-icon> }
+                </div>
+                <div>
+                  <strong>{{ p.name }}</strong>
+                  @if (!p.isActive) { <span class="chip Cancelled">inactive</span> }
+                  <div class="muted">{{ p.categoryName }}@if (p.color) { · {{ p.color }} }</div>
+                </div>
+              </div>
             </td>
           </ng-container>
           <ng-container matColumnDef="originalPrice">
@@ -102,7 +110,16 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
       </div>
     </div>
   `,
-  styles: [`.warn-icon { font-size: 16px; height: 16px; width: 16px; vertical-align: middle; }`]
+  styles: [`
+    .warn-icon { font-size: 16px; height: 16px; width: 16px; vertical-align: middle; }
+    .product-cell { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+    .product-cell .thumb {
+      width: 44px; height: 44px; border-radius: 8px; background: #f0f0f3;
+      display: grid; place-items: center; overflow: hidden; flex: 0 0 auto;
+    }
+    .product-cell .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .product-cell .thumb mat-icon { color: #b8b8c0; font-size: 22px; height: 22px; width: 22px; }
+  `]
 })
 export class ProductListComponent {
   private api = inject(ProductApi);
@@ -140,6 +157,8 @@ export class ProductListComponent {
       error: (e) => { this.loading.set(false); this.notify.error(e); }
     });
   }
+
+  img(url: string | null | undefined) { return resolveImageUrl(url); }
 
   reload() { this.page = 1; this.load(); }
   onPage(e: PageEvent) { this.page = e.pageIndex + 1; this.pageSize = e.pageSize; this.load(); }

@@ -5,8 +5,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { CategoryApi, ProductApi } from '../../core/services/api.services';
+import { CategoryApi, ProductApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Category, Product } from '../../core/models';
 
@@ -15,7 +17,7 @@ import { Category, Product } from '../../core/models';
   standalone: true,
   imports: [
     ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatButtonModule, MatSlideToggleModule
+    MatSelectModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Edit product' : 'New product' }}</h2>
@@ -66,10 +68,28 @@ import { Category, Product } from '../../core/models';
             <input matInput type="number" formControlName="reorderThreshold" />
           </mat-form-field>
         </div>
-        <mat-form-field>
-          <mat-label>Image URL</mat-label>
-          <input matInput formControlName="imageUrl" />
-        </mat-form-field>
+        <div class="photo">
+          <div class="thumb">
+            @if (previewUrl()) {
+              <img [src]="previewUrl()" alt="Product photo" />
+            } @else {
+              <mat-icon>image</mat-icon>
+            }
+          </div>
+          <div class="photo-actions">
+            <input #fileInput type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden
+                   (change)="onFileSelected($event)" />
+            <button mat-stroked-button type="button" (click)="fileInput.click()" [disabled]="uploading()">
+              @if (uploading()) { <mat-spinner diameter="18"></mat-spinner> }
+              @else { <mat-icon>upload</mat-icon> }
+              {{ previewUrl() ? 'Replace photo' : 'Upload photo' }}
+            </button>
+            @if (previewUrl()) {
+              <button mat-button type="button" color="warn" (click)="removePhoto()">Remove</button>
+            }
+            <div class="muted photo-hint">JPEG, PNG, WebP or GIF · max 5 MB</div>
+          </div>
+        </div>
         @if (data) {
           <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>
         }
@@ -77,9 +97,21 @@ import { Category, Product } from '../../core/models';
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button (click)="ref.close(false)">Cancel</button>
-      <button mat-raised-button color="primary" (click)="save()" [disabled]="form.invalid || saving()">Save</button>
+      <button mat-raised-button color="primary" (click)="save()" [disabled]="form.invalid || saving() || uploading()">Save</button>
     </mat-dialog-actions>
-  `
+  `,
+  styles: [`
+    .photo { display: flex; gap: 16px; align-items: center; margin: 8px 0; }
+    .thumb {
+      width: 96px; height: 96px; border-radius: 10px; background: #f0f0f3;
+      display: grid; place-items: center; overflow: hidden; flex: 0 0 auto;
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb mat-icon { color: #b0b0b8; font-size: 40px; height: 40px; width: 40px; }
+    .photo-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+    .photo-actions button mat-spinner { display: inline-block; margin-right: 6px; }
+    .photo-hint { font-size: 12px; }
+  `]
 })
 export class ProductEditDialog {
   private fb = inject(FormBuilder);
@@ -90,6 +122,8 @@ export class ProductEditDialog {
 
   categories = signal<Category[]>([]);
   saving = signal(false);
+  uploading = signal(false);
+  previewUrl = signal<string | null>(null);
 
   form = this.fb.nonNullable.group({
     categoryId: [null as number | null, Validators.required],
@@ -114,6 +148,7 @@ export class ProductEditDialog {
         quantityOnHand: data.quantityOnHand, reorderThreshold: data.reorderThreshold,
         imageUrl: data.imageUrl ?? '', isActive: data.isActive
       });
+      this.previewUrl.set(resolveImageUrl(data.imageUrl));
     }
   }
 
@@ -126,6 +161,29 @@ export class ProductEditDialog {
       this.form.controls.originalPrice.setValue(cat.defaultOriginalPrice);
     if (!this.form.controls.salePrice.value && cat.defaultSalePrice != null)
       this.form.controls.salePrice.setValue(cat.defaultSalePrice);
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { this.notify.error(null, 'Image exceeds the 5 MB limit'); return; }
+
+    this.uploading.set(true);
+    this.api.uploadImage(file).subscribe({
+      next: (res) => {
+        this.form.controls.imageUrl.setValue(res.url);
+        this.previewUrl.set(resolveImageUrl(res.url));
+        this.uploading.set(false);
+        input.value = ''; // allow re-selecting the same file
+      },
+      error: (e) => { this.uploading.set(false); input.value = ''; this.notify.error(e); }
+    });
+  }
+
+  removePhoto() {
+    this.form.controls.imageUrl.setValue('');
+    this.previewUrl.set(null);
   }
 
   save() {
