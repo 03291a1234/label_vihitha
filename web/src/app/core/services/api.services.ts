@@ -1,0 +1,143 @@
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import {
+  Category, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
+  FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus
+} from '../models';
+
+const base = environment.apiUrl;
+
+function toParams(obj: Record<string, unknown>): HttpParams {
+  let p = new HttpParams();
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== null && v !== undefined && v !== '') p = p.set(k, String(v));
+  }
+  return p;
+}
+
+@Injectable({ providedIn: 'root' })
+export class CategoryApi {
+  constructor(private http: HttpClient) {}
+  list(includeInactive = false): Observable<Category[]> {
+    return this.http.get<Category[]>(`${base}/categories`, { params: toParams({ includeInactive }) });
+  }
+  get(id: number) { return this.http.get<Category>(`${base}/categories/${id}`); }
+  create(body: Partial<Category>) { return this.http.post<Category>(`${base}/categories`, body); }
+  update(id: number, body: Partial<Category>) { return this.http.put<Category>(`${base}/categories/${id}`, body); }
+  remove(id: number) { return this.http.delete<void>(`${base}/categories/${id}`); }
+}
+
+export interface ProductFilters {
+  categoryId?: number | null;
+  isActive?: boolean | null;
+  lowStockOnly?: boolean;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class ProductApi {
+  constructor(private http: HttpClient) {}
+  list(filters: ProductFilters = {}): Observable<PagedResult<Product>> {
+    return this.http.get<PagedResult<Product>>(`${base}/products`, { params: toParams(filters as Record<string, unknown>) });
+  }
+  get(id: number) { return this.http.get<Product>(`${base}/products/${id}`); }
+  create(body: unknown) { return this.http.post<Product>(`${base}/products`, body); }
+  update(id: number, body: unknown) { return this.http.put<Product>(`${base}/products/${id}`, body); }
+  remove(id: number) { return this.http.delete<void>(`${base}/products/${id}`); }
+}
+
+@Injectable({ providedIn: 'root' })
+export class CustomerApi {
+  constructor(private http: HttpClient) {}
+  list(search?: string): Observable<Customer[]> {
+    return this.http.get<Customer[]>(`${base}/customers`, { params: toParams({ search }) });
+  }
+  get(id: number) { return this.http.get<Customer>(`${base}/customers/${id}`); }
+  create(body: Partial<Customer>) { return this.http.post<Customer>(`${base}/customers`, body); }
+  update(id: number, body: Partial<Customer>) { return this.http.put<Customer>(`${base}/customers/${id}`, body); }
+  remove(id: number) { return this.http.delete<void>(`${base}/customers/${id}`); }
+}
+
+export interface OrderFilters {
+  customerId?: number | null;
+  status?: OrderStatus | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreateOrderItem { productId: number; quantity: number; finalPrice?: number | null; }
+export interface CreateOrder { customerId: number; notes?: string | null; items: CreateOrderItem[]; }
+
+@Injectable({ providedIn: 'root' })
+export class OrderApi {
+  constructor(private http: HttpClient) {}
+  list(filters: OrderFilters = {}): Observable<PagedResult<OrderListItem>> {
+    return this.http.get<PagedResult<OrderListItem>>(`${base}/orders`, { params: toParams(filters as Record<string, unknown>) });
+  }
+  get(id: number) { return this.http.get<Order>(`${base}/orders/${id}`); }
+  create(body: CreateOrder) { return this.http.post<Order>(`${base}/orders`, body); }
+  setStatus(id: number, status: OrderStatus) { return this.http.put<Order>(`${base}/orders/${id}/status`, { status }); }
+  addItem(id: number, item: CreateOrderItem) { return this.http.post<Order>(`${base}/orders/${id}/items`, item); }
+  updateItem(id: number, itemId: number, body: { quantity: number; finalPrice?: number | null }) {
+    return this.http.put<Order>(`${base}/orders/${id}/items/${itemId}`, body);
+  }
+  removeItem(id: number, itemId: number) { return this.http.delete<Order>(`${base}/orders/${id}/items/${itemId}`); }
+}
+
+export interface InvoiceFilters {
+  paymentStatus?: PaymentStatus | null;
+  paymentMethod?: PaymentMethod | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+  page?: number;
+  pageSize?: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class InvoiceApi {
+  constructor(private http: HttpClient) {}
+  list(filters: InvoiceFilters = {}): Observable<PagedResult<InvoiceListItem>> {
+    return this.http.get<PagedResult<InvoiceListItem>>(`${base}/invoices`, { params: toParams(filters as Record<string, unknown>) });
+  }
+  get(id: number) { return this.http.get<Invoice>(`${base}/invoices/${id}`); }
+  create(body: { orderId: number; paymentMethod: PaymentMethod; paymentReference?: string | null; notes?: string | null }) {
+    return this.http.post<Invoice>(`${base}/invoices`, body);
+  }
+  update(id: number, body: { paymentMethod: PaymentMethod; paymentReference?: string | null; notes?: string | null; paymentStatus?: PaymentStatus | null }) {
+    return this.http.put<Invoice>(`${base}/invoices/${id}`, body);
+  }
+  recordPayment(id: number, body: { amount: number; method: PaymentMethod; referenceNumber?: string | null }) {
+    return this.http.post<Invoice>(`${base}/invoices/${id}/payments`, body);
+  }
+}
+
+export interface FollowUpFilters {
+  status?: FollowUp['status'] | null;
+  overdueOnly?: boolean;
+  openOnly?: boolean;
+  createdBy?: string | null;
+  page?: number;
+  pageSize?: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class FollowUpApi {
+  constructor(private http: HttpClient) {}
+  listForOrder(orderId: number) { return this.http.get<FollowUp[]>(`${base}/orders/${orderId}/follow-ups`); }
+  createForOrder(orderId: number, body: { note: string; orderItemId?: number | null; followUpDate?: string | null }) {
+    return this.http.post<FollowUp>(`${base}/orders/${orderId}/follow-ups`, body);
+  }
+  dashboard(filters: FollowUpFilters = {}): Observable<PagedResult<FollowUp>> {
+    return this.http.get<PagedResult<FollowUp>>(`${base}/follow-ups`, { params: toParams(filters as Record<string, unknown>) });
+  }
+  update(id: number, body: { status: FollowUp['status']; note?: string | null; followUpDate?: string | null; resolutionNote?: string | null }) {
+    return this.http.put<FollowUp>(`${base}/follow-ups/${id}`, body);
+  }
+}

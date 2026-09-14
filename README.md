@@ -72,6 +72,19 @@ src/
 > `src/LabelVihitha.Api/appsettings.json`. **Change the JWT key and seed password
 > before any real deployment.**
 
+### Web app (Angular)
+
+With the API running, start the Angular dev server:
+
+```bash
+npm --prefix web start
+```
+
+Open `http://localhost:4200` and sign in with the seeded owner account. The API base
+URL is set in `web/src/environments/environment.ts`; the API's `Cors:AllowedOrigins`
+must include the origin you load the app from (`localhost:4200` and `127.0.0.1:4200`
+are allowed by default).
+
 ## Configuration notes
 
 - Money is `decimal(18,2)`; dates are stored in UTC.
@@ -83,7 +96,7 @@ src/
 
 - [x] **Phase 1 — Core Data & API**: Category + Product CRUD, EF migrations, JWT auth, seed data. *(all entities & the full DB schema are defined up front; CRUD endpoints ship per phase)*
 - [x] **Phase 2 — Order & Invoicing**: Customer CRUD; Orders with price snapshots, stock control & status transitions; Invoice generation + partial/split Payments; OrderFollowUp create/resolve + dashboard.
-- [ ] Phase 3 — Angular web UI
+- [x] **Phase 3 — Angular web UI** (`web/`): Angular 18 standalone + Material. JWT login, role-aware nav shell, and feature screens for Categories, Inventory, Customers, Orders (list / create wizard / detail with line editing, status actions, invoicing & follow-ups), Invoicing (list / detail / record payment), and a Follow-ups dashboard. Analytics screen is a placeholder until Phase 4.
 - [ ] Phase 4 — Analytics reports + dashboard
 - [ ] Phase 5 — .NET MAUI mobile app
 
