@@ -1,6 +1,10 @@
 using System.Reflection;
 using FluentValidation;
 using LabelVihitha.Application.Features.Categories;
+using LabelVihitha.Application.Features.Customers;
+using LabelVihitha.Application.Features.FollowUps;
+using LabelVihitha.Application.Features.Invoices;
+using LabelVihitha.Application.Features.Orders;
 using LabelVihitha.Application.Features.Products;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +18,10 @@ public static class DependencyInjection
 
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IFollowUpService, FollowUpService>();
 
         return services;
     }
