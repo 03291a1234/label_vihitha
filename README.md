@@ -85,6 +85,19 @@ URL is set in `web/src/environments/environment.ts`; the API's `Cors:AllowedOrig
 must include the origin you load the app from (`localhost:4200` and `127.0.0.1:4200`
 are allowed by default).
 
+### Mobile app (Ionic)
+
+With the API running, start the Ionic dev server (served on port 8100, also in the
+API's allowed CORS origins):
+
+```bash
+npm --prefix mobile start -- --port 8100
+```
+
+Open `http://localhost:8100`. To build a native shell later, add a platform with
+Capacitor (`npx cap add ios` / `npx cap add android`) and `npx cap sync`. The API
+base URL lives in `mobile/src/environments/environment*.ts`.
+
 ## Configuration notes
 
 - Money is `decimal(18,2)`; dates are stored in UTC.
@@ -98,7 +111,7 @@ are allowed by default).
 - [x] **Phase 2 — Order & Invoicing**: Customer CRUD; Orders with price snapshots, stock control & status transitions; Invoice generation + partial/split Payments; OrderFollowUp create/resolve + dashboard.
 - [x] **Phase 3 — Angular web UI** (`web/`): Angular 18 standalone + Material. JWT login, role-aware nav shell, and feature screens for Categories, Inventory, Customers, Orders (list / create wizard / detail with line editing, status actions, invoicing & follow-ups), Invoicing (list / detail / record payment), and a Follow-ups dashboard.
 - [x] **Phase 4 — Analytics**: Owner-only `ReportsController` / `AnalyticsService` (summary KPIs, margin by category & date bucket, sales-by-category, discounts, inventory valuation, payment-methods, top/slow movers, follow-ups). Angular dashboard with KPI cards and Chart.js charts (margin bars, revenue-share & payment doughnuts, inventory bars, margin-trend line), mover tables, and a date-range filter.
-- [ ] Phase 5 — .NET MAUI mobile app
+- [x] **Phase 5 — Mobile app** (`mobile/`): Ionic + Capacitor (Angular standalone) POS app sharing the same API. JWT login, a tabbed shell, and three on-the-go screens: **New sale** (pick/quick-add customer → search products → capture negotiated final price → one tap creates order, confirms, invoices, and optionally records payment), **Lookup** (inventory search with live stock), and **Today** (Owner sales summary). *(Ionic + Capacitor was chosen over .NET MAUI to reuse the Angular stack.)*
 
 ## EF migrations
 
