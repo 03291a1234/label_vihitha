@@ -3,6 +3,7 @@ using FluentValidation;
 using LabelVihitha.Application.Features.Categories;
 using LabelVihitha.Application.Features.Customers;
 using LabelVihitha.Application.Features.FollowUps;
+using LabelVihitha.Application.Features.Inventories;
 using LabelVihitha.Application.Features.Invoices;
 using LabelVihitha.Application.Features.Orders;
 using LabelVihitha.Application.Features.Products;
@@ -20,6 +21,7 @@ public static class DependencyInjection
 
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<ISubCategoryService, SubCategoryService>();
+        services.AddScoped<IInventoryGroupService, InventoryGroupService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IOrderService, OrderService>();

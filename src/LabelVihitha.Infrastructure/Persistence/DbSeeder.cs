@@ -60,9 +60,10 @@ public static class DbSeeder
     }
 
     // Shape of the embedded seed-catalog.json (generated from the boutique's Excel inventory).
-    private sealed record SeedCatalog(List<SeedCategory> Categories, List<SeedProduct> Products);
+    private sealed record SeedCatalog(List<SeedCategory> Categories, List<SeedInventory>? Inventories, List<SeedProduct> Products);
     private sealed record SeedCategory(string Name, string? Description, decimal? DefaultOriginalPrice, decimal? DefaultSalePrice);
-    private sealed record SeedProduct(string Category, string? SubCategory, string Sku, string Name, string? Description,
+    private sealed record SeedInventory(string Name, string? Description);
+    private sealed record SeedProduct(string Category, string? SubCategory, string? Inventory, string Sku, string Name, string? Description,
         decimal OriginalPrice, decimal SalePrice, int QuantityOnHand, int ReorderThreshold);
 
     private static async Task SeedCatalogAsync(ApplicationDbContext db, ILogger logger)
@@ -103,10 +104,28 @@ public static class DbSeeder
             ? null
             : subCategories.FirstOrDefault(s => s.Category.Name == category && s.Name == name);
 
+        // Named inventories (collections) — declared list plus any referenced by products.
+        var inventoryNames = (catalog.Inventories?.Select(i => i.Name) ?? Enumerable.Empty<string>())
+            .Concat(catalog.Products.Select(p => p.Inventory).Where(n => !string.IsNullOrWhiteSpace(n))!)
+            .Distinct()
+            .ToList();
+        var inventories = inventoryNames.Select(name => new Inventory
+        {
+            Name = name!,
+            Description = catalog.Inventories?.FirstOrDefault(i => i.Name == name)?.Description
+        }).ToList();
+        if (inventories.Count > 0)
+        {
+            db.Inventories.AddRange(inventories);
+            await db.SaveChangesAsync();
+        }
+        Inventory? Inv(string? name) => name is null ? null : inventories.FirstOrDefault(i => i.Name == name);
+
         var products = catalog.Products.Select(p => new Product
         {
             Category = Cat(p.Category),
             SubCategory = Sub(p.Category, p.SubCategory),
+            Inventory = Inv(p.Inventory),
             SKU = p.Sku,
             Name = p.Name,
             Description = p.Description,
@@ -119,8 +138,8 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         logger.LogInformation(
-            "Seeded {Categories} categories, {SubCategories} subcategories and {Products} products from the boutique inventory.",
-            categories.Count, subCategories.Count, products.Count);
+            "Seeded {Categories} categories, {SubCategories} subcategories, {Inventories} inventories and {Products} products from the boutique inventory.",
+            categories.Count, subCategories.Count, inventories.Count, products.Count);
     }
 
     private static SeedCatalog? LoadCatalog()

@@ -12,10 +12,11 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
-import { CategoryApi, ProductApi, SubCategoryApi, resolveImageUrl } from '../../core/services/api.services';
+import { ActivatedRoute } from '@angular/router';
+import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Category, SubCategory, Product } from '../../core/models';
+import { Category, SubCategory, Inventory, Product } from '../../core/models';
 import { ProductEditDialog } from './product-edit.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
@@ -30,7 +31,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   template: `
     <div class="page">
       <div class="page-header">
-        <h1>Inventory</h1>
+        <h1>Products</h1>
         @if (auth.canManage()) {
           <button mat-raised-button color="primary" (click)="openEdit(null)">
             <mat-icon>add</mat-icon> New product
@@ -57,6 +58,13 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             @for (s of subCategories(); track s.id) { <mat-option [value]="s.id">{{ s.name }}</mat-option> }
           </mat-select>
         </mat-form-field>
+        <mat-form-field>
+          <mat-label>Inventory</mat-label>
+          <mat-select [(ngModel)]="inventoryId" (selectionChange)="reload()">
+            <mat-option [value]="null">All</mat-option>
+            @for (i of inventories(); track i.id) { <mat-option [value]="i.id">{{ i.name }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
         <mat-slide-toggle [(ngModel)]="lowStockOnly" (change)="reload()">Low stock only</mat-slide-toggle>
         <button mat-button (click)="reload()"><mat-icon>search</mat-icon> Apply</button>
       </div>
@@ -81,16 +89,21 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
                   <strong>{{ p.name }}</strong>
                   @if (!p.isActive) { <span class="chip Cancelled">inactive</span> }
                   <div class="muted">{{ p.categoryName }}@if (p.subCategoryName) { · {{ p.subCategoryName }} }@if (p.color) { · {{ p.color }} }</div>
+                  @if (p.inventoryName) { <div class="muted"><mat-icon class="inv-icon">inventory</mat-icon> {{ p.inventoryName }}</div> }
                 </div>
               </div>
             </td>
           </ng-container>
+          <ng-container matColumnDef="costInr">
+            <th mat-header-cell *matHeaderCellDef class="text-right">Cost (INR)</th>
+            <td mat-cell *matCellDef="let p" class="text-right mono">{{ p.originalPrice * inrRate | currency:'INR':'symbol':'1.0-0' }}</td>
+          </ng-container>
           <ng-container matColumnDef="originalPrice">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Cost</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Cost (USD)</th>
             <td mat-cell *matCellDef="let p" class="text-right mono">{{ p.originalPrice | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="salePrice">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Sale</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Sale (USD)</th>
             <td mat-cell *matCellDef="let p" class="text-right mono">{{ p.salePrice | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="quantityOnHand">
@@ -127,34 +140,46 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     }
     .product-cell .thumb img { width: 100%; height: 100%; object-fit: cover; }
     .product-cell .thumb mat-icon { color: #b8b8c0; font-size: 22px; height: 22px; width: 22px; }
+    .inv-icon { font-size: 14px; height: 14px; width: 14px; vertical-align: -2px; }
   `]
 })
 export class ProductListComponent {
   private api = inject(ProductApi);
   private catApi = inject(CategoryApi);
   private subApi = inject(SubCategoryApi);
+  private invApi = inject(InventoryApi);
+  private route = inject(ActivatedRoute);
   private dialog = inject(MatDialog);
   private notify = inject(Notify);
   auth = inject(AuthService);
 
+  /** USD → INR conversion rate for the displayed Indian cost. */
+  readonly inrRate = 95;
+
   rows = signal<Product[]>([]);
   categories = signal<Category[]>([]);
   subCategories = signal<SubCategory[]>([]);
+  inventories = signal<Inventory[]>([]);
   total = signal(0);
   loading = signal(false);
 
   search = '';
   categoryId: number | null = null;
   subCategoryId: number | null = null;
+  inventoryId: number | null = null;
   lowStockOnly = false;
   sortBy: string | null = null;
   sortDir: string | null = null;
   page = 1;
   pageSize = 25;
-  cols = ['sku', 'name', 'originalPrice', 'salePrice', 'quantityOnHand', 'actions'];
+  cols = ['sku', 'name', 'costInr', 'originalPrice', 'salePrice', 'quantityOnHand', 'actions'];
 
   constructor() {
     this.catApi.list(false).subscribe(cs => this.categories.set(cs));
+    this.invApi.list(false).subscribe(inv => this.inventories.set(inv));
+    // Preselect the inventory filter when navigated from the Inventories screen.
+    const invParam = this.route.snapshot.queryParamMap.get('inventoryId');
+    if (invParam) this.inventoryId = Number(invParam);
     this.load();
   }
 
@@ -172,6 +197,7 @@ export class ProductListComponent {
       search: this.search || undefined,
       categoryId: this.categoryId,
       subCategoryId: this.subCategoryId,
+      inventoryId: this.inventoryId,
       lowStockOnly: this.lowStockOnly,
       sortBy: this.sortBy, sortDir: this.sortDir,
       page: this.page, pageSize: this.pageSize

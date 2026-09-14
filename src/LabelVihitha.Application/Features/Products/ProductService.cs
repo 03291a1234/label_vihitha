@@ -23,6 +23,8 @@ public class ProductService : IProductService
             q = q.Where(p => p.CategoryId == cid);
         if (query.SubCategoryId is int scid)
             q = q.Where(p => p.SubCategoryId == scid);
+        if (query.InventoryId is int invId)
+            q = q.Where(p => p.InventoryId == invId);
         if (query.IsActive is bool active)
             q = q.Where(p => p.IsActive == active);
         if (query.LowStockOnly)
@@ -34,7 +36,7 @@ public class ProductService : IProductService
         }
 
         var total = await q.CountAsync(ct);
-        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory), query.SortBy, query.SortDir);
+        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory), query.SortBy, query.SortDir);
         var entities = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -54,6 +56,7 @@ public class ProductService : IProductService
         var entity = await _db.Products.AsNoTracking()
             .Include(p => p.Category)
             .Include(p => p.SubCategory)
+            .Include(p => p.Inventory)
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
         return entity is null ? throw new NotFoundException(nameof(Product), id) : MapToDto(entity);
     }
@@ -65,11 +68,13 @@ public class ProductService : IProductService
 
         await EnsureSkuUniqueAsync(request.SKU, null, ct);
         await EnsureSubCategoryValidAsync(request.CategoryId, request.SubCategoryId, ct);
+        await EnsureInventoryValidAsync(request.InventoryId, ct);
 
         var entity = new Product
         {
             CategoryId = request.CategoryId,
             SubCategoryId = request.SubCategoryId,
+            InventoryId = request.InventoryId,
             SKU = request.SKU.Trim(),
             Name = request.Name.Trim(),
             Description = request.Description,
@@ -100,9 +105,11 @@ public class ProductService : IProductService
 
         await EnsureSkuUniqueAsync(request.SKU, id, ct);
         await EnsureSubCategoryValidAsync(request.CategoryId, request.SubCategoryId, ct);
+        await EnsureInventoryValidAsync(request.InventoryId, ct);
 
         entity.CategoryId = request.CategoryId;
         entity.SubCategoryId = request.SubCategoryId;
+        entity.InventoryId = request.InventoryId;
         entity.SKU = request.SKU.Trim();
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
@@ -179,6 +186,14 @@ public class ProductService : IProductService
             throw new ConflictException("The selected subcategory does not belong to the chosen category.");
     }
 
+    /// <summary>A chosen inventory (if any) must exist.</summary>
+    private async Task EnsureInventoryValidAsync(int? inventoryId, CancellationToken ct)
+    {
+        if (inventoryId is not int id) return;
+        if (!await _db.Inventories.AnyAsync(i => i.Id == id && !i.IsDeleted, ct))
+            throw new NotFoundException(nameof(Inventory), id);
+    }
+
     private async Task EnsureSkuUniqueAsync(string sku, int? excludeId, CancellationToken ct)
     {
         var normalized = sku.Trim();
@@ -195,6 +210,8 @@ public class ProductService : IProductService
         p.Category?.Name ?? string.Empty,
         p.SubCategoryId,
         p.SubCategory?.Name,
+        p.InventoryId,
+        p.Inventory?.Name,
         p.SKU,
         p.Name,
         p.Description,

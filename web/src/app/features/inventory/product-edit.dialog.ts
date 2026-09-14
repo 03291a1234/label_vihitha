@@ -8,9 +8,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { CategoryApi, ProductApi, SubCategoryApi, resolveImageUrl } from '../../core/services/api.services';
+import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
-import { Category, SubCategory, Product } from '../../core/models';
+import { Category, SubCategory, Inventory, Product } from '../../core/models';
 
 @Component({
   selector: 'app-product-edit',
@@ -43,6 +43,14 @@ import { Category, SubCategory, Product } from '../../core/models';
             <mat-hint>Optional</mat-hint>
           </mat-form-field>
         </div>
+        <mat-form-field>
+          <mat-label>Inventory</mat-label>
+          <mat-select formControlName="inventoryId">
+            <mat-option [value]="null">— None —</mat-option>
+            @for (i of inventories(); track i.id) { <mat-option [value]="i.id">{{ i.name }}</mat-option> }
+          </mat-select>
+          <mat-hint>Collection this product belongs to (optional)</mat-hint>
+        </mat-form-field>
         <div class="form-row">
           <mat-form-field>
             <mat-label>SKU</mat-label>
@@ -130,11 +138,13 @@ export class ProductEditDialog {
   private api = inject(ProductApi);
   private catApi = inject(CategoryApi);
   private subApi = inject(SubCategoryApi);
+  private invApi = inject(InventoryApi);
   private notify = inject(Notify);
   ref = inject(MatDialogRef<ProductEditDialog>);
 
   categories = signal<Category[]>([]);
   subCategories = signal<SubCategory[]>([]);
+  inventories = signal<Inventory[]>([]);
   saving = signal(false);
   uploading = signal(false);
   previewUrl = signal<string | null>(null);
@@ -142,6 +152,7 @@ export class ProductEditDialog {
   form = this.fb.nonNullable.group({
     categoryId: [null as number | null, Validators.required],
     subCategoryId: [null as number | null],
+    inventoryId: [null as number | null],
     sku: ['', [Validators.required, Validators.maxLength(50)]],
     name: ['', [Validators.required, Validators.maxLength(200)]],
     size: [''], color: [''], material: [''],
@@ -155,9 +166,11 @@ export class ProductEditDialog {
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: Product | null) {
     this.catApi.list(false).subscribe(cs => this.categories.set(cs));
+    this.invApi.list(false).subscribe(inv => this.inventories.set(inv));
     if (data) {
       this.form.patchValue({
         categoryId: data.categoryId, subCategoryId: data.subCategoryId ?? null,
+        inventoryId: data.inventoryId ?? null,
         sku: data.sku, name: data.name,
         size: data.size ?? '', color: data.color ?? '', material: data.material ?? '',
         originalPrice: data.originalPrice, salePrice: data.salePrice,

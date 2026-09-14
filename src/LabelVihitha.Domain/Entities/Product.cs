@@ -16,6 +16,10 @@ public class Product : BaseEntity
     public int? SubCategoryId { get; set; }
     public SubCategory? SubCategory { get; set; }
 
+    /// <summary>Optional named inventory / collection this product belongs to.</summary>
+    public int? InventoryId { get; set; }
+    public Inventory? Inventory { get; set; }
+
     public string SKU { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }

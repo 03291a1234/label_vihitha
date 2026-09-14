@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  Category, SubCategory, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
+  Category, SubCategory, Inventory, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus
 } from '../models';
 
@@ -54,9 +54,26 @@ export class SubCategoryApi {
   remove(id: number) { return this.http.delete<void>(`${base}/subcategories/${id}`); }
 }
 
+@Injectable({ providedIn: 'root' })
+export class InventoryApi {
+  constructor(private http: HttpClient) {}
+  list(includeInactive = false): Observable<Inventory[]> {
+    return this.http.get<Inventory[]>(`${base}/inventories`, { params: toParams({ includeInactive }) });
+  }
+  get(id: number) { return this.http.get<Inventory>(`${base}/inventories/${id}`); }
+  create(body: { name: string; description?: string | null }) {
+    return this.http.post<Inventory>(`${base}/inventories`, body);
+  }
+  update(id: number, body: { name: string; description?: string | null; isActive: boolean }) {
+    return this.http.put<Inventory>(`${base}/inventories/${id}`, body);
+  }
+  remove(id: number) { return this.http.delete<void>(`${base}/inventories/${id}`); }
+}
+
 export interface ProductFilters {
   categoryId?: number | null;
   subCategoryId?: number | null;
+  inventoryId?: number | null;
   isActive?: boolean | null;
   lowStockOnly?: boolean;
   search?: string;

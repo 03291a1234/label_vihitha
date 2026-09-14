@@ -6,6 +6,8 @@ public record ProductDto(
     string CategoryName,
     int? SubCategoryId,
     string? SubCategoryName,
+    int? InventoryId,
+    string? InventoryName,
     string SKU,
     string Name,
     string? Description,
@@ -24,6 +26,7 @@ public record ProductDto(
 public record CreateProductRequest(
     int CategoryId,
     int? SubCategoryId,
+    int? InventoryId,
     string SKU,
     string Name,
     string? Description,
@@ -39,6 +42,7 @@ public record CreateProductRequest(
 public record UpdateProductRequest(
     int CategoryId,
     int? SubCategoryId,
+    int? InventoryId,
     string SKU,
     string Name,
     string? Description,
@@ -56,6 +60,7 @@ public record UpdateProductRequest(
 public record ProductQuery(
     int? CategoryId = null,
     int? SubCategoryId = null,
+    int? InventoryId = null,
     bool? IsActive = null,
     bool LowStockOnly = false,
     string? Search = null,

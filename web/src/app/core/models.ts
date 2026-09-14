@@ -40,12 +40,22 @@ export interface SubCategory {
   productCount: number;
 }
 
+export interface Inventory {
+  id: number;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  productCount: number;
+}
+
 export interface Product {
   id: number;
   categoryId: number;
   categoryName: string;
   subCategoryId?: number | null;
   subCategoryName?: string | null;
+  inventoryId?: number | null;
+  inventoryName?: string | null;
   sku: string;
   name: string;
   description?: string | null;

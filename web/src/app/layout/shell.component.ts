@@ -119,7 +119,8 @@ export class ShellComponent {
     { label: 'Orders', icon: 'receipt_long', path: '/orders' },
     { label: 'Invoicing', icon: 'payments', path: '/invoices' },
     { label: 'Follow-ups', icon: 'task_alt', path: '/follow-ups' },
-    { label: 'Inventory', icon: 'inventory_2', path: '/products' },
+    { label: 'Products', icon: 'inventory_2', path: '/products' },
+    { label: 'Inventories', icon: 'inventory', path: '/inventories' },
     { label: 'Categories', icon: 'category', path: '/categories' },
     { label: 'Customers', icon: 'group', path: '/customers' }
   ];

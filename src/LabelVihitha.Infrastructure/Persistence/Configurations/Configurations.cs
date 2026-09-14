@@ -43,6 +43,22 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasForeignKey(x => x.SubCategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        b.HasOne(x => x.Inventory)
+            .WithMany(i => i.Products)
+            .HasForeignKey(x => x.InventoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
+{
+    public void Configure(EntityTypeBuilder<Inventory> b)
+    {
+        b.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        b.Property(x => x.Description).HasMaxLength(500);
+        b.HasIndex(x => x.Name).IsUnique().HasFilter("[IsDeleted] = 0");
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }
