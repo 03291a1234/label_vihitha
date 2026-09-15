@@ -57,6 +57,22 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
     }
 }
 
+public class ProductVariantConfiguration : IEntityTypeConfiguration<ProductVariant>
+{
+    public void Configure(EntityTypeBuilder<ProductVariant> b)
+    {
+        b.Property(x => x.Size).IsRequired().HasMaxLength(50);
+        b.HasIndex(x => new { x.ProductId, x.Size }).IsUnique().HasFilter("[IsDeleted] = 0");
+
+        b.HasOne(x => x.Product)
+            .WithMany(p => p.Variants)
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
 public class VendorConfiguration : IEntityTypeConfiguration<Vendor>
 {
     public void Configure(EntityTypeBuilder<Vendor> b)
@@ -146,6 +162,12 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         b.HasOne(x => x.Product)
             .WithMany(p => p.OrderItems)
             .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.Property(x => x.Size).HasMaxLength(50);
+        b.HasOne(x => x.ProductVariant)
+            .WithMany()
+            .HasForeignKey(x => x.ProductVariantId)
             .OnDelete(DeleteBehavior.Restrict);
 
         b.HasQueryFilter(x => !x.IsDeleted);

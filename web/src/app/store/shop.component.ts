@@ -68,6 +68,16 @@ type View = 'shop' | 'checkout' | 'done';
                   <div class="pbody">
                     <div class="pname">{{ p.name }}</div>
                     <div class="pmeta">{{ p.categoryName }}@if (p.subCategoryName) { · {{ p.subCategoryName }} }</div>
+                    @if (hasSizes(p)) {
+                      <mat-form-field class="size-sel" subscriptSizing="dynamic">
+                        <mat-label>Size</mat-label>
+                        <mat-select [(ngModel)]="picked[p.id]">
+                          @for (v of p.variants; track v.id) {
+                            <mat-option [value]="v.id" [disabled]="!v.inStock">{{ v.size }} ({{ v.available }})</mat-option>
+                          }
+                        </mat-select>
+                      </mat-form-field>
+                    }
                     <div class="prow">
                       <span class="price">{{ p.price | currency }}</span>
                       <button mat-raised-button color="primary" (click)="add(p)" [disabled]="!p.inStock">Add</button>
@@ -84,17 +94,17 @@ type View = 'shop' | 'checkout' | 'done';
             @if (cart.lines().length === 0) {
               <p class="muted">Your cart is empty. Add a few sarees to get started.</p>
             } @else {
-              @for (l of cart.lines(); track l.product.id) {
+              @for (l of cart.lines(); track l.variant.id) {
                 <div class="cline">
                   <div class="cinfo">
-                    <div class="cname">{{ l.product.name }}</div>
+                    <div class="cname">{{ l.product.name }}@if (l.variant.size !== 'One Size') { <span class="muted">· {{ l.variant.size }}</span> }</div>
                     <div class="muted">{{ l.product.price | currency }} each</div>
                   </div>
                   <div class="cqty">
-                    <button mat-icon-button (click)="dec(l.product.id, l.quantity)"><mat-icon>remove</mat-icon></button>
+                    <button mat-icon-button (click)="dec(l.variant.id, l.quantity)"><mat-icon>remove</mat-icon></button>
                     <span class="q">{{ l.quantity }}</span>
-                    <button mat-icon-button (click)="inc(l.product.id, l.quantity, l.product.available)"><mat-icon>add</mat-icon></button>
-                    <button mat-icon-button color="warn" (click)="cart.remove(l.product.id)"><mat-icon>close</mat-icon></button>
+                    <button mat-icon-button (click)="inc(l.variant.id, l.quantity, l.variant.available)"><mat-icon>add</mat-icon></button>
+                    <button mat-icon-button color="warn" (click)="cart.remove(l.variant.id)"><mat-icon>close</mat-icon></button>
                   </div>
                 </div>
               }
@@ -129,8 +139,8 @@ type View = 'shop' | 'checkout' | 'done';
             </div>
             <div class="card summary-card">
               <h3>Order summary</h3>
-              @for (l of cart.lines(); track l.product.id) {
-                <div class="sline"><span>{{ l.quantity }} × {{ l.product.name }}</span><span class="mono">{{ l.product.price * l.quantity | currency }}</span></div>
+              @for (l of cart.lines(); track l.variant.id) {
+                <div class="sline"><span>{{ l.quantity }} × {{ l.product.name }}@if (l.variant.size !== 'One Size') { ({{ l.variant.size }}) }</span><span class="mono">{{ l.product.price * l.quantity | currency }}</span></div>
               }
               <div class="ctotal"><span>Total</span><strong>{{ cart.total() | currency }}</strong></div>
               <button mat-raised-button color="primary" class="full" (click)="placeOrder()" [disabled]="!name.trim() || placing()">
@@ -183,6 +193,7 @@ type View = 'shop' | 'checkout' | 'done';
     .pbody { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
     .pname { font-weight: 600; line-height: 1.2; }
     .pmeta { font-size: 12px; color: rgba(58,37,48,.55); }
+    .size-sel { width: 100%; margin: 6px 0 2px; }
     .prow { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
     .price { font-family: "Cormorant Garamond", Georgia, serif; font-size: 22px; font-weight: 700; color: var(--lv-wine); }
 
@@ -246,7 +257,23 @@ export class ShopComponent {
     });
   }
 
-  add(p: StoreProduct) { this.cart.add(p); this.notify.success(`${p.name} added to cart`); }
+  /** Chosen variant id per product card (for products with more than one size). */
+  picked: Record<number, number> = {};
+
+  /** Show a size picker only when there's a real choice beyond a single "One Size". */
+  hasSizes(p: StoreProduct): boolean {
+    return p.variants.length > 1 || (p.variants.length === 1 && p.variants[0].size !== 'One Size');
+  }
+
+  add(p: StoreProduct) {
+    const choices = p.variants ?? [];
+    let variant = choices.length === 1 ? choices[0] : choices.find(v => v.id === this.picked[p.id]);
+    if (!variant) { this.notify.error(null, 'Please choose a size'); return; }
+    if (!variant.inStock) { this.notify.error(null, `Size ${variant.size} is sold out`); return; }
+    this.cart.add(p, variant);
+    const label = variant.size === 'One Size' ? p.name : `${p.name} (${variant.size})`;
+    this.notify.success(`${label} added to cart`);
+  }
   inc(id: number, qty: number, available: number) { if (qty < available) this.cart.setQty(id, qty + 1); }
   dec(id: number, qty: number) { if (qty > 1) this.cart.setQty(id, qty - 1); else this.cart.remove(id); }
 
@@ -262,7 +289,7 @@ export class ShopComponent {
       customerEmail: this.email || null,
       paymentMethod: this.method,
       notes: this.notes || null,
-      items: this.cart.lines().map(l => ({ productId: l.product.id, quantity: l.quantity }))
+      items: this.cart.lines().map(l => ({ productId: l.product.id, quantity: l.quantity, productVariantId: l.variant.id }))
     }).subscribe({
       next: (r) => { this.result.set(r); this.cart.clear(); this.view.set('done'); this.placing.set(false); },
       error: (e) => { this.placing.set(false); this.notify.error(e); }

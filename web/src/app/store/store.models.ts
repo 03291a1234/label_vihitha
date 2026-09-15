@@ -1,3 +1,10 @@
+export interface StoreVariant {
+  id: number;
+  size: string;
+  available: number;
+  inStock: boolean;
+}
+
 export interface StoreProduct {
   id: number;
   sku: string;
@@ -8,10 +15,12 @@ export interface StoreProduct {
   imageUrl?: string | null;
   available: number;
   inStock: boolean;
+  variants: StoreVariant[];
 }
 
 export interface CartLine {
   product: StoreProduct;
+  variant: StoreVariant;
   quantity: number;
 }
 

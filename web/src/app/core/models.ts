@@ -164,6 +164,12 @@ export interface ProfitLossReport {
   totalOwnerEquity: number;
 }
 
+export interface ProductVariant {
+  id: number;
+  size: string;
+  quantityOnHand: number;
+}
+
 export interface Product {
   id: number;
   categoryId: number;
@@ -187,6 +193,7 @@ export interface Product {
   isLowStock: boolean;
   imageUrl?: string | null;
   isActive: boolean;
+  variants: ProductVariant[];
   rowVersion: string;
 }
 
@@ -205,6 +212,8 @@ export interface OrderItem {
   productId: number;
   productName: string;
   sku: string;
+  productVariantId?: number | null;
+  size?: string | null;
   quantity: number;
   originalPriceAtSale: number;
   salePriceAtSale: number;

@@ -38,7 +38,7 @@ public class ProductService : IProductService
         }
 
         var total = await q.CountAsync(ct);
-        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory).Include(p => p.Vendor), query.SortBy, query.SortDir);
+        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory).Include(p => p.Vendor).Include(p => p.Variants), query.SortBy, query.SortDir);
         var entities = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -92,6 +92,7 @@ public class ProductService : IProductService
             .Include(p => p.SubCategory)
             .Include(p => p.Inventory)
             .Include(p => p.Vendor)
+            .Include(p => p.Variants)
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
         return entity is null ? throw new NotFoundException(nameof(Product), id) : MapToDto(entity);
     }
@@ -115,17 +116,20 @@ public class ProductService : IProductService
             SKU = request.SKU.Trim(),
             Name = request.Name.Trim(),
             Description = request.Description,
-            Size = request.Size,
             Color = request.Color,
             Material = request.Material,
             // Inherit category defaults when a price is omitted.
             OriginalPrice = request.OriginalPrice ?? category.DefaultOriginalPrice ?? 0m,
             SalePrice = request.SalePrice ?? category.DefaultSalePrice ?? 0m,
-            QuantityOnHand = request.QuantityOnHand,
             ReorderThreshold = request.ReorderThreshold,
             ImageUrl = request.ImageUrl,
             IsActive = true
         };
+
+        var variants = NormalizeVariants(request.Variants, request.Size, request.QuantityOnHand);
+        entity.Variants = variants.Select(v => new ProductVariant { Size = v.Size, QuantityOnHand = v.Qty }).ToList();
+        entity.QuantityOnHand = variants.Sum(v => v.Qty);
+        entity.Size = JoinSizes(variants);
 
         _db.Products.Add(entity);
         await _db.SaveChangesAsync(ct);
@@ -134,7 +138,7 @@ public class ProductService : IProductService
 
     public async Task<ProductDto> UpdateAsync(int id, UpdateProductRequest request, CancellationToken ct = default)
     {
-        var entity = await _db.Products.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
+        var entity = await _db.Products.Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Product), id);
 
         if (!await _db.Categories.AnyAsync(c => c.Id == request.CategoryId && !c.IsDeleted, ct))
@@ -152,16 +156,16 @@ public class ProductService : IProductService
         entity.SKU = request.SKU.Trim();
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
-        entity.Size = request.Size;
         entity.Color = request.Color;
         entity.Material = request.Material;
         entity.OriginalPrice = request.OriginalPrice;
         entity.SalePrice = request.SalePrice;
-        entity.QuantityOnHand = request.QuantityOnHand;
         entity.ReorderThreshold = request.ReorderThreshold;
         entity.ImageUrl = request.ImageUrl;
         entity.IsActive = request.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
+
+        SyncVariants(entity, NormalizeVariants(request.Variants, request.Size, request.QuantityOnHand));
 
         // Optimistic concurrency — reject if the row changed since the client read it.
         if (!string.IsNullOrEmpty(request.RowVersion))
@@ -274,5 +278,55 @@ public class ProductService : IProductService
         p.QuantityOnHand <= p.ReorderThreshold,
         p.ImageUrl,
         p.IsActive,
+        (p.Variants ?? new List<ProductVariant>())
+            .Where(v => !v.IsDeleted)
+            .OrderBy(v => v.Id)
+            .Select(v => new ProductVariantDto(v.Id, v.Size, v.QuantityOnHand))
+            .ToList(),
         Convert.ToBase64String(p.RowVersion));
+
+    // ---- Variant helpers ----
+
+    /// <summary>Normalize variant input (trim, drop blanks, merge duplicate sizes). Falls back
+    /// to a single variant from the legacy Size+Quantity fields when no variants are supplied.</summary>
+    private static List<(string Size, int Qty)> NormalizeVariants(
+        IReadOnlyList<ProductVariantInput>? inputs, string? legacySize, int legacyQty)
+    {
+        var source = (inputs != null && inputs.Count > 0)
+            ? inputs
+            : new[] { new ProductVariantInput(string.IsNullOrWhiteSpace(legacySize) ? "One Size" : legacySize!, legacyQty) };
+
+        return source
+            .Select(v => (Size: string.IsNullOrWhiteSpace(v.Size) ? "One Size" : v.Size.Trim(),
+                          Qty: v.QuantityOnHand < 0 ? 0 : v.QuantityOnHand))
+            .GroupBy(v => v.Size, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (Size: g.First().Size, Qty: g.Sum(x => x.Qty)))
+            .ToList();
+    }
+
+    /// <summary>Reconcile a product's variant rows with the desired set (add/update/soft-delete),
+    /// then refresh the denormalized total and size summary.</summary>
+    private static void SyncVariants(Product product, List<(string Size, int Qty)> desired)
+    {
+        var existing = product.Variants.Where(v => !v.IsDeleted).ToList();
+        foreach (var d in desired)
+        {
+            var match = existing.FirstOrDefault(e => string.Equals(e.Size, d.Size, StringComparison.OrdinalIgnoreCase));
+            if (match != null) match.QuantityOnHand = d.Qty;
+            else product.Variants.Add(new ProductVariant { Size = d.Size, QuantityOnHand = d.Qty });
+        }
+        foreach (var e in existing)
+            if (!desired.Any(d => string.Equals(d.Size, e.Size, StringComparison.OrdinalIgnoreCase)))
+                e.IsDeleted = true;
+
+        product.QuantityOnHand = desired.Sum(d => d.Qty);
+        product.Size = JoinSizes(desired);
+    }
+
+    /// <summary>A comma summary of sizes for display; null when the product is effectively unsized.</summary>
+    private static string? JoinSizes(List<(string Size, int Qty)> variants)
+    {
+        var sizes = variants.Select(v => v.Size).Where(s => !string.Equals(s, "One Size", StringComparison.OrdinalIgnoreCase)).ToList();
+        return sizes.Count == 0 ? null : string.Join(", ", sizes);
+    }
 }

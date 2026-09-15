@@ -144,7 +144,7 @@ export interface OrderFilters {
   pageSize?: number;
 }
 
-export interface CreateOrderItem { productId: number; quantity: number; finalPrice?: number | null; }
+export interface CreateOrderItem { productId: number; quantity: number; finalPrice?: number | null; productVariantId?: number | null; }
 export interface CreateOrder { customerId: number; notes?: string | null; items: CreateOrderItem[]; }
 
 @Injectable({ providedIn: 'root' })

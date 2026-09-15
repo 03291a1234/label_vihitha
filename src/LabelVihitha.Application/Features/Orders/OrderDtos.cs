@@ -7,6 +7,8 @@ public record OrderItemDto(
     int ProductId,
     string ProductName,
     string SKU,
+    int? ProductVariantId,
+    string? Size,
     int Quantity,
     decimal OriginalPriceAtSale,
     decimal SalePriceAtSale,
@@ -44,7 +46,8 @@ public record OrderListItemDto(
 public record CreateOrderItemRequest(
     int ProductId,
     int Quantity,
-    decimal? FinalPrice);   // null → snapshot the product's current SalePrice
+    decimal? FinalPrice,   // null → snapshot the product's current SalePrice
+    int? ProductVariantId = null);   // which size to draw down (required once a product has variants)
 
 public record CreateOrderRequest(
     int CustomerId,

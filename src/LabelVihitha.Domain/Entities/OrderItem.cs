@@ -14,6 +14,13 @@ public class OrderItem : BaseEntity
     public int ProductId { get; set; }
     public Product Product { get; set; } = null!;
 
+    /// <summary>The size variant sold (null only for legacy pre-variant items).</summary>
+    public int? ProductVariantId { get; set; }
+    public ProductVariant? ProductVariant { get; set; }
+
+    /// <summary>Size label snapshot at time of sale.</summary>
+    public string? Size { get; set; }
+
     public int Quantity { get; set; }
 
     /// <summary>Snapshot — cost basis at time of sale (for margin calc).</summary>

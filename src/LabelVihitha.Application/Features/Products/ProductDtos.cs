@@ -1,5 +1,8 @@
 namespace LabelVihitha.Application.Features.Products;
 
+public record ProductVariantDto(int Id, string Size, int QuantityOnHand);
+public record ProductVariantInput(string Size, int QuantityOnHand);
+
 public record ProductDto(
     int Id,
     int CategoryId,
@@ -23,6 +26,7 @@ public record ProductDto(
     bool IsLowStock,
     string? ImageUrl,
     bool IsActive,
+    IReadOnlyList<ProductVariantDto> Variants,
     string RowVersion);
 
 public record CreateProductRequest(
@@ -40,7 +44,8 @@ public record CreateProductRequest(
     decimal? SalePrice,
     int QuantityOnHand,
     int ReorderThreshold,
-    string? ImageUrl);
+    string? ImageUrl,
+    IReadOnlyList<ProductVariantInput>? Variants = null);   // authoritative per-size stock when provided
 
 public record UpdateProductRequest(
     int CategoryId,
@@ -59,7 +64,8 @@ public record UpdateProductRequest(
     int ReorderThreshold,
     string? ImageUrl,
     bool IsActive,
-    string RowVersion);   // base64 concurrency token
+    string RowVersion,   // base64 concurrency token
+    IReadOnlyList<ProductVariantInput>? Variants = null);   // authoritative per-size stock when provided
 
 // ---- Inventory count summary (by category → subcategory) ----
 public record SubCategoryCount(int? SubCategoryId, string SubCategoryName, int ProductCount, int TotalUnits);

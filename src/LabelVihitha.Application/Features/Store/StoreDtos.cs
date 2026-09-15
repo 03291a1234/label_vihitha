@@ -2,6 +2,8 @@ using LabelVihitha.Domain.Enums;
 
 namespace LabelVihitha.Application.Features.Store;
 
+public record StoreVariantDto(int Id, string Size, int Available, bool InStock);
+
 /// <summary>Public product card for the storefront (no cost/margin exposed).</summary>
 public record StoreProductDto(
     int Id,
@@ -12,9 +14,10 @@ public record StoreProductDto(
     decimal Price,
     string? ImageUrl,
     int Available,
-    bool InStock);
+    bool InStock,
+    IReadOnlyList<StoreVariantDto> Variants);
 
-public record StoreCheckoutItem(int ProductId, int Quantity);
+public record StoreCheckoutItem(int ProductId, int Quantity, int? ProductVariantId = null);
 
 public record StoreCheckoutRequest(
     string CustomerName,

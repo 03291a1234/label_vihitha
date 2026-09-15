@@ -150,7 +150,12 @@ public static class DbSeeder
             OriginalPrice = p.OriginalPrice,
             SalePrice = p.SalePrice,
             QuantityOnHand = p.QuantityOnHand,
-            ReorderThreshold = p.ReorderThreshold
+            ReorderThreshold = p.ReorderThreshold,
+            // Every product gets at least one size variant so sales can draw stock down.
+            Variants = new List<ProductVariant>
+            {
+                new() { Size = "One Size", QuantityOnHand = p.QuantityOnHand }
+            }
         }).ToList();
         db.Products.AddRange(products);
         await db.SaveChangesAsync();

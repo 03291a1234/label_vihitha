@@ -11,7 +11,7 @@ export interface CheckoutBody {
   customerEmail?: string | null;
   paymentMethod: 'Zelle' | 'Cash';
   notes?: string | null;
-  items: { productId: number; quantity: number }[];
+  items: { productId: number; quantity: number; productVariantId?: number | null }[];
 }
 
 @Injectable({ providedIn: 'root' })

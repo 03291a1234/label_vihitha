@@ -136,8 +136,16 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             </td>
           </ng-container>
           <ng-container matColumnDef="size">
-            <th mat-header-cell *matHeaderCellDef>Size</th>
-            <td mat-cell *matCellDef="let p">{{ p.size || '—' }}</td>
+            <th mat-header-cell *matHeaderCellDef>Sizes in stock</th>
+            <td mat-cell *matCellDef="let p">
+              @if (p.variants?.length) {
+                <div class="sizes">
+                  @for (v of p.variants; track v.id) {
+                    <span class="size-chip" [class.out]="v.quantityOnHand === 0">{{ v.size }}·{{ v.quantityOnHand }}</span>
+                  }
+                </div>
+              } @else { — }
+            </td>
           </ng-container>
           <ng-container matColumnDef="costInr">
             <th mat-header-cell *matHeaderCellDef class="text-right">Cost (INR)</th>
@@ -187,6 +195,10 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .product-cell .thumb mat-icon { color: #b8b8c0; font-size: 22px; height: 22px; width: 22px; }
     .inv-icon { font-size: 14px; height: 14px; width: 14px; vertical-align: -2px; }
     .product-cell .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+    .sizes { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
+    .size-chip { background: var(--lv-rose-soft, #f7ebf0); color: var(--lv-wine); border-radius: 999px;
+      padding: 2px 8px; font-size: 12px; font-weight: 600; }
+    .size-chip.out { background: #f0f0f0; color: #999; text-decoration: line-through; }
     .summary { margin-bottom: 16px; padding: 0; overflow: hidden; }
     .summary-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; }
     .summary-head span { display: flex; align-items: center; gap: 8px; color: var(--lv-wine); }

@@ -11,9 +11,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { CustomerApi, OrderApi, ProductApi, CreateOrderItem } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
-import { Customer, Product } from '../../core/models';
+import { Customer, Product, ProductVariant } from '../../core/models';
 
-interface Line { product: Product; quantity: number; finalPrice: number; }
+interface Line { product: Product; variant: ProductVariant; quantity: number; finalPrice: number; }
 
 @Component({
   selector: 'app-order-create',
@@ -46,11 +46,19 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
         <div class="toolbar-row">
           <mat-form-field style="min-width:280px;">
             <mat-label>Product</mat-label>
-            <mat-select [(ngModel)]="pickProductId">
+            <mat-select [(ngModel)]="pickProductId" (selectionChange)="pickVariantId = null">
               @for (p of products(); track p.id) {
                 <mat-option [value]="p.id" [disabled]="p.quantityOnHand < 1">
                   {{ p.sku }} — {{ p.name }} ({{ p.quantityOnHand }} in stock)
                 </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field style="min-width:150px;">
+            <mat-label>Size</mat-label>
+            <mat-select [(ngModel)]="pickVariantId" [disabled]="!pickProductId">
+              @for (vr of pickVariants(); track vr.id) {
+                <mat-option [value]="vr.id" [disabled]="vr.quantityOnHand < 1">{{ vr.size }} ({{ vr.quantityOnHand }})</mat-option>
               }
             </mat-select>
           </mat-form-field>
@@ -66,12 +74,15 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
         <table mat-table [dataSource]="lines()" class="full">
           <ng-container matColumnDef="product">
             <th mat-header-cell *matHeaderCellDef>Product</th>
-            <td mat-cell *matCellDef="let l"><strong>{{ l.product.sku }}</strong> {{ l.product.name }}</td>
+            <td mat-cell *matCellDef="let l">
+              <strong>{{ l.product.sku }}</strong> {{ l.product.name }}
+              <span class="chip">{{ l.variant.size }}</span>
+            </td>
           </ng-container>
           <ng-container matColumnDef="quantity">
             <th mat-header-cell *matHeaderCellDef class="text-right">Qty</th>
             <td mat-cell *matCellDef="let l" class="text-right">
-              <input class="inline-num" type="number" min="1" [max]="l.product.quantityOnHand"
+              <input class="inline-num" type="number" min="1" [max]="l.variant.quantityOnHand"
                      [(ngModel)]="l.quantity" (ngModelChange)="touch()" />
             </td>
           </ng-container>
@@ -139,8 +150,13 @@ export class OrderCreateComponent {
   customerId: number | null = null;
   notes = '';
   pickProductId: number | null = null;
+  pickVariantId: number | null = null;
   pickQty = 1;
   cols = ['product', 'quantity', 'salePrice', 'finalPrice', 'lineTotal', 'actions'];
+
+  pickVariants(): ProductVariant[] {
+    return this.products().find(p => p.id === this.pickProductId)?.variants ?? [];
+  }
 
   // Recompute triggers via a version signal bumped on edits.
   private v = signal(0);
@@ -158,12 +174,14 @@ export class OrderCreateComponent {
   addLine() {
     const p = this.products().find(x => x.id === this.pickProductId);
     if (!p) { this.notify.error(null, 'Pick a product first'); return; }
+    const variant = p.variants.find(v => v.id === this.pickVariantId);
+    if (!variant) { this.notify.error(null, 'Pick a size'); return; }
     const qty = Math.max(1, Math.floor(this.pickQty || 1));
-    if (qty > p.quantityOnHand) { this.notify.error(null, `Only ${p.quantityOnHand} in stock`); return; }
-    const existing = this.lines().find(l => l.product.id === p.id);
-    if (existing) { this.notify.error(null, 'Product already added — edit its quantity'); return; }
-    this.lines.update(ls => [...ls, { product: p, quantity: qty, finalPrice: p.salePrice }]);
-    this.pickProductId = null; this.pickQty = 1;
+    if (qty > variant.quantityOnHand) { this.notify.error(null, `Only ${variant.quantityOnHand} of size ${variant.size} in stock`); return; }
+    const existing = this.lines().find(l => l.variant.id === variant.id);
+    if (existing) { this.notify.error(null, 'That size is already added — edit its quantity'); return; }
+    this.lines.update(ls => [...ls, { product: p, variant, quantity: qty, finalPrice: p.salePrice }]);
+    this.pickProductId = null; this.pickVariantId = null; this.pickQty = 1;
     this.touch();
   }
 
@@ -173,7 +191,7 @@ export class OrderCreateComponent {
     if (!this.customerId || this.lines().length === 0) return;
     this.saving.set(true);
     const items: CreateOrderItem[] = this.lines().map(l => ({
-      productId: l.product.id, quantity: l.quantity, finalPrice: l.finalPrice
+      productId: l.product.id, quantity: l.quantity, finalPrice: l.finalPrice, productVariantId: l.variant.id
     }));
     this.orderApi.create({ customerId: this.customerId, notes: this.notes || null, items }).subscribe({
       next: (o) => { this.notify.success(`Order ${o.orderNumber} created`); this.router.navigate(['/orders', o.id]); },

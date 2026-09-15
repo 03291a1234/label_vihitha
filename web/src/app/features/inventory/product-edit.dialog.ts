@@ -1,5 +1,5 @@
 import { Component, Inject, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -73,14 +73,6 @@ import { Category, SubCategory, Inventory, Vendor, Product } from '../../core/mo
           </mat-form-field>
         </div>
         <div class="form-row">
-          <mat-form-field>
-            <mat-label>Size</mat-label>
-            <mat-select formControlName="size">
-              <mat-option [value]="''">—</mat-option>
-              @for (z of sizeOptions(); track z) { <mat-option [value]="z">{{ z }}</mat-option> }
-            </mat-select>
-            <mat-hint>{{ sizeHint() }}</mat-hint>
-          </mat-form-field>
           <mat-form-field><mat-label>Color</mat-label><input matInput formControlName="color" /></mat-form-field>
           <mat-form-field><mat-label>Material</mat-label><input matInput formControlName="material" /></mat-form-field>
         </div>
@@ -96,14 +88,38 @@ import { Category, SubCategory, Inventory, Vendor, Product } from '../../core/mo
             <input matInput type="number" formControlName="salePrice" />
           </mat-form-field>
         </div>
+        <div class="variants">
+          <div class="variants-head">
+            <span class="v-label">Sizes &amp; stock</span>
+            <span class="muted">Total: <strong>{{ totalQty() }}</strong> units</span>
+          </div>
+          @if (suggestions().length) {
+            <div class="quick">
+              <span class="muted">Quick add:</span>
+              @for (z of suggestions(); track z) {
+                <button type="button" class="chip-btn" (click)="addVariant(z)" [disabled]="hasSize(z)">{{ z }}</button>
+              }
+            </div>
+          }
+          <div formArrayName="variants">
+            @for (row of variants.controls; track row; let i = $index) {
+              <div class="vrow" [formGroupName]="i">
+                <mat-form-field class="v-size"><mat-label>Size</mat-label>
+                  <input matInput formControlName="size" placeholder="e.g. M or 2*6" /></mat-form-field>
+                <mat-form-field class="v-qty"><mat-label>Qty</mat-label>
+                  <input matInput type="number" formControlName="quantityOnHand" /></mat-form-field>
+                <button mat-icon-button type="button" color="warn" (click)="removeVariant(i)"
+                        [disabled]="variants.length === 1" title="Remove size"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+          </div>
+          <button mat-stroked-button type="button" (click)="addVariant('')"><mat-icon>add</mat-icon> Add size</button>
+        </div>
         <div class="form-row">
-          <mat-form-field>
-            <mat-label>Quantity on hand</mat-label>
-            <input matInput type="number" formControlName="quantityOnHand" />
-          </mat-form-field>
           <mat-form-field>
             <mat-label>Reorder threshold</mat-label>
             <input matInput type="number" formControlName="reorderThreshold" />
+            <mat-hint>Low-stock alert when total ≤ this</mat-hint>
           </mat-form-field>
         </div>
         <div class="photo">
@@ -149,6 +165,16 @@ import { Category, SubCategory, Inventory, Vendor, Product } from '../../core/mo
     .photo-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
     .photo-actions button mat-spinner { display: inline-block; margin-right: 6px; }
     .photo-hint { font-size: 12px; }
+    .variants { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px 14px; margin: 6px 0 12px; }
+    .variants-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .v-label { font-weight: 600; color: var(--lv-wine); }
+    .quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 12px; }
+    .chip-btn { border: 1px solid var(--lv-rose-soft, #ecd4de); background: var(--lv-rose-soft, #f7ebf0); color: var(--lv-wine);
+      border-radius: 999px; padding: 3px 11px; font-weight: 600; cursor: pointer; font-size: 12px; }
+    .chip-btn:disabled { opacity: .4; cursor: default; }
+    .vrow { display: flex; align-items: center; gap: 8px; }
+    .vrow .v-size { flex: 1; }
+    .vrow .v-qty { width: 110px; }
   `]
 })
 export class ProductEditDialog {
@@ -165,13 +191,15 @@ export class ProductEditDialog {
   subCategories = signal<SubCategory[]>([]);
   inventories = signal<Inventory[]>([]);
   vendors = signal<Vendor[]>([]);
-  sizeOptions = signal<string[]>([]);
-  sizeHint = signal('');
-  /** Default garment sizes, used when the chosen subcategory has no sizes of its own. */
+  /** Suggested sizes for quick-add: the subcategory's own sizes, else standard S–XXXL. */
+  suggestions = signal<string[]>([]);
   private readonly standardSizes = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
   saving = signal(false);
   uploading = signal(false);
   previewUrl = signal<string | null>(null);
+
+  /** Per-size stock rows (each: { size, quantityOnHand }). */
+  variants = this.fb.array<FormGroup>([]);
 
   form = this.fb.nonNullable.group({
     categoryId: [null as number | null, Validators.required],
@@ -180,13 +208,13 @@ export class ProductEditDialog {
     vendorId: [null as number | null],
     sku: ['', [Validators.required, Validators.maxLength(50)]],
     name: ['', [Validators.required, Validators.maxLength(200)]],
-    size: [''], color: [''], material: [''],
+    color: [''], material: [''],
     originalPrice: [0, [Validators.min(0)]],
     salePrice: [0, [Validators.min(0)]],
-    quantityOnHand: [0, [Validators.min(0)]],
     reorderThreshold: [0, [Validators.min(0)]],
     imageUrl: [''],
-    isActive: [true]
+    isActive: [true],
+    variants: this.variants
   });
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: Product | null) {
@@ -199,15 +227,40 @@ export class ProductEditDialog {
         inventoryId: data.inventoryId ?? null,
         vendorId: data.vendorId ?? null,
         sku: data.sku, name: data.name,
-        size: data.size ?? '', color: data.color ?? '', material: data.material ?? '',
+        color: data.color ?? '', material: data.material ?? '',
         originalPrice: data.originalPrice, salePrice: data.salePrice,
-        quantityOnHand: data.quantityOnHand, reorderThreshold: data.reorderThreshold,
+        reorderThreshold: data.reorderThreshold,
         imageUrl: data.imageUrl ?? '', isActive: data.isActive
       });
+      for (const v of data.variants ?? []) this.variants.push(this.makeVariant(v.size, v.quantityOnHand));
       this.previewUrl.set(resolveImageUrl(data.imageUrl));
       this.loadSubCategories(data.categoryId);
     }
+    if (this.variants.length === 0) this.variants.push(this.makeVariant('', 0));
     this.updateSizeOptions();
+  }
+
+  private makeVariant(size: string, qty: number): FormGroup {
+    return this.fb.group({
+      size: this.fb.nonNullable.control(size, Validators.required),
+      quantityOnHand: this.fb.nonNullable.control(qty, [Validators.min(0)])
+    });
+  }
+
+  addVariant(size: string) {
+    if (size && this.hasSize(size)) return;
+    this.variants.push(this.makeVariant(size, 0));
+  }
+
+  removeVariant(i: number) { this.variants.removeAt(i); }
+
+  hasSize(z: string): boolean {
+    const t = z.trim().toLowerCase();
+    return this.variants.controls.some(c => String(c.value.size ?? '').trim().toLowerCase() === t);
+  }
+
+  totalQty(): number {
+    return this.variants.controls.reduce((s, c) => s + (Number(c.value.quantityOnHand) || 0), 0);
   }
 
   private loadSubCategories(catId: number | null) {
@@ -223,10 +276,7 @@ export class ProductEditDialog {
   updateSizeOptions() {
     const subId = this.form.controls.subCategoryId.value;
     const subSizes = this.subCategories().find(s => s.id === subId)?.sizes ?? [];
-    const base = subSizes.length ? subSizes : this.standardSizes;
-    const current = this.form.controls.size.value;
-    this.sizeOptions.set(current && !base.includes(current) ? [current, ...base] : base);
-    this.sizeHint.set(subSizes.length ? 'From the subcategory' : 'Standard sizes');
+    this.suggestions.set(subSizes.length ? subSizes : this.standardSizes);
   }
 
   /** On create, prefill prices from the category's defaults; always refresh subcategories. */
@@ -269,15 +319,21 @@ export class ProductEditDialog {
 
   save() {
     if (this.form.invalid) return;
+    const variants = this.variants.controls
+      .map(c => ({ size: String(c.value.size ?? '').trim(), quantityOnHand: Number(c.value.quantityOnHand) || 0 }))
+      .filter(x => x.size.length > 0);
+    if (variants.length === 0) { this.notify.error(null, 'Add at least one size with stock.'); return; }
+
     this.saving.set(true);
-    const v = this.form.getRawValue();
+    const { variants: _omit, ...scalars } = this.form.getRawValue() as Record<string, unknown>;
+    const body = { ...scalars, quantityOnHand: this.totalQty(), variants };
     if (this.data) {
-      this.api.update(this.data.id, { ...v, rowVersion: this.data.rowVersion }).subscribe({
+      this.api.update(this.data.id, { ...body, rowVersion: this.data.rowVersion }).subscribe({
         next: () => { this.notify.success('Product saved'); this.ref.close(true); },
         error: (e) => { this.saving.set(false); this.notify.error(e); }
       });
     } else {
-      this.api.create(v).subscribe({
+      this.api.create(body).subscribe({
         next: () => { this.notify.success('Product created'); this.ref.close(true); },
         error: (e) => { this.saving.set(false); this.notify.error(e); }
       });

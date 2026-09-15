@@ -13,6 +13,7 @@ public interface IApplicationDbContext
     DbSet<Inventory> Inventories { get; }
     DbSet<Vendor> Vendors { get; }
     DbSet<Product> Products { get; }
+    DbSet<ProductVariant> ProductVariants { get; }
     DbSet<Customer> Customers { get; }
     DbSet<Order> Orders { get; }
     DbSet<OrderItem> OrderItems { get; }

@@ -39,8 +39,12 @@ public class Product : BaseEntity
     /// <summary>Listed/marked price before negotiation or discount.</summary>
     public decimal SalePrice { get; set; }
 
+    /// <summary>Total stock across all size variants (kept in sync = sum of variants).</summary>
     public int QuantityOnHand { get; set; }
     public int ReorderThreshold { get; set; }
+
+    /// <summary>Per-size stock breakdown. Every product has at least one variant.</summary>
+    public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
     public string? ImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
 

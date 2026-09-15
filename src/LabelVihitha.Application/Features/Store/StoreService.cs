@@ -42,7 +42,10 @@ public class StoreService : IStoreService
             .Select(p => new StoreProductDto(
                 p.Id, p.SKU, p.Name, p.Category.Name,
                 p.SubCategory != null ? p.SubCategory.Name : null,
-                p.SalePrice, p.ImageUrl, p.QuantityOnHand, p.QuantityOnHand > 0))
+                p.SalePrice, p.ImageUrl, p.QuantityOnHand, p.QuantityOnHand > 0,
+                p.Variants.Where(v => !v.IsDeleted).OrderBy(v => v.Id)
+                    .Select(v => new StoreVariantDto(v.Id, v.Size, v.QuantityOnHand, v.QuantityOnHand > 0))
+                    .ToList()))
             .ToListAsync(ct);
     }
 
@@ -56,7 +59,7 @@ public class StoreService : IStoreService
         var order = await _orders.CreateAsync(new CreateOrderRequest(
             customer.Id,
             request.Notes,
-            request.Items.Select(i => new CreateOrderItemRequest(i.ProductId, i.Quantity, null)).ToList()), ct);
+            request.Items.Select(i => new CreateOrderItemRequest(i.ProductId, i.Quantity, null, i.ProductVariantId)).ToList()), ct);
 
         // Storefront purchases are committed immediately.
         await _orders.UpdateStatusAsync(order.Id, new UpdateOrderStatusRequest(OrderStatus.Confirmed), ct);

@@ -130,14 +130,18 @@ public class OrderService : IOrderService
         if (request.Quantity < 1)
             throw new ConflictException("Quantity must be at least 1.");
 
-        var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId, ct)
+        var product = await _db.Products.Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == item.ProductId, ct)
             ?? throw new NotFoundException(nameof(Product), item.ProductId);
+        var variant = item.ProductVariantId is int vid ? product.Variants.FirstOrDefault(v => v.Id == vid) : null;
 
-        // Adjust stock by the delta between old and new quantity.
+        // Adjust stock by the delta between old and new quantity (on the item's size variant).
         var delta = request.Quantity - item.Quantity;
-        if (delta > 0 && product.QuantityOnHand < delta)
-            throw new ConflictException($"Insufficient stock for '{product.Name}'. Available: {product.QuantityOnHand}.");
+        var available = variant?.QuantityOnHand ?? product.QuantityOnHand;
+        if (delta > 0 && available < delta)
+            throw new ConflictException(
+                $"Insufficient stock for '{product.Name}'{(variant != null ? $" (size {variant.Size})" : "")}. Available: {available}.");
         product.QuantityOnHand -= delta;
+        if (variant is not null) variant.QuantityOnHand -= delta;
 
         item.Quantity = request.Quantity;
         item.FinalPriceAtSale = request.FinalPrice ?? item.FinalPriceAtSale;
@@ -160,9 +164,9 @@ public class OrderService : IOrderService
         if (order.Items.Count(i => !i.IsDeleted) == 1)
             throw new ConflictException("An order must keep at least one line item. Cancel the order instead.");
 
-        var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId, ct);
+        var product = await _db.Products.Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == item.ProductId, ct);
         if (product is not null)
-            product.QuantityOnHand += item.Quantity; // return stock
+            RestockItem(item, product); // return stock to the size variant
 
         item.IsDeleted = true;
         item.UpdatedAt = DateTime.UtcNow;
@@ -188,24 +192,30 @@ public class OrderService : IOrderService
         return order;
     }
 
-    /// <summary>Builds a line, snapshotting prices and decrementing product stock.</summary>
+    /// <summary>Builds a line, snapshotting prices and decrementing the chosen size's stock.</summary>
     private async Task<OrderItem> BuildLineAsync(CreateOrderItemRequest line, CancellationToken ct)
     {
         if (line.Quantity < 1)
             throw new ConflictException("Quantity must be at least 1.");
 
-        var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == line.ProductId, ct)
+        var product = await _db.Products.Include(p => p.Variants)
+            .FirstOrDefaultAsync(p => p.Id == line.ProductId, ct)
             ?? throw new NotFoundException(nameof(Product), line.ProductId);
 
-        if (product.QuantityOnHand < line.Quantity)
-            throw new ConflictException($"Insufficient stock for '{product.Name}'. Available: {product.QuantityOnHand}.");
+        var variant = ResolveVariant(product, line.ProductVariantId);
+        if (variant.QuantityOnHand < line.Quantity)
+            throw new ConflictException(
+                $"Insufficient stock for '{product.Name}' (size {variant.Size}). Available: {variant.QuantityOnHand}.");
 
+        variant.QuantityOnHand -= line.Quantity;
         product.QuantityOnHand -= line.Quantity;
 
         var finalPrice = line.FinalPrice ?? product.SalePrice;
         return new OrderItem
         {
             ProductId = product.Id,
+            ProductVariantId = variant.Id,
+            Size = variant.Size,
             Quantity = line.Quantity,
             OriginalPriceAtSale = product.OriginalPrice,
             SalePriceAtSale = product.SalePrice,
@@ -215,15 +225,38 @@ public class OrderService : IOrderService
         };
     }
 
+    /// <summary>Pick the size variant to sell: the requested one, or the only one if unambiguous.</summary>
+    private static ProductVariant ResolveVariant(Product product, int? variantId)
+    {
+        var active = product.Variants.Where(v => !v.IsDeleted).ToList();
+        if (variantId is int vid)
+            return active.FirstOrDefault(v => v.Id == vid)
+                ?? throw new ConflictException($"The selected size is not available for '{product.Name}'.");
+        if (active.Count == 1) return active[0];
+        if (active.Count == 0) throw new ConflictException($"'{product.Name}' has no stock configured.");
+        throw new ConflictException($"Select a size for '{product.Name}'.");
+    }
+
+    /// <summary>Return an item's quantity to its size variant (and the product total).</summary>
+    private static void RestockItem(OrderItem item, Product product)
+    {
+        product.QuantityOnHand += item.Quantity;
+        if (item.ProductVariantId is int vid)
+        {
+            var variant = product.Variants.FirstOrDefault(v => v.Id == vid);
+            if (variant is not null) variant.QuantityOnHand += item.Quantity;
+        }
+    }
+
     private async Task RestockAsync(Order order, CancellationToken ct)
     {
         var productIds = order.Items.Where(i => !i.IsDeleted).Select(i => i.ProductId).ToList();
-        var products = await _db.Products.Where(p => productIds.Contains(p.Id)).ToListAsync(ct);
+        var products = await _db.Products.Include(p => p.Variants)
+            .Where(p => productIds.Contains(p.Id)).ToListAsync(ct);
         foreach (var item in order.Items.Where(i => !i.IsDeleted))
         {
             var product = products.FirstOrDefault(p => p.Id == item.ProductId);
-            if (product is not null)
-                product.QuantityOnHand += item.Quantity;
+            if (product is not null) RestockItem(item, product);
         }
     }
 
@@ -296,6 +329,7 @@ public class OrderService : IOrderService
             .OrderBy(i => i.Id)
             .Select(i => new OrderItemDto(
                 i.Id, i.ProductId, i.Product?.Name ?? string.Empty, i.Product?.SKU ?? string.Empty,
+                i.ProductVariantId, i.Size,
                 i.Quantity, i.OriginalPriceAtSale, i.SalePriceAtSale, i.FinalPriceAtSale,
                 i.DiscountAmount, i.LineTotal))
             .ToList());
