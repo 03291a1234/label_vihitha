@@ -41,8 +41,9 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
     }
   `,
   styles: [`
+    :host { display: block; }
     .money { display: flex; gap: 10px; align-items: center; }
-    .money .amt { flex: 1; }
+    .money .amt { flex: 1; min-width: 0; }
     .equiv { font-size: 12px; margin: -10px 0 8px; }
   `]
 })

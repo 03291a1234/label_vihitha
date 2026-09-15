@@ -23,20 +23,22 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
     <h2 mat-dialog-title>Capital ledger · {{ data.name }}</h2>
     <mat-dialog-content>
       <div class="add">
-        <mat-form-field>
-          <mat-label>Type</mat-label>
-          <mat-select [(ngModel)]="type">
-            <mat-option value="Contribution">Contribution</mat-option>
-            <mat-option value="Withdrawal">Withdrawal</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <app-money-input class="amt" [(ngModel)]="amount" label="Amount" />
-        <mat-form-field>
-          <mat-label>Date</mat-label>
-          <input matInput type="date" [(ngModel)]="date" />
-        </mat-form-field>
-        <button mat-raised-button color="primary" (click)="add()" [disabled]="!amount || busy()">
-          <mat-icon>add</mat-icon> Add
+        <div class="add-top">
+          <mat-form-field class="grow">
+            <mat-label>Type</mat-label>
+            <mat-select [(ngModel)]="type">
+              <mat-option value="Contribution">Contribution</mat-option>
+              <mat-option value="Withdrawal">Withdrawal</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field class="grow">
+            <mat-label>Date</mat-label>
+            <input matInput type="date" [(ngModel)]="date" />
+          </mat-form-field>
+        </div>
+        <app-money-input [(ngModel)]="amount" label="Amount" />
+        <button mat-raised-button color="primary" class="add-btn" (click)="add()" [disabled]="!amount || busy()">
+          <mat-icon>add</mat-icon> Add movement
         </button>
       </div>
 
@@ -61,8 +63,10 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
     </mat-dialog-actions>
   `,
   styles: [`
-    .add { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
-    .add .amt { width: 140px; }
+    .add { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .add-top { display: flex; gap: 8px; }
+    .add-top .grow { flex: 1; }
+    .add-btn { align-self: flex-start; margin-top: 4px; }
     .empty { padding: 14px 4px; }
     .trow { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0; padding: 8px 0; }
     .info { flex: 1; display: flex; flex-direction: column; }
