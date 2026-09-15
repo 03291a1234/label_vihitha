@@ -223,3 +223,62 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         b.Property(x => x.ChangedBy).HasMaxLength(100);
     }
 }
+
+public class ExpenseCategoryConfiguration : IEntityTypeConfiguration<ExpenseCategory>
+{
+    public void Configure(EntityTypeBuilder<ExpenseCategory> b)
+    {
+        b.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        b.Property(x => x.Description).HasMaxLength(500);
+        b.HasIndex(x => x.Name).IsUnique().HasFilter("[IsDeleted] = 0");
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
+{
+    public void Configure(EntityTypeBuilder<Expense> b)
+    {
+        b.Property(x => x.Description).HasMaxLength(300);
+        b.Property(x => x.Notes).HasMaxLength(1000);
+        b.HasIndex(x => x.Date);
+
+        b.HasOne(x => x.ExpenseCategory)
+            .WithMany(c => c.Expenses)
+            .HasForeignKey(x => x.ExpenseCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public class OwnerConfiguration : IEntityTypeConfiguration<Owner>
+{
+    public void Configure(EntityTypeBuilder<Owner> b)
+    {
+        b.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        b.Property(x => x.Email).HasMaxLength(200);
+        b.Property(x => x.Phone).HasMaxLength(30);
+        b.Property(x => x.Notes).HasMaxLength(1000);
+        // Percentages carry two decimals like money (decimal(18,2) via the global convention).
+        b.HasIndex(x => x.Name).IsUnique().HasFilter("[IsDeleted] = 0");
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public class OwnerTransactionConfiguration : IEntityTypeConfiguration<OwnerTransaction>
+{
+    public void Configure(EntityTypeBuilder<OwnerTransaction> b)
+    {
+        b.Property(x => x.Notes).HasMaxLength(500);
+        b.Property(x => x.Type).HasConversion<string>().HasMaxLength(20);
+        b.HasIndex(x => x.Date);
+
+        b.HasOne(x => x.Owner)
+            .WithMany(o => o.Transactions)
+            .HasForeignKey(x => x.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}

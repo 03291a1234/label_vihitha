@@ -34,6 +34,10 @@ public class ApplicationDbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<OrderFollowUp> OrderFollowUps => Set<OrderFollowUp>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<Owner> Owners => Set<Owner>();
+    public DbSet<OwnerTransaction> OwnerTransactions => Set<OwnerTransaction>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

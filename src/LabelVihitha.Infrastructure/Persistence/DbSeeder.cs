@@ -24,6 +24,16 @@ public static class DbSeeder
         await SeedRolesAsync(sp);
         await SeedOwnerAsync(sp);
         await SeedCatalogAsync(db, logger);
+        await SeedExpenseCategoriesAsync(db);
+    }
+
+    private static async Task SeedExpenseCategoriesAsync(ApplicationDbContext db)
+    {
+        if (await db.ExpenseCategories.AnyAsync()) return;
+
+        var defaults = new[] { "Shipping", "Tags", "Hangers", "Covers", "Racks" };
+        db.ExpenseCategories.AddRange(defaults.Select(name => new ExpenseCategory { Name = name, IsActive = true }));
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedRolesAsync(IServiceProvider sp)

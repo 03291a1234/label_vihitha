@@ -20,6 +20,10 @@ public interface IApplicationDbContext
     DbSet<Payment> Payments { get; }
     DbSet<OrderFollowUp> OrderFollowUps { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<ExpenseCategory> ExpenseCategories { get; }
+    DbSet<Expense> Expenses { get; }
+    DbSet<Owner> Owners { get; }
+    DbSet<OwnerTransaction> OwnerTransactions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

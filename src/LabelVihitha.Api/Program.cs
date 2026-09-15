@@ -44,7 +44,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options => options.AddPolicy(CorsPolicy, policy =>
-    policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+{
+    // "*" opens CORS to any origin (auth is Bearer-token, not cookie-based, so this is
+    // safe) — used for temporary public tunnels; otherwise restrict to the configured list.
+    if (allowedOrigins.Contains("*"))
+        policy.SetIsOriginAllowed(_ => true).AllowAnyHeader().AllowAnyMethod();
+    else
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+}));
 
 // --- Swagger with Bearer auth ---
 builder.Services.AddEndpointsApiExplorer();

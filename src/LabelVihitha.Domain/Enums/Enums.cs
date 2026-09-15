@@ -30,3 +30,10 @@ public enum FollowUpStatus
     InProgress = 1,
     Resolved = 2
 }
+
+/// <summary>Owner equity movement: capital put into the business, or drawn out of it.</summary>
+public enum OwnerTransactionType
+{
+    Contribution = 0,
+    Withdrawal = 1
+}
