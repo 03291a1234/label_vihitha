@@ -24,7 +24,6 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
           <span class="emblem"><img src="logo.jpeg" alt="Vihitha" /></span>
           <div class="brand-text">
             <div class="name">Vihitha</div>
-            <div class="tag">Every thread · every style</div>
           </div>
         </a>
         <mat-nav-list>
@@ -79,10 +78,6 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
     .brand .name {
       font-family: "Cormorant Garamond", Georgia, serif; font-size: 24px; font-weight: 700;
       color: #fff; line-height: 1;
-    }
-    .brand .tag {
-      font-size: 9.5px; letter-spacing: 1.6px; text-transform: uppercase;
-      color: #d9b24c; margin-top: 5px;
     }
 
     /* Nav — high-contrast labels fix the readability issue */
