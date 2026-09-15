@@ -73,18 +73,14 @@ import { Category, SubCategory, Inventory, Vendor, Product } from '../../core/mo
           </mat-form-field>
         </div>
         <div class="form-row">
-          @if (sizeOptions().length) {
-            <mat-form-field>
-              <mat-label>Size</mat-label>
-              <mat-select formControlName="size">
-                <mat-option [value]="''">—</mat-option>
-                @for (z of sizeOptions(); track z) { <mat-option [value]="z">{{ z }}</mat-option> }
-              </mat-select>
-              <mat-hint>From the subcategory</mat-hint>
-            </mat-form-field>
-          } @else {
-            <mat-form-field><mat-label>Size</mat-label><input matInput formControlName="size" /></mat-form-field>
-          }
+          <mat-form-field>
+            <mat-label>Size</mat-label>
+            <mat-select formControlName="size">
+              <mat-option [value]="''">—</mat-option>
+              @for (z of sizeOptions(); track z) { <mat-option [value]="z">{{ z }}</mat-option> }
+            </mat-select>
+            <mat-hint>{{ sizeHint() }}</mat-hint>
+          </mat-form-field>
           <mat-form-field><mat-label>Color</mat-label><input matInput formControlName="color" /></mat-form-field>
           <mat-form-field><mat-label>Material</mat-label><input matInput formControlName="material" /></mat-form-field>
         </div>
@@ -170,6 +166,9 @@ export class ProductEditDialog {
   inventories = signal<Inventory[]>([]);
   vendors = signal<Vendor[]>([]);
   sizeOptions = signal<string[]>([]);
+  sizeHint = signal('');
+  /** Default garment sizes, used when the chosen subcategory has no sizes of its own. */
+  private readonly standardSizes = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
   saving = signal(false);
   uploading = signal(false);
   previewUrl = signal<string | null>(null);
@@ -208,19 +207,26 @@ export class ProductEditDialog {
       this.previewUrl.set(resolveImageUrl(data.imageUrl));
       this.loadSubCategories(data.categoryId);
     }
+    this.updateSizeOptions();
   }
 
   private loadSubCategories(catId: number | null) {
-    if (!catId) { this.subCategories.set([]); this.sizeOptions.set([]); return; }
+    if (!catId) { this.subCategories.set([]); this.updateSizeOptions(); return; }
     this.subApi.list(catId, false).subscribe(s => { this.subCategories.set(s); this.updateSizeOptions(); });
   }
 
-  /** Size options come from the selected subcategory; keep the current value if it's not listed. */
+  /**
+   * Size options: the chosen subcategory's own sizes if it defines any, otherwise the
+   * standard S–XXXL list. The current value is kept selectable even when it isn't listed
+   * (e.g. legacy or subcategory-specific values like "2.6").
+   */
   updateSizeOptions() {
     const subId = this.form.controls.subCategoryId.value;
-    const sizes = this.subCategories().find(s => s.id === subId)?.sizes ?? [];
+    const subSizes = this.subCategories().find(s => s.id === subId)?.sizes ?? [];
+    const base = subSizes.length ? subSizes : this.standardSizes;
     const current = this.form.controls.size.value;
-    this.sizeOptions.set(current && !sizes.includes(current) ? [current, ...sizes] : sizes);
+    this.sizeOptions.set(current && !base.includes(current) ? [current, ...base] : base);
+    this.sizeHint.set(subSizes.length ? 'From the subcategory' : 'Standard sizes');
   }
 
   /** On create, prefill prices from the category's defaults; always refresh subcategories. */
