@@ -20,6 +20,10 @@ public class Product : BaseEntity
     public int? InventoryId { get; set; }
     public Inventory? Inventory { get; set; }
 
+    /// <summary>Optional supplier this product was purchased from.</summary>
+    public int? VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
+
     public string SKU { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }

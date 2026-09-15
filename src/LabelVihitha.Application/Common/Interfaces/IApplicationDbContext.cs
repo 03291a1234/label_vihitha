@@ -11,6 +11,7 @@ public interface IApplicationDbContext
     DbSet<Category> Categories { get; }
     DbSet<SubCategory> SubCategories { get; }
     DbSet<Inventory> Inventories { get; }
+    DbSet<Vendor> Vendors { get; }
     DbSet<Product> Products { get; }
     DbSet<Customer> Customers { get; }
     DbSet<Order> Orders { get; }

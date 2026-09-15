@@ -13,10 +13,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, resolveImageUrl } from '../../core/services/api.services';
+import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Category, SubCategory, Inventory, InventorySummary, Product } from '../../core/models';
+import { Category, SubCategory, Inventory, Vendor, InventorySummary, Product } from '../../core/models';
 import { ProductEditDialog } from './product-edit.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
@@ -97,6 +97,13 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             @for (i of inventories(); track i.id) { <mat-option [value]="i.id">{{ i.name }}</mat-option> }
           </mat-select>
         </mat-form-field>
+        <mat-form-field>
+          <mat-label>Vendor</mat-label>
+          <mat-select [(ngModel)]="vendorId" (selectionChange)="reload()">
+            <mat-option [value]="null">All</mat-option>
+            @for (v of vendors(); track v.id) { <mat-option [value]="v.id">{{ v.name }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
         <mat-slide-toggle [(ngModel)]="lowStockOnly" (change)="reload()">Low stock only</mat-slide-toggle>
       </div>
 
@@ -120,7 +127,10 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
                   <strong>{{ p.name }}</strong>
                   @if (!p.isActive) { <span class="chip Cancelled">inactive</span> }
                   <div class="muted">{{ p.categoryName }}@if (p.subCategoryName) { · {{ p.subCategoryName }} }@if (p.color) { · {{ p.color }} }</div>
-                  @if (p.inventoryName) { <div class="muted"><mat-icon class="inv-icon">inventory</mat-icon> {{ p.inventoryName }}</div> }
+                  <div class="muted meta">
+                    @if (p.inventoryName) { <span><mat-icon class="inv-icon">inventory</mat-icon> {{ p.inventoryName }}</span> }
+                    @if (p.vendorName) { <span><mat-icon class="inv-icon">storefront</mat-icon> {{ p.vendorName }}</span> }
+                  </div>
                 </div>
               </div>
             </td>
@@ -172,6 +182,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .product-cell .thumb img { width: 100%; height: 100%; object-fit: cover; }
     .product-cell .thumb mat-icon { color: #b8b8c0; font-size: 22px; height: 22px; width: 22px; }
     .inv-icon { font-size: 14px; height: 14px; width: 14px; vertical-align: -2px; }
+    .product-cell .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
     .summary { margin-bottom: 16px; padding: 0; overflow: hidden; }
     .summary-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; }
     .summary-head span { display: flex; align-items: center; gap: 8px; color: var(--lv-wine); }
@@ -193,6 +204,7 @@ export class ProductListComponent {
   private catApi = inject(CategoryApi);
   private subApi = inject(SubCategoryApi);
   private invApi = inject(InventoryApi);
+  private vendorApi = inject(VendorApi);
   private route = inject(ActivatedRoute);
   private dialog = inject(MatDialog);
   private notify = inject(Notify);
@@ -205,6 +217,7 @@ export class ProductListComponent {
   categories = signal<Category[]>([]);
   subCategories = signal<SubCategory[]>([]);
   inventories = signal<Inventory[]>([]);
+  vendors = signal<Vendor[]>([]);
   summary = signal<InventorySummary | null>(null);
   showSummary = signal(true);
   total = signal(0);
@@ -214,6 +227,7 @@ export class ProductListComponent {
   categoryId: number | null = null;
   subCategoryId: number | null = null;
   inventoryId: number | null = null;
+  vendorId: number | null = null;
   lowStockOnly = false;
   sortBy: string | null = null;
   sortDir: string | null = null;
@@ -224,10 +238,12 @@ export class ProductListComponent {
   constructor() {
     this.catApi.list(false).subscribe(cs => this.categories.set(cs));
     this.invApi.list(false).subscribe(inv => this.inventories.set(inv));
-    // Preselect filters when drilled in from another screen (e.g. Inventories).
+    this.vendorApi.list(false).subscribe(vs => this.vendors.set(vs));
+    // Preselect filters when drilled in from another screen (e.g. Inventories, Vendors).
     this.route.queryParamMap.subscribe(q => {
       const num = (k: string) => (q.get(k) ? Number(q.get(k)) : null);
       this.inventoryId = num('inventoryId');
+      this.vendorId = num('vendorId');
       this.categoryId = num('categoryId');
       this.subCategoryId = num('subCategoryId');
       if (this.categoryId) this.subApi.list(this.categoryId, false).subscribe(s => this.subCategories.set(s));
@@ -257,6 +273,7 @@ export class ProductListComponent {
       categoryId: this.categoryId,
       subCategoryId: this.subCategoryId,
       inventoryId: this.inventoryId,
+      vendorId: this.vendorId,
       lowStockOnly: this.lowStockOnly,
       sortBy: this.sortBy, sortDir: this.sortDir,
       page: this.page, pageSize: this.pageSize

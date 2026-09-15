@@ -25,6 +25,8 @@ public class ProductService : IProductService
             q = q.Where(p => p.SubCategoryId == scid);
         if (query.InventoryId is int invId)
             q = q.Where(p => p.InventoryId == invId);
+        if (query.VendorId is int venId)
+            q = q.Where(p => p.VendorId == venId);
         if (query.IsActive is bool active)
             q = q.Where(p => p.IsActive == active);
         if (query.LowStockOnly)
@@ -36,7 +38,7 @@ public class ProductService : IProductService
         }
 
         var total = await q.CountAsync(ct);
-        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory), query.SortBy, query.SortDir);
+        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory).Include(p => p.Vendor), query.SortBy, query.SortDir);
         var entities = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -89,6 +91,7 @@ public class ProductService : IProductService
             .Include(p => p.Category)
             .Include(p => p.SubCategory)
             .Include(p => p.Inventory)
+            .Include(p => p.Vendor)
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
         return entity is null ? throw new NotFoundException(nameof(Product), id) : MapToDto(entity);
     }
@@ -101,12 +104,14 @@ public class ProductService : IProductService
         await EnsureSkuUniqueAsync(request.SKU, null, ct);
         await EnsureSubCategoryValidAsync(request.CategoryId, request.SubCategoryId, ct);
         await EnsureInventoryValidAsync(request.InventoryId, ct);
+        await EnsureVendorValidAsync(request.VendorId, ct);
 
         var entity = new Product
         {
             CategoryId = request.CategoryId,
             SubCategoryId = request.SubCategoryId,
             InventoryId = request.InventoryId,
+            VendorId = request.VendorId,
             SKU = request.SKU.Trim(),
             Name = request.Name.Trim(),
             Description = request.Description,
@@ -138,10 +143,12 @@ public class ProductService : IProductService
         await EnsureSkuUniqueAsync(request.SKU, id, ct);
         await EnsureSubCategoryValidAsync(request.CategoryId, request.SubCategoryId, ct);
         await EnsureInventoryValidAsync(request.InventoryId, ct);
+        await EnsureVendorValidAsync(request.VendorId, ct);
 
         entity.CategoryId = request.CategoryId;
         entity.SubCategoryId = request.SubCategoryId;
         entity.InventoryId = request.InventoryId;
+        entity.VendorId = request.VendorId;
         entity.SKU = request.SKU.Trim();
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
@@ -226,6 +233,14 @@ public class ProductService : IProductService
             throw new NotFoundException(nameof(Inventory), id);
     }
 
+    /// <summary>A chosen vendor (if any) must exist.</summary>
+    private async Task EnsureVendorValidAsync(int? vendorId, CancellationToken ct)
+    {
+        if (vendorId is not int id) return;
+        if (!await _db.Vendors.AnyAsync(v => v.Id == id && !v.IsDeleted, ct))
+            throw new NotFoundException(nameof(Vendor), id);
+    }
+
     private async Task EnsureSkuUniqueAsync(string sku, int? excludeId, CancellationToken ct)
     {
         var normalized = sku.Trim();
@@ -244,6 +259,8 @@ public class ProductService : IProductService
         p.SubCategory?.Name,
         p.InventoryId,
         p.Inventory?.Name,
+        p.VendorId,
+        p.Vendor?.Name,
         p.SKU,
         p.Name,
         p.Description,

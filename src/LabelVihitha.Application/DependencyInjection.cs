@@ -10,6 +10,7 @@ using LabelVihitha.Application.Features.Products;
 using LabelVihitha.Application.Features.Reports;
 using LabelVihitha.Application.Features.Store;
 using LabelVihitha.Application.Features.SubCategories;
+using LabelVihitha.Application.Features.Vendors;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LabelVihitha.Application;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<ISubCategoryService, SubCategoryService>();
         services.AddScoped<IInventoryGroupService, InventoryGroupService>();
+        services.AddScoped<IVendorService, VendorService>();
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IOrderService, OrderService>();

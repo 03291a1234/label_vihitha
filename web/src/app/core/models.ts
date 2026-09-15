@@ -51,6 +51,18 @@ export interface Inventory {
   categories: CategoryCount[];
 }
 
+export interface Vendor {
+  id: number;
+  name: string;
+  contactPerson?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
+  isActive: boolean;
+  productCount: number;
+  totalUnits: number;
+}
+
 export interface SubCategoryCount {
   subCategoryId?: number | null;
   subCategoryName: string;
@@ -78,6 +90,8 @@ export interface Product {
   subCategoryName?: string | null;
   inventoryId?: number | null;
   inventoryName?: string | null;
+  vendorId?: number | null;
+  vendorName?: string | null;
   sku: string;
   name: string;
   description?: string | null;

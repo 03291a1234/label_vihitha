@@ -48,6 +48,25 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasForeignKey(x => x.InventoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        b.HasOne(x => x.Vendor)
+            .WithMany(v => v.Products)
+            .HasForeignKey(x => x.VendorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public class VendorConfiguration : IEntityTypeConfiguration<Vendor>
+{
+    public void Configure(EntityTypeBuilder<Vendor> b)
+    {
+        b.Property(x => x.Name).IsRequired().HasMaxLength(100);
+        b.Property(x => x.ContactPerson).HasMaxLength(100);
+        b.Property(x => x.Phone).HasMaxLength(30);
+        b.Property(x => x.Email).HasMaxLength(200);
+        b.Property(x => x.Notes).HasMaxLength(1000);
+        b.HasIndex(x => x.Name).IsUnique().HasFilter("[IsDeleted] = 0");
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

@@ -128,6 +128,7 @@ export class ShellComponent {
     { label: 'Products', icon: 'inventory_2', path: '/products', show: () => true },
     { label: 'Inventories', icon: 'inventory', path: '/inventories', show: () => true },
     { label: 'Categories', icon: 'category', path: '/categories', show: () => true },
+    { label: 'Vendors', icon: 'storefront', path: '/vendors', show: () => true },
     { label: 'Customers', icon: 'group', path: '/customers', show: () => this.auth.canManageSales() }
   ];
 }

@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  Category, SubCategory, Inventory, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
+  Category, SubCategory, Inventory, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus
 } from '../models';
 
@@ -55,6 +55,22 @@ export class SubCategoryApi {
 }
 
 @Injectable({ providedIn: 'root' })
+export class VendorApi {
+  constructor(private http: HttpClient) {}
+  list(includeInactive = false): Observable<Vendor[]> {
+    return this.http.get<Vendor[]>(`${base}/vendors`, { params: toParams({ includeInactive }) });
+  }
+  get(id: number) { return this.http.get<Vendor>(`${base}/vendors/${id}`); }
+  create(body: { name: string; contactPerson?: string | null; phone?: string | null; email?: string | null; notes?: string | null }) {
+    return this.http.post<Vendor>(`${base}/vendors`, body);
+  }
+  update(id: number, body: { name: string; contactPerson?: string | null; phone?: string | null; email?: string | null; notes?: string | null; isActive: boolean }) {
+    return this.http.put<Vendor>(`${base}/vendors/${id}`, body);
+  }
+  remove(id: number) { return this.http.delete<void>(`${base}/vendors/${id}`); }
+}
+
+@Injectable({ providedIn: 'root' })
 export class InventoryApi {
   constructor(private http: HttpClient) {}
   list(includeInactive = false): Observable<Inventory[]> {
@@ -74,6 +90,7 @@ export interface ProductFilters {
   categoryId?: number | null;
   subCategoryId?: number | null;
   inventoryId?: number | null;
+  vendorId?: number | null;
   isActive?: boolean | null;
   lowStockOnly?: boolean;
   search?: string;
