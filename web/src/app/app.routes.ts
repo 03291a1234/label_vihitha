@@ -61,6 +61,18 @@ export const routes: Routes = [
         loadComponent: () => import('./features/vendors/vendor-list.component').then(m => m.VendorListComponent)
       },
       {
+        path: 'expenses',
+        loadComponent: () => import('./features/finance/expense-list.component').then(m => m.ExpenseListComponent)
+      },
+      {
+        path: 'owners',
+        loadComponent: () => import('./features/finance/owner-list.component').then(m => m.OwnerListComponent)
+      },
+      {
+        path: 'profit-loss',
+        loadComponent: () => import('./features/finance/profit-loss.component').then(m => m.ProfitLossComponent)
+      },
+      {
         path: 'customers',
         loadComponent: () => import('./features/customers/customer-list.component').then(m => m.CustomerListComponent)
       }

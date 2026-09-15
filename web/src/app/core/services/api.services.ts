@@ -4,7 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   Category, SubCategory, Inventory, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
-  FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus
+  FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
+  ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport
 } from '../models';
 
 const base = environment.apiUrl;
@@ -198,6 +199,78 @@ export interface FollowUpFilters {
   createdBy?: string | null;
   page?: number;
   pageSize?: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class ExpenseCategoryApi {
+  constructor(private http: HttpClient) {}
+  list(includeInactive = false): Observable<ExpenseCategory[]> {
+    return this.http.get<ExpenseCategory[]>(`${base}/expense-categories`, { params: toParams({ includeInactive }) });
+  }
+  create(body: { name: string; description?: string | null }) {
+    return this.http.post<ExpenseCategory>(`${base}/expense-categories`, body);
+  }
+  update(id: number, body: { name: string; description?: string | null; isActive: boolean }) {
+    return this.http.put<ExpenseCategory>(`${base}/expense-categories/${id}`, body);
+  }
+  remove(id: number) { return this.http.delete<void>(`${base}/expense-categories/${id}`); }
+}
+
+export interface ExpenseFilters {
+  categoryId?: number | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+  sortBy?: string | null;
+  sortDir?: string | null;
+  page?: number;
+  pageSize?: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class ExpenseApi {
+  constructor(private http: HttpClient) {}
+  list(filters: ExpenseFilters = {}): Observable<PagedResult<Expense>> {
+    return this.http.get<PagedResult<Expense>>(`${base}/expenses`, { params: toParams(filters as Record<string, unknown>) });
+  }
+  create(body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null }) {
+    return this.http.post<Expense>(`${base}/expenses`, body);
+  }
+  update(id: number, body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null }) {
+    return this.http.put<Expense>(`${base}/expenses/${id}`, body);
+  }
+  remove(id: number) { return this.http.delete<void>(`${base}/expenses/${id}`); }
+}
+
+@Injectable({ providedIn: 'root' })
+export class OwnerApi {
+  constructor(private http: HttpClient) {}
+  list(includeInactive = false): Observable<Owner[]> {
+    return this.http.get<Owner[]>(`${base}/owners`, { params: toParams({ includeInactive }) });
+  }
+  create(body: { name: string; email?: string | null; phone?: string | null; notes?: string | null; profitSharePercent: number }) {
+    return this.http.post<Owner>(`${base}/owners`, body);
+  }
+  update(id: number, body: { name: string; email?: string | null; phone?: string | null; notes?: string | null; profitSharePercent: number; isActive: boolean }) {
+    return this.http.put<Owner>(`${base}/owners/${id}`, body);
+  }
+  remove(id: number) { return this.http.delete<void>(`${base}/owners/${id}`); }
+  transactions(ownerId: number): Observable<OwnerTransaction[]> {
+    return this.http.get<OwnerTransaction[]>(`${base}/owners/${ownerId}/transactions`);
+  }
+  addTransaction(ownerId: number, body: { date: string; type: OwnerTransactionType; amount: number; notes?: string | null }) {
+    return this.http.post<OwnerTransaction>(`${base}/owners/${ownerId}/transactions`, body);
+  }
+  removeTransaction(ownerId: number, transactionId: number) {
+    return this.http.delete<void>(`${base}/owners/${ownerId}/transactions/${transactionId}`);
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class FinanceApi {
+  constructor(private http: HttpClient) {}
+  profitLoss(fromDate?: string | null, toDate?: string | null): Observable<ProfitLossReport> {
+    return this.http.get<ProfitLossReport>(`${base}/finance/profit-loss`, { params: toParams({ fromDate, toDate }) });
+  }
 }
 
 @Injectable({ providedIn: 'root' })

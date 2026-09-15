@@ -82,6 +82,88 @@ export interface InventorySummary {
   categories: CategoryCount[];
 }
 
+export type OwnerTransactionType = 'Contribution' | 'Withdrawal';
+
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  expenseCount: number;
+}
+
+export interface Expense {
+  id: number;
+  expenseCategoryId: number;
+  expenseCategoryName: string;
+  date: string;
+  amount: number;
+  description?: string | null;
+  notes?: string | null;
+}
+
+export interface Owner {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  profitSharePercent: number;
+  isActive: boolean;
+  totalContributions: number;
+  totalWithdrawals: number;
+}
+
+export interface OwnerTransaction {
+  id: number;
+  ownerId: number;
+  date: string;
+  type: OwnerTransactionType;
+  amount: number;
+  notes?: string | null;
+}
+
+export interface ExpenseLine {
+  categoryId: number;
+  categoryName: string;
+  amount: number;
+  pct: number;
+}
+
+export interface OwnerEquity {
+  ownerId: number;
+  name: string;
+  sharePercent: number;
+  contributions: number;
+  withdrawals: number;
+  profitShare: number;
+  equity: number;
+}
+
+export interface ProfitLossReport {
+  from: string;
+  to: string;
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  grossMarginPct: number;
+  expensesTotal: number;
+  expensesByCategory: ExpenseLine[];
+  netProfit: number;
+  netMarginPct: number;
+  orderCount: number;
+  unitsSold: number;
+  inventoryValueAtCost: number;
+  inventoryValueAtSale: number;
+  inventoryUnits: number;
+  allTimeNetProfit: number;
+  totalSharePercent: number;
+  owners: OwnerEquity[];
+  totalContributions: number;
+  totalWithdrawals: number;
+  totalOwnerEquity: number;
+}
+
 export interface Product {
   id: number;
   categoryId: number;

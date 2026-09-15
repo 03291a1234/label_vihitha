@@ -117,6 +117,7 @@ export class ShellComponent {
 
   nav: NavItem[] = [
     { label: 'Analytics', icon: 'insights', path: '/analytics', show: () => this.auth.canViewReports() },
+    { label: 'Profit & Loss', icon: 'account_balance', path: '/profit-loss', show: () => this.auth.canViewReports() },
     { label: 'Orders', icon: 'receipt_long', path: '/orders', show: () => this.auth.canManageSales() },
     { label: 'Invoicing', icon: 'payments', path: '/invoices', show: () => this.auth.canManageSales() },
     { label: 'Follow-ups', icon: 'task_alt', path: '/follow-ups', show: () => this.auth.canManageSales() },
@@ -124,6 +125,8 @@ export class ShellComponent {
     { label: 'Inventories', icon: 'inventory', path: '/inventories', show: () => true },
     { label: 'Categories', icon: 'category', path: '/categories', show: () => true },
     { label: 'Vendors', icon: 'storefront', path: '/vendors', show: () => true },
+    { label: 'Expenses', icon: 'payments', path: '/expenses', show: () => this.auth.canViewReports() },
+    { label: 'Owners', icon: 'diversity_3', path: '/owners', show: () => this.auth.canViewReports() },
     { label: 'Customers', icon: 'group', path: '/customers', show: () => this.auth.canManageSales() }
   ];
 }
