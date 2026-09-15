@@ -20,4 +20,11 @@ public class Expense : BaseEntity
 
     public string? Description { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>Optional owner who paid this expense out of pocket.</summary>
+    public int? PaidByOwnerId { get; set; }
+    public Owner? PaidByOwner { get; set; }
+
+    /// <summary>Optional uploaded receipt (image or PDF), stored as a served URL path.</summary>
+    public string? ReceiptUrl { get; set; }
 }

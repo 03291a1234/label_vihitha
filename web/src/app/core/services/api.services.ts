@@ -232,13 +232,19 @@ export class ExpenseApi {
   list(filters: ExpenseFilters = {}): Observable<PagedResult<Expense>> {
     return this.http.get<PagedResult<Expense>>(`${base}/expenses`, { params: toParams(filters as Record<string, unknown>) });
   }
-  create(body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null }) {
+  create(body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null; paidByOwnerId?: number | null; receiptUrl?: string | null }) {
     return this.http.post<Expense>(`${base}/expenses`, body);
   }
-  update(id: number, body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null }) {
+  update(id: number, body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null; paidByOwnerId?: number | null; receiptUrl?: string | null }) {
     return this.http.put<Expense>(`${base}/expenses/${id}`, body);
   }
   remove(id: number) { return this.http.delete<void>(`${base}/expenses/${id}`); }
+
+  uploadReceipt(file: File): Observable<{ url: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<{ url: string }>(`${base}/uploads/receipt`, form);
+  }
 }
 
 @Injectable({ providedIn: 'root' })

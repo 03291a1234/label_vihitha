@@ -15,21 +15,28 @@ public record ExpenseDto(
     DateTime Date,
     decimal Amount,
     string? Description,
-    string? Notes);
+    string? Notes,
+    int? PaidByOwnerId,
+    string? PaidByOwnerName,
+    string? ReceiptUrl);
 
 public record CreateExpenseRequest(
     int ExpenseCategoryId,
     DateTime Date,
     decimal Amount,
     string? Description,
-    string? Notes);
+    string? Notes,
+    int? PaidByOwnerId,
+    string? ReceiptUrl);
 
 public record UpdateExpenseRequest(
     int ExpenseCategoryId,
     DateTime Date,
     decimal Amount,
     string? Description,
-    string? Notes);
+    string? Notes,
+    int? PaidByOwnerId,
+    string? ReceiptUrl);
 
 public record ExpenseQuery(
     int? CategoryId = null,

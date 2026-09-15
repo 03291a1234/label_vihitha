@@ -263,11 +263,17 @@ public class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
     {
         b.Property(x => x.Description).HasMaxLength(300);
         b.Property(x => x.Notes).HasMaxLength(1000);
+        b.Property(x => x.ReceiptUrl).HasMaxLength(500);
         b.HasIndex(x => x.Date);
 
         b.HasOne(x => x.ExpenseCategory)
             .WithMany(c => c.Expenses)
             .HasForeignKey(x => x.ExpenseCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasOne(x => x.PaidByOwner)
+            .WithMany()
+            .HasForeignKey(x => x.PaidByOwnerId)
             .OnDelete(DeleteBehavior.Restrict);
 
         b.HasQueryFilter(x => !x.IsDeleted);

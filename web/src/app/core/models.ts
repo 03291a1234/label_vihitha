@@ -100,6 +100,9 @@ export interface Expense {
   amount: number;
   description?: string | null;
   notes?: string | null;
+  paidByOwnerId?: number | null;
+  paidByOwnerName?: string | null;
+  receiptUrl?: string | null;
 }
 
 export interface Owner {

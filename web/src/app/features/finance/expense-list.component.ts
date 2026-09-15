@@ -10,7 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatDialog } from '@angular/material/dialog';
-import { ExpenseApi, ExpenseCategoryApi } from '../../core/services/api.services';
+import { ExpenseApi, ExpenseCategoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Expense, ExpenseCategory } from '../../core/models';
 import { ExpenseEditDialog } from './expense-edit.dialog';
@@ -70,6 +70,20 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <th mat-header-cell *matHeaderCellDef>Description</th>
             <td mat-cell *matCellDef="let e">{{ e.description || '—' }}</td>
           </ng-container>
+          <ng-container matColumnDef="paidBy">
+            <th mat-header-cell *matHeaderCellDef>Paid by</th>
+            <td mat-cell *matCellDef="let e">{{ e.paidByOwnerName || '—' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="receipt">
+            <th mat-header-cell *matHeaderCellDef>Receipt</th>
+            <td mat-cell *matCellDef="let e">
+              @if (e.receiptUrl) {
+                <a class="receipt-link" [href]="receiptHref(e.receiptUrl)" target="_blank" rel="noopener" title="View receipt">
+                  <mat-icon>description</mat-icon>
+                </a>
+              } @else { <span class="muted">—</span> }
+            </td>
+          </ng-container>
           <ng-container matColumnDef="amountInr">
             <th mat-header-cell *matHeaderCellDef class="text-right">Amount (INR)</th>
             <td mat-cell *matCellDef="let e" class="text-right mono">{{ e.amount * inrRate | currency:'INR':'symbol':'1.0-0' }}</td>
@@ -97,6 +111,8 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   styles: [`
     .total-chip { margin-left: auto; align-self: center; color: var(--lv-wine); }
     .total-chip .muted { margin-left: 8px; font-size: 12px; }
+    .receipt-link { color: var(--lv-wine); display: inline-flex; }
+    .receipt-link mat-icon { font-size: 20px; height: 20px; width: 20px; }
   `]
 })
 export class ExpenseListComponent {
@@ -117,7 +133,9 @@ export class ExpenseListComponent {
   toDate = '';
   page = 1;
   pageSize = 25;
-  cols = ['date', 'category', 'description', 'amountInr', 'amount', 'actions'];
+  cols = ['date', 'category', 'description', 'paidBy', 'receipt', 'amountInr', 'amount', 'actions'];
+
+  receiptHref(url: string) { return resolveImageUrl(url); }
 
   constructor() {
     this.catApi.list(false).subscribe(c => this.categories.set(c));

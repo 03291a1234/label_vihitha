@@ -26,7 +26,8 @@ public class ExpenseService : IExpenseService
         var items = await ordered
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(e => new ExpenseDto(e.Id, e.ExpenseCategoryId, e.ExpenseCategory.Name,
-                e.Date, e.Amount, e.Description, e.Notes))
+                e.Date, e.Amount, e.Description, e.Notes,
+                e.PaidByOwnerId, e.PaidByOwner != null ? e.PaidByOwner.Name : null, e.ReceiptUrl))
             .ToListAsync(ct);
 
         return new PagedResult<ExpenseDto> { Items = items, TotalCount = total, Page = page, PageSize = pageSize };
@@ -37,7 +38,8 @@ public class ExpenseService : IExpenseService
         var dto = await _db.Expenses.AsNoTracking()
             .Where(e => e.Id == id)
             .Select(e => new ExpenseDto(e.Id, e.ExpenseCategoryId, e.ExpenseCategory.Name,
-                e.Date, e.Amount, e.Description, e.Notes))
+                e.Date, e.Amount, e.Description, e.Notes,
+                e.PaidByOwnerId, e.PaidByOwner != null ? e.PaidByOwner.Name : null, e.ReceiptUrl))
             .FirstOrDefaultAsync(ct);
         return dto ?? throw new NotFoundException(nameof(Expense), id);
     }
@@ -45,13 +47,16 @@ public class ExpenseService : IExpenseService
     public async Task<ExpenseDto> CreateAsync(CreateExpenseRequest request, CancellationToken ct = default)
     {
         await EnsureCategoryAsync(request.ExpenseCategoryId, ct);
+        await EnsureOwnerAsync(request.PaidByOwnerId, ct);
         var entity = new Expense
         {
             ExpenseCategoryId = request.ExpenseCategoryId,
             Date = request.Date,
             Amount = request.Amount,
             Description = request.Description,
-            Notes = request.Notes
+            Notes = request.Notes,
+            PaidByOwnerId = request.PaidByOwnerId,
+            ReceiptUrl = request.ReceiptUrl
         };
         _db.Expenses.Add(entity);
         await _db.SaveChangesAsync(ct);
@@ -63,11 +68,14 @@ public class ExpenseService : IExpenseService
         var entity = await _db.Expenses.FirstOrDefaultAsync(e => e.Id == id, ct)
             ?? throw new NotFoundException(nameof(Expense), id);
         await EnsureCategoryAsync(request.ExpenseCategoryId, ct);
+        await EnsureOwnerAsync(request.PaidByOwnerId, ct);
         entity.ExpenseCategoryId = request.ExpenseCategoryId;
         entity.Date = request.Date;
         entity.Amount = request.Amount;
         entity.Description = request.Description;
         entity.Notes = request.Notes;
+        entity.PaidByOwnerId = request.PaidByOwnerId;
+        entity.ReceiptUrl = request.ReceiptUrl;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(id, ct);
@@ -86,6 +94,13 @@ public class ExpenseService : IExpenseService
     {
         if (!await _db.ExpenseCategories.AnyAsync(c => c.Id == categoryId && !c.IsDeleted, ct))
             throw new NotFoundException(nameof(ExpenseCategory), categoryId);
+    }
+
+    private async Task EnsureOwnerAsync(int? ownerId, CancellationToken ct)
+    {
+        if (ownerId is not int id) return;
+        if (!await _db.Owners.AnyAsync(o => o.Id == id && !o.IsDeleted, ct))
+            throw new NotFoundException(nameof(Owner), id);
     }
 
     private static IQueryable<Expense> ApplySort(IQueryable<Expense> q, string? sortBy, string? dir)
