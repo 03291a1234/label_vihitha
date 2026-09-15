@@ -135,6 +135,10 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
               </div>
             </td>
           </ng-container>
+          <ng-container matColumnDef="size">
+            <th mat-header-cell *matHeaderCellDef>Size</th>
+            <td mat-cell *matCellDef="let p">{{ p.size || '—' }}</td>
+          </ng-container>
           <ng-container matColumnDef="costInr">
             <th mat-header-cell *matHeaderCellDef class="text-right">Cost (INR)</th>
             <td mat-cell *matCellDef="let p" class="text-right mono">{{ p.originalPrice * inrRate | currency:'INR':'symbol':'1.0-0' }}</td>
@@ -233,7 +237,7 @@ export class ProductListComponent {
   sortDir: string | null = null;
   page = 1;
   pageSize = 25;
-  cols = ['sku', 'name', 'costInr', 'originalPrice', 'salePrice', 'quantityOnHand', 'actions'];
+  cols = ['sku', 'name', 'size', 'costInr', 'originalPrice', 'salePrice', 'quantityOnHand', 'actions'];
 
   constructor() {
     this.catApi.list(false).subscribe(cs => this.categories.set(cs));
