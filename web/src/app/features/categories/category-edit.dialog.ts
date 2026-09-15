@@ -8,13 +8,14 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CategoryApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Category } from '../../core/models';
+import { MoneyInputComponent } from '../../shared/money-input.component';
 
 @Component({
   selector: 'app-category-edit',
   standalone: true,
   imports: [
     ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatButtonModule, MatSlideToggleModule
+    MatButtonModule, MatSlideToggleModule, MoneyInputComponent
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Edit category' : 'New category' }}</h2>
@@ -29,16 +30,8 @@ import { Category } from '../../core/models';
           <textarea matInput rows="2" formControlName="description"></textarea>
         </mat-form-field>
         <div class="form-row">
-          <mat-form-field>
-            <mat-label>Default original price</mat-label>
-            <span matTextPrefix>$&nbsp;</span>
-            <input matInput type="number" formControlName="defaultOriginalPrice" />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Default sale price</mat-label>
-            <span matTextPrefix>$&nbsp;</span>
-            <input matInput type="number" formControlName="defaultSalePrice" />
-          </mat-form-field>
+          <app-money-input formControlName="defaultOriginalPrice" label="Default cost" placeholder="optional" />
+          <app-money-input formControlName="defaultSalePrice" label="Default sale" placeholder="optional" />
         </div>
         @if (data) {
           <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>

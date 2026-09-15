@@ -10,13 +10,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { OwnerApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Owner, OwnerTransaction, OwnerTransactionType } from '../../core/models';
+import { MoneyInputComponent } from '../../shared/money-input.component';
 
 @Component({
   selector: 'app-owner-transactions',
   standalone: true,
   imports: [
     CurrencyPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule,
-    MatInputModule, MatSelectModule, MatButtonModule, MatIconModule
+    MatInputModule, MatSelectModule, MatButtonModule, MatIconModule, MoneyInputComponent
   ],
   template: `
     <h2 mat-dialog-title>Capital ledger · {{ data.name }}</h2>
@@ -29,11 +30,7 @@ import { Owner, OwnerTransaction, OwnerTransactionType } from '../../core/models
             <mat-option value="Withdrawal">Withdrawal</mat-option>
           </mat-select>
         </mat-form-field>
-        <mat-form-field class="amt">
-          <mat-label>Amount (USD)</mat-label>
-          <span matTextPrefix>$&nbsp;</span>
-          <input matInput type="number" [(ngModel)]="amount" />
-        </mat-form-field>
+        <app-money-input class="amt" [(ngModel)]="amount" label="Amount" />
         <mat-form-field>
           <mat-label>Date</mat-label>
           <input matInput type="date" [(ngModel)]="date" />

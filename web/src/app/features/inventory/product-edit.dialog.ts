@@ -11,13 +11,15 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Category, SubCategory, Inventory, Vendor, Product } from '../../core/models';
+import { MoneyInputComponent } from '../../shared/money-input.component';
 
 @Component({
   selector: 'app-product-edit',
   standalone: true,
   imports: [
     ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule
+    MatSelectModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule,
+    MoneyInputComponent
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Edit product' : 'New product' }}</h2>
@@ -77,16 +79,8 @@ import { Category, SubCategory, Inventory, Vendor, Product } from '../../core/mo
           <mat-form-field><mat-label>Material</mat-label><input matInput formControlName="material" /></mat-form-field>
         </div>
         <div class="form-row">
-          <mat-form-field>
-            <mat-label>Original price</mat-label>
-            <span matTextPrefix>$&nbsp;</span>
-            <input matInput type="number" formControlName="originalPrice" />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Sale price</mat-label>
-            <span matTextPrefix>$&nbsp;</span>
-            <input matInput type="number" formControlName="salePrice" />
-          </mat-form-field>
+          <app-money-input formControlName="originalPrice" label="Cost price" />
+          <app-money-input formControlName="salePrice" label="Sale price" />
         </div>
         <div class="variants">
           <div class="variants-head">
