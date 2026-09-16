@@ -53,6 +53,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasForeignKey(x => x.VendorId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        b.HasOne(x => x.PaidByOwner)
+            .WithMany()
+            .HasForeignKey(x => x.PaidByOwnerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

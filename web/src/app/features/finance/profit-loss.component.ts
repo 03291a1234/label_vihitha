@@ -82,6 +82,26 @@ import { ProfitLossReport } from '../../core/models';
           <div class="muted foot">Buying stock moves cash into "inventory at cost", so it's deducted here automatically. Assumes sales are collected in full (no receivables tracked).</div>
         </div>
 
+        <!-- Who funded the inventory -->
+        <div class="card funded">
+          <h2>Inventory funded by owner <span class="muted">(current stock, at cost)</span></h2>
+          <table mat-table [dataSource]="r.inventoryFundedByOwner" class="full">
+            <ng-container matColumnDef="owner"><th mat-header-cell *matHeaderCellDef>Funded by</th>
+              <td mat-cell *matCellDef="let f"><strong [class.muted]="!f.ownerId">{{ f.ownerName }}</strong></td></ng-container>
+            <ng-container matColumnDef="units"><th mat-header-cell *matHeaderCellDef class="text-right">Units</th>
+              <td mat-cell *matCellDef="let f" class="text-right mono">{{ f.units }}</td></ng-container>
+            <ng-container matColumnDef="cost"><th mat-header-cell *matHeaderCellDef class="text-right">Cost invested</th>
+              <td mat-cell *matCellDef="let f" class="text-right mono strong">{{ f.inventoryCost | currency }}
+                <span class="muted inr">≈ {{ f.inventoryCost * 95 | currency:'INR':'symbol':'1.0-0' }}</span></td></ng-container>
+            <ng-container matColumnDef="pct"><th mat-header-cell *matHeaderCellDef class="text-right">Share of stock</th>
+              <td mat-cell *matCellDef="let f" class="text-right mono">{{ fundedPct(f.inventoryCost) | number:'1.0-1' }}%</td></ng-container>
+            <tr mat-header-row *matHeaderRowDef="fundedCols"></tr>
+            <tr mat-row *matRowDef="let row; columns: fundedCols"></tr>
+          </table>
+          @if (r.inventoryFundedByOwner.length === 0) { <div class="empty-state">No stock on hand.</div> }
+          <div class="muted foot">Tag each product's "Paid by" owner (on the product, in the import, or by editing) to attribute stock here.</div>
+        </div>
+
         <!-- Owner equity -->
         <div class="card">
           <div class="owners-head">
@@ -142,6 +162,8 @@ import { ProfitLossReport } from '../../core/models';
     .cash-grid { max-width: 520px; }
     .cash-net { font-weight: 800; font-size: 17px; color: var(--lv-wine); }
     .cash-net .inr { font-weight: 400; margin-left: 8px; }
+    .funded { margin-bottom: 16px; }
+    .funded .inr { font-weight: 400; margin-left: 6px; font-size: 12px; }
     .owners-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
     .warn { color: #8a5a00; }
     .totals { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 24px; padding: 12px 16px; margin-top: 4px;
@@ -158,8 +180,15 @@ export class ProfitLossComponent {
   fromDate = '';
   toDate = '';
   ownerCols = ['name', 'share', 'contrib', 'withdraw', 'profit', 'equity'];
+  fundedCols = ['owner', 'units', 'cost', 'pct'];
 
   constructor() { this.load(); }
+
+  /** A funding row's cost as a percentage of all current inventory at cost. */
+  fundedPct(cost: number): number {
+    const total = this.report()?.inventoryValueAtCost ?? 0;
+    return total > 0 ? (cost / total) * 100 : 0;
+  }
 
   label() {
     if (!this.fromDate && !this.toDate) return 'all time';

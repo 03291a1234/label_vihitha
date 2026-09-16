@@ -13,6 +13,8 @@ public record ProductDto(
     string? InventoryName,
     int? VendorId,
     string? VendorName,
+    int? PaidByOwnerId,
+    string? PaidByOwnerName,
     string SKU,
     string Name,
     string? Description,
@@ -34,6 +36,7 @@ public record CreateProductRequest(
     int? SubCategoryId,
     int? InventoryId,
     int? VendorId,
+    int? PaidByOwnerId,
     string SKU,
     string Name,
     string? Description,
@@ -45,13 +48,17 @@ public record CreateProductRequest(
     int QuantityOnHand,
     int ReorderThreshold,
     string? ImageUrl,
-    IReadOnlyList<ProductVariantInput>? Variants = null);   // authoritative per-size stock when provided
+    IReadOnlyList<ProductVariantInput>? Variants = null,   // authoritative per-size stock when provided
+    // When true and a PaidByOwner + cost are set, also post that owner a capital Contribution
+    // equal to the total cost (use when they paid out-of-pocket, not from the shared account).
+    bool RecordOwnerContribution = false);
 
 public record UpdateProductRequest(
     int CategoryId,
     int? SubCategoryId,
     int? InventoryId,
     int? VendorId,
+    int? PaidByOwnerId,
     string SKU,
     string Name,
     string? Description,

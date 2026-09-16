@@ -32,11 +32,12 @@ public class ImportsController : ControllerBase
         var cats = await _db.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).Select(c => c.Name).ToListAsync(ct);
         var subs = await _db.SubCategories.Where(s => s.IsActive).OrderBy(s => s.Category.Name).ThenBy(s => s.Name)
             .Select(s => s.Category.Name + " > " + s.Name).ToListAsync(ct);
+        var owners = await _db.Owners.Where(o => o.IsActive).OrderBy(o => o.Name).Select(o => o.Name).ToListAsync(ct);
 
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Products");
         var headers = new[] { "Vendor", "Inventory", "Category", "Subcategory", "SKU", "Product Name",
-            "Size", "Qty", "Cost per unit (INR)", "Sale price (USD)", "Reorder Threshold", "Color", "Material", "Description" };
+            "Size", "Qty", "Cost per unit (INR)", "Sale price (USD)", "Reorder Threshold", "Color", "Material", "Description", "Paid By (owner)" };
         for (int c = 0; c < headers.Length; c++)
         {
             var cell = ws.Cell(1, c + 1);
@@ -45,9 +46,9 @@ public class ImportsController : ControllerBase
         }
         var examples = new object?[][]
         {
-            new object?[]{ "Shanthi NX","Inventory 2","Kurtis","","SNX-301","Anarkali Kurti 13001","M",2,2000,45,1,"Maroon","Cotton","Same SKU repeats per size" },
-            new object?[]{ "Shanthi NX","Inventory 2","Kurtis","","SNX-301","Anarkali Kurti 13001","L",1,2000,45,1,"Maroon","Cotton","" },
-            new object?[]{ "Anaga","Inventory 2","Frocks","","ANG-301","Patola Frock","One Size",3,4100,100,1,"","","" },
+            new object?[]{ "Shanthi NX","Inventory 2","Kurtis","","SNX-301","Anarkali Kurti 13001","M",2,2000,45,1,"Maroon","Cotton","Same SKU repeats per size","" },
+            new object?[]{ "Shanthi NX","Inventory 2","Kurtis","","SNX-301","Anarkali Kurti 13001","L",1,2000,45,1,"Maroon","Cotton","","" },
+            new object?[]{ "Anaga","Inventory 2","Frocks","","ANG-301","Patola Frock","One Size",3,4100,100,1,"","","","" },
         };
         for (int r = 0; r < examples.Length; r++)
             for (int c = 0; c < examples[r].Length; c++)
@@ -67,16 +68,19 @@ public class ImportsController : ControllerBase
             "4. Cost per unit (INR) is what you paid per piece in rupees (converted to USD at 95 on import).",
             "5. Sale price (USD) is the retail/tag price per piece.",
             "6. SKU must be unique per product; existing SKUs are skipped and reported.",
+            "7. Paid By (owner): which partner's money funded this stock. Use an exact name from the",
+            "   'Reference' tab. Owners are NOT auto-created — an unknown name imports the product",
+            "   without an owner and is reported. Leave blank for jointly-funded stock.",
         };
         for (int i = 0; i < lines.Length; i++) guide.Cell(i + 1, 1).Value = lines[i];
         guide.Cell(1, 1).Style.Font.Bold = true;
         guide.Column(1).Width = 100;
 
         var refSheet = wb.Worksheets.Add("Reference");
-        var refHeaders = new[] { "Vendors", "Inventories", "Categories", "Subcategories (Category > Sub)" };
+        var refHeaders = new[] { "Vendors", "Inventories", "Categories", "Subcategories (Category > Sub)", "Owners" };
         for (int c = 0; c < refHeaders.Length; c++) { refSheet.Cell(1, c + 1).Value = refHeaders[c]; refSheet.Cell(1, c + 1).Style.Font.Bold = true; }
         void Fill(int col, List<string> vals) { for (int i = 0; i < vals.Count; i++) refSheet.Cell(i + 2, col).Value = vals[i]; }
-        Fill(1, vendors); Fill(2, invs); Fill(3, cats); Fill(4, subs);
+        Fill(1, vendors); Fill(2, invs); Fill(3, cats); Fill(4, subs); Fill(5, owners);
         refSheet.Columns().AdjustToContents();
 
         using var ms = new MemoryStream();
@@ -136,7 +140,7 @@ public class ImportsController : ControllerBase
             cSku = Col("SKU"), cName = Col("Product Name", "Name"), cSize = Col("Size"), cQty = Col("Qty", "Quantity"),
             cCost = Col("Cost per unit (INR)", "Cost (INR)", "Cost"), cSale = Col("Sale price (USD)", "Sale (USD)", "Sale"),
             cReorder = Col("Reorder Threshold", "Reorder"), cColor = Col("Color"), cMaterial = Col("Material"),
-            cDesc = Col("Description");
+            cDesc = Col("Description"), cPaidBy = Col("Paid By (owner)", "Paid By", "Paid By Owner");
 
         var rows = new List<ProductImportRow>();
         foreach (var row in ws.RowsUsed().Skip(1)) // skip header
@@ -153,7 +157,7 @@ public class ImportsController : ControllerBase
             var r = new ProductImportRow(
                 row.RowNumber(), S(cVendor), S(cInv), S(cCat), S(cSub), S(cSku), S(cName), S(cSize),
                 I(cQty), D(cCost), D(cSale), cReorder == 0 ? null : (int?)I(cReorder),
-                S(cColor), S(cMaterial), S(cDesc));
+                S(cColor), S(cMaterial), S(cDesc), S(cPaidBy));
 
             // Skip fully-empty rows.
             if (r.Sku is null && r.Name is null && r.Category is null) continue;

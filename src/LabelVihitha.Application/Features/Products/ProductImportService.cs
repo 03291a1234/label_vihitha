@@ -27,6 +27,9 @@ public class ProductImportService : IProductImportService
             .GroupBy(v => Key(v.Name)).ToDictionary(g => g.Key, g => g.First());
         var inventories = (await _db.Inventories.Where(i => !i.IsDeleted).ToListAsync(ct))
             .GroupBy(i => Key(i.Name)).ToDictionary(g => g.Key, g => g.First());
+        // Owners are never auto-created (they carry profit shares); resolve by name only.
+        var owners = (await _db.Owners.Where(o => !o.IsDeleted).ToListAsync(ct))
+            .GroupBy(o => Key(o.Name)).ToDictionary(g => g.Key, g => g.First());
 
         foreach (var name in Distinct(rows.Select(r => r.Category)))
             if (!categories.ContainsKey(Key(name)))
@@ -96,6 +99,13 @@ public class ProductImportService : IProductImportService
             Vendor? vendor = !string.IsNullOrWhiteSpace(head.Vendor) && vendors.TryGetValue(Key(head.Vendor), out var v) ? v : null;
             Inventory? inv = !string.IsNullOrWhiteSpace(head.Inventory) && inventories.TryGetValue(Key(head.Inventory), out var i) ? i : null;
 
+            Owner? paidBy = null;
+            if (!string.IsNullOrWhiteSpace(head.PaidByOwner))
+            {
+                if (owners.TryGetValue(Key(head.PaidByOwner), out var o)) paidBy = o;
+                else errors.Add($"SKU '{sku}': Paid-by owner '{head.PaidByOwner.Trim()}' not found — imported without an owner.");
+            }
+
             // Variants: one per row, merged by size.
             var variants = g
                 .Select(x => (Size: string.IsNullOrWhiteSpace(x.Size) ? "One Size" : x.Size!.Trim(),
@@ -113,6 +123,7 @@ public class ProductImportService : IProductImportService
                 SubCategory = sub,
                 Vendor = vendor,
                 Inventory = inv,
+                PaidByOwner = paidBy,
                 SKU = sku,
                 Name = head.Name!.Trim(),
                 Description = Trim(head.Description),

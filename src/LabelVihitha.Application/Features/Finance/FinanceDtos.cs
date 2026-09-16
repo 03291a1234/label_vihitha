@@ -2,6 +2,10 @@ namespace LabelVihitha.Application.Features.Finance;
 
 public record ExpenseLineDto(int CategoryId, string CategoryName, decimal Amount, decimal Pct);
 
+/// <summary>Current on-hand inventory (at cost) attributed to the owner who funded it.
+/// A null <see cref="OwnerId"/> is the "jointly funded / unassigned" bucket.</summary>
+public record OwnerInventoryDto(int? OwnerId, string OwnerName, decimal InventoryCost, int Units);
+
 public record OwnerEquityDto(
     int OwnerId,
     string Name,
@@ -42,4 +46,7 @@ public record ProfitLossReport(
     IReadOnlyList<OwnerEquityDto> Owners,
     decimal TotalContributions,
     decimal TotalWithdrawals,
-    decimal TotalOwnerEquity);
+    decimal TotalOwnerEquity,
+
+    // ---- Current inventory (at cost) split by the owner who funded it ----
+    IReadOnlyList<OwnerInventoryDto> InventoryFundedByOwner);

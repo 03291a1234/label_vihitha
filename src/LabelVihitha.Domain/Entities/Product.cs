@@ -24,6 +24,10 @@ public class Product : BaseEntity
     public int? VendorId { get; set; }
     public Vendor? Vendor { get; set; }
 
+    /// <summary>Which owner/partner funded this stock (whose capital it represents). Optional.</summary>
+    public int? PaidByOwnerId { get; set; }
+    public Owner? PaidByOwner { get; set; }
+
     public string SKU { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }

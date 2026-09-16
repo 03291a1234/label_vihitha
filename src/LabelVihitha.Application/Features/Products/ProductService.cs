@@ -38,7 +38,7 @@ public class ProductService : IProductService
         }
 
         var total = await q.CountAsync(ct);
-        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory).Include(p => p.Vendor).Include(p => p.Variants), query.SortBy, query.SortDir);
+        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory).Include(p => p.Vendor).Include(p => p.PaidByOwner).Include(p => p.Variants), query.SortBy, query.SortDir);
         var entities = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -92,6 +92,7 @@ public class ProductService : IProductService
             .Include(p => p.SubCategory)
             .Include(p => p.Inventory)
             .Include(p => p.Vendor)
+            .Include(p => p.PaidByOwner)
             .Include(p => p.Variants)
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
         return entity is null ? throw new NotFoundException(nameof(Product), id) : MapToDto(entity);
@@ -106,6 +107,7 @@ public class ProductService : IProductService
         await EnsureSubCategoryValidAsync(request.CategoryId, request.SubCategoryId, ct);
         await EnsureInventoryValidAsync(request.InventoryId, ct);
         await EnsureVendorValidAsync(request.VendorId, ct);
+        await EnsureOwnerValidAsync(request.PaidByOwnerId, ct);
 
         var entity = new Product
         {
@@ -113,6 +115,7 @@ public class ProductService : IProductService
             SubCategoryId = request.SubCategoryId,
             InventoryId = request.InventoryId,
             VendorId = request.VendorId,
+            PaidByOwnerId = request.PaidByOwnerId,
             SKU = request.SKU.Trim(),
             Name = request.Name.Trim(),
             Description = request.Description,
@@ -131,6 +134,22 @@ public class ProductService : IProductService
         entity.Size = JoinSizes(variants);
 
         _db.Products.Add(entity);
+
+        // Optionally record the funding owner's out-of-pocket purchase as a capital contribution.
+        if (request.RecordOwnerContribution && request.PaidByOwnerId is int ownerId)
+        {
+            var totalCost = Math.Round(entity.OriginalPrice * entity.QuantityOnHand, 2);
+            if (totalCost > 0)
+                _db.OwnerTransactions.Add(new OwnerTransaction
+                {
+                    OwnerId = ownerId,
+                    Date = DateTime.UtcNow,
+                    Type = Domain.Enums.OwnerTransactionType.Contribution,
+                    Amount = totalCost,
+                    Notes = $"Inventory purchase: {entity.Name} ({entity.SKU})"
+                });
+        }
+
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(entity.Id, ct);
     }
@@ -147,11 +166,13 @@ public class ProductService : IProductService
         await EnsureSubCategoryValidAsync(request.CategoryId, request.SubCategoryId, ct);
         await EnsureInventoryValidAsync(request.InventoryId, ct);
         await EnsureVendorValidAsync(request.VendorId, ct);
+        await EnsureOwnerValidAsync(request.PaidByOwnerId, ct);
 
         entity.CategoryId = request.CategoryId;
         entity.SubCategoryId = request.SubCategoryId;
         entity.InventoryId = request.InventoryId;
         entity.VendorId = request.VendorId;
+        entity.PaidByOwnerId = request.PaidByOwnerId;
         entity.SKU = request.SKU.Trim();
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
@@ -244,6 +265,14 @@ public class ProductService : IProductService
             throw new NotFoundException(nameof(Vendor), id);
     }
 
+    /// <summary>A chosen funding owner (if any) must exist.</summary>
+    private async Task EnsureOwnerValidAsync(int? ownerId, CancellationToken ct)
+    {
+        if (ownerId is not int id) return;
+        if (!await _db.Owners.AnyAsync(o => o.Id == id && !o.IsDeleted, ct))
+            throw new NotFoundException(nameof(Owner), id);
+    }
+
     private async Task EnsureSkuUniqueAsync(string sku, int? excludeId, CancellationToken ct)
     {
         var normalized = sku.Trim();
@@ -264,6 +293,8 @@ public class ProductService : IProductService
         p.Inventory?.Name,
         p.VendorId,
         p.Vendor?.Name,
+        p.PaidByOwnerId,
+        p.PaidByOwner?.Name,
         p.SKU,
         p.Name,
         p.Description,

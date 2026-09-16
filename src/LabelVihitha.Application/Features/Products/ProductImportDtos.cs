@@ -16,7 +16,8 @@ public record ProductImportRow(
     int? ReorderThreshold,
     string? Color,
     string? Material,
-    string? Description);
+    string? Description,
+    string? PaidByOwner = null);
 
 public record ProductImportResult(
     int ProductsCreated,

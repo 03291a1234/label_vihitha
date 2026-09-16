@@ -8,9 +8,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, resolveImageUrl } from '../../core/services/api.services';
+import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, OwnerApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
-import { Category, SubCategory, Inventory, Vendor, Product } from '../../core/models';
+import { Category, SubCategory, Inventory, Vendor, Owner, Product } from '../../core/models';
 import { MoneyInputComponent } from '../../shared/money-input.component';
 
 @Component({
@@ -63,6 +63,22 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
             </mat-select>
             <mat-hint>Supplier (optional)</mat-hint>
           </mat-form-field>
+        </div>
+        <div class="form-row">
+          <mat-form-field>
+            <mat-label>Paid by</mat-label>
+            <mat-select formControlName="paidByOwnerId">
+              <mat-option [value]="null">— None —</mat-option>
+              @for (o of owners(); track o.id) { <mat-option [value]="o.id">{{ o.name }}</mat-option> }
+            </mat-select>
+            <mat-hint>Owner who funded this stock (optional)</mat-hint>
+          </mat-form-field>
+          <div class="contrib">
+            @if (!data && form.controls.paidByOwnerId.value) {
+              <mat-slide-toggle formControlName="recordOwnerContribution">Record as their capital contribution</mat-slide-toggle>
+              <div class="muted contrib-hint">Turn on only if they paid out-of-pocket — not from the shared account.</div>
+            }
+          </div>
         </div>
         <div class="form-row">
           <mat-form-field>
@@ -169,6 +185,8 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
     .vrow { display: flex; align-items: center; gap: 8px; }
     .vrow .v-size { flex: 1; }
     .vrow .v-qty { width: 110px; }
+    .contrib { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+    .contrib-hint { font-size: 11px; line-height: 1.3; }
   `]
 })
 export class ProductEditDialog {
@@ -178,6 +196,7 @@ export class ProductEditDialog {
   private subApi = inject(SubCategoryApi);
   private invApi = inject(InventoryApi);
   private vendorApi = inject(VendorApi);
+  private ownerApi = inject(OwnerApi);
   private notify = inject(Notify);
   ref = inject(MatDialogRef<ProductEditDialog>);
 
@@ -185,6 +204,7 @@ export class ProductEditDialog {
   subCategories = signal<SubCategory[]>([]);
   inventories = signal<Inventory[]>([]);
   vendors = signal<Vendor[]>([]);
+  owners = signal<Owner[]>([]);
   /** Suggested sizes for quick-add: the subcategory's own sizes, else standard S–XXXL. */
   suggestions = signal<string[]>([]);
   private readonly standardSizes = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
@@ -200,6 +220,8 @@ export class ProductEditDialog {
     subCategoryId: [null as number | null],
     inventoryId: [null as number | null],
     vendorId: [null as number | null],
+    paidByOwnerId: [null as number | null],
+    recordOwnerContribution: [false],
     sku: ['', [Validators.required, Validators.maxLength(50)]],
     name: ['', [Validators.required, Validators.maxLength(200)]],
     color: [''], material: [''],
@@ -215,11 +237,13 @@ export class ProductEditDialog {
     this.catApi.list(false).subscribe(cs => this.categories.set(cs));
     this.invApi.list(false).subscribe(inv => this.inventories.set(inv));
     this.vendorApi.list(false).subscribe(vs => this.vendors.set(vs));
+    this.ownerApi.list(false).subscribe(os => this.owners.set(os));
     if (data) {
       this.form.patchValue({
         categoryId: data.categoryId, subCategoryId: data.subCategoryId ?? null,
         inventoryId: data.inventoryId ?? null,
         vendorId: data.vendorId ?? null,
+        paidByOwnerId: data.paidByOwnerId ?? null,
         sku: data.sku, name: data.name,
         color: data.color ?? '', material: data.material ?? '',
         originalPrice: data.originalPrice, salePrice: data.salePrice,

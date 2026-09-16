@@ -163,6 +163,14 @@ export interface ProfitLossReport {
   totalContributions: number;
   totalWithdrawals: number;
   totalOwnerEquity: number;
+  inventoryFundedByOwner: OwnerInventory[];
+}
+
+export interface OwnerInventory {
+  ownerId?: number | null;
+  ownerName: string;
+  inventoryCost: number;
+  units: number;
 }
 
 export interface ProductVariant {
@@ -192,6 +200,8 @@ export interface Product {
   inventoryName?: string | null;
   vendorId?: number | null;
   vendorName?: string | null;
+  paidByOwnerId?: number | null;
+  paidByOwnerName?: string | null;
   sku: string;
   name: string;
   description?: string | null;

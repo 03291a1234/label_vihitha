@@ -61,11 +61,23 @@ public class FinanceService : IFinanceService
 
         // ---- Inventory on hand (current snapshot) ----
         var inv = await _db.Products.AsNoTracking().Where(p => p.IsActive)
-            .Select(p => new { p.OriginalPrice, p.SalePrice, p.QuantityOnHand })
+            .Select(p => new { p.OriginalPrice, p.SalePrice, p.QuantityOnHand,
+                p.PaidByOwnerId, PaidByOwnerName = p.PaidByOwner != null ? p.PaidByOwner.Name : null })
             .ToListAsync(ct);
         var invCost = inv.Sum(p => p.OriginalPrice * p.QuantityOnHand);
         var invSale = inv.Sum(p => p.SalePrice * p.QuantityOnHand);
         var invUnits = inv.Sum(p => p.QuantityOnHand);
+
+        // Split current stock (at cost) by the owner who funded it; null = jointly funded.
+        var fundedByOwner = inv
+            .GroupBy(p => new { p.PaidByOwnerId, p.PaidByOwnerName })
+            .Select(g => new OwnerInventoryDto(
+                g.Key.PaidByOwnerId,
+                g.Key.PaidByOwnerName ?? "Jointly funded / unassigned",
+                g.Sum(x => x.OriginalPrice * x.QuantityOnHand),
+                g.Sum(x => x.QuantityOnHand)))
+            .OrderByDescending(x => x.InventoryCost)
+            .ToList();
 
         // ---- Owner equity (to date): allocate all-time retained profit by share ----
         var (allRev, allCogs, _, _) = await SalesAsync(
@@ -105,6 +117,7 @@ public class FinanceService : IFinanceService
             ownerRows,
             ownerRows.Sum(o => o.Contributions),
             ownerRows.Sum(o => o.Withdrawals),
-            ownerRows.Sum(o => o.Equity));
+            ownerRows.Sum(o => o.Equity),
+            fundedByOwner);
     }
 }
