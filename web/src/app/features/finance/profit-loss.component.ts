@@ -65,6 +65,23 @@ import { ProfitLossReport } from '../../core/models';
           </div>
         </div>
 
+        <!-- Cash position (joint account) -->
+        <div class="card cash">
+          <h2>Cash position <span class="muted">(joint account, to date)</span></h2>
+          <div class="cash-grid">
+            <div class="line"><span>Owner contributions</span><span class="mono">{{ r.totalContributions | currency }}</span></div>
+            <div class="line"><span>Owner withdrawals</span><span class="mono neg">−{{ r.totalWithdrawals | currency }}</span></div>
+            <div class="line"><span>Retained profit / loss</span><span class="mono">{{ r.allTimeNetProfit | currency }}</span></div>
+            <div class="line strong bt"><span>Owner equity</span><span class="mono">{{ r.totalOwnerEquity | currency }}</span></div>
+            <div class="line"><span>Money tied up in stock (inventory at cost)</span><span class="mono neg">−{{ r.inventoryValueAtCost | currency }}</span></div>
+            <div class="line cash-net bt"><span>Cash remaining</span>
+              <span class="mono">{{ r.totalOwnerEquity - r.inventoryValueAtCost | currency }}
+                <span class="muted inr">≈ {{ (r.totalOwnerEquity - r.inventoryValueAtCost) * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+            </div>
+          </div>
+          <div class="muted foot">Buying stock moves cash into "inventory at cost", so it's deducted here automatically. Assumes sales are collected in full (no receivables tracked).</div>
+        </div>
+
         <!-- Owner equity -->
         <div class="card">
           <div class="owners-head">
@@ -121,6 +138,10 @@ import { ProfitLossReport } from '../../core/models';
     .kpis .kpi:last-child { border-bottom: none; }
     .k-label { font-size: 13px; color: #555; }
     .k-val { font-size: 20px; font-weight: 700; color: var(--lv-wine); }
+    .cash { margin-bottom: 16px; }
+    .cash-grid { max-width: 520px; }
+    .cash-net { font-weight: 800; font-size: 17px; color: var(--lv-wine); }
+    .cash-net .inr { font-weight: 400; margin-left: 8px; }
     .owners-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
     .warn { color: #8a5a00; }
     .totals { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 24px; padding: 12px 16px; margin-top: 4px;
