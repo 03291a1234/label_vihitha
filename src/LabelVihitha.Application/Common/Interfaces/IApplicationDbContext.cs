@@ -14,6 +14,7 @@ public interface IApplicationDbContext
     DbSet<Vendor> Vendors { get; }
     DbSet<Product> Products { get; }
     DbSet<ProductVariant> ProductVariants { get; }
+    DbSet<ProductCostComponent> ProductCostComponents { get; }
     DbSet<Customer> Customers { get; }
     DbSet<Order> Orders { get; }
     DbSet<OrderItem> OrderItems { get; }

@@ -69,7 +69,10 @@ public class FinanceService : IFinanceService
                 p.VendorId,
                 VendorName = p.Vendor != null ? p.Vendor.Name : null,
                 p.InventoryId,
-                InventoryName = p.Inventory != null ? p.Inventory.Name : null })
+                InventoryName = p.Inventory != null ? p.Inventory.Name : null,
+                Components = p.CostComponents.Where(c => !c.IsDeleted)
+                    .Select(c => new { c.VendorId, VendorName = c.Vendor != null ? c.Vendor.Name : null, c.Amount })
+                    .ToList() })
             .ToListAsync(ct);
         var invCost = inv.Sum(p => p.OriginalPrice * p.QuantityOnHand);
         var invSale = inv.Sum(p => p.SalePrice * p.QuantityOnHand);
@@ -95,19 +98,45 @@ public class FinanceService : IFinanceService
             .ToList();
 
         // Amount spent per vendor (current stock, at cost), broken down by inventory batch.
-        var spendByVendor = inv
-            .GroupBy(p => new { p.VendorId, p.VendorName })
+        // Component-aware: a product with cost lines splits its cost across each line's vendor
+        // (lines to the same vendor are merged first, so a piece's units count once per vendor
+        // it involves); a product without lines attributes its whole cost to its own vendor.
+        var spendLines = inv.SelectMany(p =>
+            p.Components.Count > 0
+                ? p.Components
+                    .GroupBy(c => new { c.VendorId, c.VendorName })
+                    .Select(g => new
+                    {
+                        g.Key.VendorId, g.Key.VendorName,
+                        p.InventoryId, p.InventoryName,
+                        Cost = g.Sum(x => x.Amount) * p.QuantityOnHand,
+                        Units = p.QuantityOnHand
+                    })
+                : new[]
+                {
+                    new
+                    {
+                        p.VendorId, VendorName = p.VendorName,
+                        p.InventoryId, p.InventoryName,
+                        Cost = p.OriginalPrice * p.QuantityOnHand,
+                        Units = p.QuantityOnHand
+                    }
+                })
+            .ToList();
+
+        var spendByVendor = spendLines
+            .GroupBy(x => new { x.VendorId, x.VendorName })
             .Select(vg => new VendorSpendDto(
                 vg.Key.VendorId,
                 vg.Key.VendorName ?? "No vendor",
-                vg.Sum(x => x.OriginalPrice * x.QuantityOnHand),
-                vg.Sum(x => x.QuantityOnHand),
+                vg.Sum(x => x.Cost),
+                vg.Sum(x => x.Units),
                 vg.GroupBy(x => new { x.InventoryId, x.InventoryName })
                     .Select(ig => new VendorSpendInventoryDto(
                         ig.Key.InventoryId,
                         ig.Key.InventoryName ?? "No inventory",
-                        ig.Sum(x => x.OriginalPrice * x.QuantityOnHand),
-                        ig.Sum(x => x.QuantityOnHand)))
+                        ig.Sum(x => x.Cost),
+                        ig.Sum(x => x.Units)))
                     .OrderByDescending(i => i.Cost)
                     .ToList()))
             .OrderByDescending(v => v.TotalCost)

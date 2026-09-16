@@ -1,4 +1,5 @@
 import { Component, Inject, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,7 +18,7 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
   selector: 'app-product-edit',
   standalone: true,
   imports: [
-    ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
+    DecimalPipe, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule,
     MoneyInputComponent
   ],
@@ -97,6 +98,37 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
         <div class="form-row">
           <app-money-input formControlName="originalPrice" label="Cost price" />
           <app-money-input formControlName="salePrice" label="Sale price" />
+        </div>
+        <div class="cost-breakdown">
+          <div class="cb-head">
+            <span class="cb-label">Cost breakdown by vendor <span class="muted">(optional)</span></span>
+            @if (costComponents.length) { <span class="muted">Unit cost: <strong>{{ costTotal() | number:'1.2-2' }} USD</strong></span> }
+          </div>
+          <div class="quick">
+            <span class="muted">Quick add:</span>
+            @for (p of costPresets; track p) {
+              <button type="button" class="chip-btn" (click)="addComponent(p)">{{ p }}</button>
+            }
+          </div>
+          <div formArrayName="costComponents">
+            @for (row of costComponents.controls; track row; let i = $index) {
+              <div class="cbrow" [formGroupName]="i">
+                <mat-form-field class="cb-item"><mat-label>Item</mat-label>
+                  <input matInput formControlName="label" placeholder="e.g. Cloth, Stitching" /></mat-form-field>
+                <mat-form-field class="cb-vendor"><mat-label>Vendor</mat-label>
+                  <mat-select formControlName="vendorId">
+                    <mat-option [value]="null">— None —</mat-option>
+                    @for (v of vendors(); track v.id) { <mat-option [value]="v.id">{{ v.name }}</mat-option> }
+                  </mat-select></mat-form-field>
+                <app-money-input class="cb-amt" formControlName="amount" label="Cost / unit" />
+                <button mat-icon-button type="button" color="warn" (click)="removeComponent(i)" title="Remove line"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+          </div>
+          <button mat-stroked-button type="button" (click)="addComponent('')"><mat-icon>add</mat-icon> Add cost line</button>
+          @if (costComponents.length) {
+            <div class="muted cb-hint">Per-unit costs. They set the Cost price above and split “Spend by vendor” (e.g. Cloth → one vendor, Stitching → another).</div>
+          }
         </div>
         <div class="variants">
           <div class="variants-head">
@@ -187,6 +219,14 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
     .vrow .v-qty { width: 110px; }
     .contrib { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
     .contrib-hint { font-size: 11px; line-height: 1.3; }
+    .cost-breakdown { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; }
+    .cb-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .cb-label { font-weight: 600; color: var(--lv-wine); }
+    .cbrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .cbrow .cb-item { flex: 1 1 140px; }
+    .cbrow .cb-vendor { flex: 1 1 140px; }
+    .cbrow .cb-amt { flex: 0 0 auto; }
+    .cb-hint { font-size: 11px; line-height: 1.3; margin-top: 6px; }
   `]
 })
 export class ProductEditDialog {
@@ -214,6 +254,9 @@ export class ProductEditDialog {
 
   /** Per-size stock rows (each: { size, quantityOnHand }). */
   variants = this.fb.array<FormGroup>([]);
+  /** Per-unit cost lines by vendor (each: { label, vendorId, amount }). */
+  costComponents = this.fb.array<FormGroup>([]);
+  readonly costPresets = ['Cloth', 'Stitching', 'Embroidery', 'Dyeing'];
 
   form = this.fb.nonNullable.group({
     categoryId: [null as number | null, Validators.required],
@@ -230,7 +273,8 @@ export class ProductEditDialog {
     reorderThreshold: [0, [Validators.min(0)]],
     imageUrl: [''],
     isActive: [true],
-    variants: this.variants
+    variants: this.variants,
+    costComponents: this.costComponents
   });
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: Product | null) {
@@ -251,11 +295,41 @@ export class ProductEditDialog {
         imageUrl: data.imageUrl ?? '', isActive: data.isActive
       });
       for (const v of data.variants ?? []) this.variants.push(this.makeVariant(v.size, v.quantityOnHand));
+      for (const c of data.costComponents ?? []) this.costComponents.push(this.makeComponent(c.label, c.vendorId ?? null, c.amount));
       this.previewUrl.set(resolveImageUrl(data.imageUrl));
       this.loadSubCategories(data.categoryId);
     }
     if (this.variants.length === 0) this.variants.push(this.makeVariant('', 0));
     this.updateSizeOptions();
+    // Cost lines, when present, are the source of truth for the unit cost.
+    this.costComponents.valueChanges.subscribe(() => this.syncCostFromComponents());
+    this.syncCostFromComponents();
+  }
+
+  private makeComponent(label: string, vendorId: number | null, amount: number): FormGroup {
+    return this.fb.group({
+      label: this.fb.nonNullable.control(label),
+      vendorId: this.fb.control(vendorId as number | null),
+      amount: this.fb.nonNullable.control(amount, [Validators.min(0)])
+    });
+  }
+
+  addComponent(label: string) { this.costComponents.push(this.makeComponent(label, this.form.controls.vendorId.value ?? null, 0)); }
+  removeComponent(i: number) { this.costComponents.removeAt(i); }
+
+  costTotal(): number {
+    return this.costComponents.controls.reduce((s, c) => s + (Number(c.value.amount) || 0), 0);
+  }
+
+  /** When cost lines exist, the Cost price becomes their (read-only) sum; otherwise it's editable. */
+  private syncCostFromComponents() {
+    const cost = this.form.controls.originalPrice;
+    if (this.costComponents.length > 0) {
+      cost.setValue(Number(this.costTotal().toFixed(2)), { emitEvent: false });
+      if (cost.enabled) cost.disable({ emitEvent: false });
+    } else if (cost.disabled) {
+      cost.enable({ emitEvent: false });
+    }
   }
 
   private makeVariant(size: string, qty: number): FormGroup {
@@ -333,9 +407,13 @@ export class ProductEditDialog {
       .filter(x => x.size.length > 0);
     if (variants.length === 0) { this.notify.error(null, 'Add at least one size with stock.'); return; }
 
+    const costComponents = this.costComponents.controls
+      .map(c => ({ label: String(c.value.label ?? '').trim(), vendorId: c.value.vendorId ?? null, amount: Number(c.value.amount) || 0 }))
+      .filter(x => x.label.length > 0);
+
     this.saving.set(true);
-    const { variants: _omit, ...scalars } = this.form.getRawValue() as Record<string, unknown>;
-    const body = { ...scalars, quantityOnHand: this.totalQty(), variants };
+    const { variants: _omit, costComponents: _omit2, ...scalars } = this.form.getRawValue() as Record<string, unknown>;
+    const body = { ...scalars, quantityOnHand: this.totalQty(), variants, costComponents };
     if (this.data) {
       this.api.update(this.data.id, { ...body, rowVersion: this.data.rowVersion }).subscribe({
         next: () => { this.notify.success('Product saved'); this.ref.close(true); },

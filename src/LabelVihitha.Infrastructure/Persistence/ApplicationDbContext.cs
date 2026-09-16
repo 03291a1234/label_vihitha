@@ -28,6 +28,7 @@ public class ApplicationDbContext
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<ProductCostComponent> ProductCostComponents => Set<ProductCostComponent>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();

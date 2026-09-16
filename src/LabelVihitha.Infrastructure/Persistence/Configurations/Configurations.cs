@@ -78,6 +78,27 @@ public class ProductVariantConfiguration : IEntityTypeConfiguration<ProductVaria
     }
 }
 
+public class ProductCostComponentConfiguration : IEntityTypeConfiguration<ProductCostComponent>
+{
+    public void Configure(EntityTypeBuilder<ProductCostComponent> b)
+    {
+        b.Property(x => x.Label).IsRequired().HasMaxLength(80);
+        b.Property(x => x.Amount).HasPrecision(18, 2);
+
+        b.HasOne(x => x.Product)
+            .WithMany(p => p.CostComponents)
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.HasOne(x => x.Vendor)
+            .WithMany()
+            .HasForeignKey(x => x.VendorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
 public class VendorConfiguration : IEntityTypeConfiguration<Vendor>
 {
     public void Configure(EntityTypeBuilder<Vendor> b)

@@ -49,6 +49,10 @@ public class Product : BaseEntity
 
     /// <summary>Per-size stock breakdown. Every product has at least one variant.</summary>
     public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
+
+    /// <summary>Optional per-unit cost lines by vendor (cloth, stitching, …). When any exist,
+    /// <see cref="OriginalPrice"/> is maintained as their sum.</summary>
+    public ICollection<ProductCostComponent> CostComponents { get; set; } = new List<ProductCostComponent>();
     public string? ImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
 

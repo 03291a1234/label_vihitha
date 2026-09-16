@@ -3,6 +3,9 @@ namespace LabelVihitha.Application.Features.Products;
 public record ProductVariantDto(int Id, string Size, int QuantityOnHand);
 public record ProductVariantInput(string Size, int QuantityOnHand);
 
+public record ProductCostComponentDto(int Id, string Label, int? VendorId, string? VendorName, decimal Amount);
+public record ProductCostComponentInput(string Label, int? VendorId, decimal Amount);
+
 public record ProductDto(
     int Id,
     int CategoryId,
@@ -29,6 +32,7 @@ public record ProductDto(
     string? ImageUrl,
     bool IsActive,
     IReadOnlyList<ProductVariantDto> Variants,
+    IReadOnlyList<ProductCostComponentDto> CostComponents,
     string RowVersion);
 
 public record CreateProductRequest(
@@ -49,6 +53,9 @@ public record CreateProductRequest(
     int ReorderThreshold,
     string? ImageUrl,
     IReadOnlyList<ProductVariantInput>? Variants = null,   // authoritative per-size stock when provided
+    // Optional per-unit cost lines by vendor (cloth, stitching, …). When provided & non-empty,
+    // OriginalPrice is set to their sum and the direct OriginalPrice value is ignored.
+    IReadOnlyList<ProductCostComponentInput>? CostComponents = null,
     // When true and a PaidByOwner + cost are set, also post that owner a capital Contribution
     // equal to the total cost (use when they paid out-of-pocket, not from the shared account).
     bool RecordOwnerContribution = false);
@@ -72,7 +79,8 @@ public record UpdateProductRequest(
     string? ImageUrl,
     bool IsActive,
     string RowVersion,   // base64 concurrency token
-    IReadOnlyList<ProductVariantInput>? Variants = null);   // authoritative per-size stock when provided
+    IReadOnlyList<ProductVariantInput>? Variants = null,   // authoritative per-size stock when provided
+    IReadOnlyList<ProductCostComponentInput>? CostComponents = null);   // per-unit cost lines by vendor; sum = OriginalPrice
 
 // ---- Bulk "set paid-by owner" over a filtered set of products ----
 public record BulkSetPaidByRequest(

@@ -197,6 +197,14 @@ export interface ProductVariant {
   quantityOnHand: number;
 }
 
+export interface ProductCostComponent {
+  id: number;
+  label: string;
+  vendorId?: number | null;
+  vendorName?: string | null;
+  amount: number;
+}
+
 export interface BulkSetPaidByRequest {
   categoryId?: number | null;
   subCategoryId?: number | null;
@@ -251,6 +259,7 @@ export interface Product {
   imageUrl?: string | null;
   isActive: boolean;
   variants: ProductVariant[];
+  costComponents: ProductCostComponent[];
   rowVersion: string;
 }
 

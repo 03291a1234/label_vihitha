@@ -38,7 +38,7 @@ public class ProductService : IProductService
         }
 
         var total = await q.CountAsync(ct);
-        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory).Include(p => p.Vendor).Include(p => p.PaidByOwner).Include(p => p.Variants), query.SortBy, query.SortDir);
+        var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory).Include(p => p.Vendor).Include(p => p.PaidByOwner).Include(p => p.Variants).Include(p => p.CostComponents).ThenInclude(c => c.Vendor), query.SortBy, query.SortDir);
         var entities = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -94,6 +94,7 @@ public class ProductService : IProductService
             .Include(p => p.Vendor)
             .Include(p => p.PaidByOwner)
             .Include(p => p.Variants)
+            .Include(p => p.CostComponents).ThenInclude(c => c.Vendor)
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
         return entity is null ? throw new NotFoundException(nameof(Product), id) : MapToDto(entity);
     }
@@ -108,6 +109,9 @@ public class ProductService : IProductService
         await EnsureInventoryValidAsync(request.InventoryId, ct);
         await EnsureVendorValidAsync(request.VendorId, ct);
         await EnsureOwnerValidAsync(request.PaidByOwnerId, ct);
+        await EnsureComponentVendorsValidAsync(request.CostComponents, ct);
+
+        var components = NormalizeComponents(request.CostComponents);
 
         var entity = new Product
         {
@@ -121,12 +125,15 @@ public class ProductService : IProductService
             Description = request.Description,
             Color = request.Color,
             Material = request.Material,
-            OriginalPrice = request.OriginalPrice ?? 0m,
+            // Cost lines, when supplied, are the source of truth for the unit cost.
+            OriginalPrice = components.Count > 0 ? components.Sum(c => c.Amount) : (request.OriginalPrice ?? 0m),
             SalePrice = request.SalePrice ?? 0m,
             ReorderThreshold = request.ReorderThreshold,
             ImageUrl = request.ImageUrl,
             IsActive = true
         };
+        entity.CostComponents = components
+            .Select(c => new ProductCostComponent { Label = c.Label, VendorId = c.VendorId, Amount = c.Amount }).ToList();
 
         var variants = NormalizeVariants(request.Variants, request.Size, request.QuantityOnHand);
         entity.Variants = variants.Select(v => new ProductVariant { Size = v.Size, QuantityOnHand = v.Qty }).ToList();
@@ -156,7 +163,8 @@ public class ProductService : IProductService
 
     public async Task<ProductDto> UpdateAsync(int id, UpdateProductRequest request, CancellationToken ct = default)
     {
-        var entity = await _db.Products.Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
+        var entity = await _db.Products.Include(p => p.Variants).Include(p => p.CostComponents)
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
             ?? throw new NotFoundException(nameof(Product), id);
 
         if (!await _db.Categories.AnyAsync(c => c.Id == request.CategoryId && !c.IsDeleted, ct))
@@ -167,6 +175,9 @@ public class ProductService : IProductService
         await EnsureInventoryValidAsync(request.InventoryId, ct);
         await EnsureVendorValidAsync(request.VendorId, ct);
         await EnsureOwnerValidAsync(request.PaidByOwnerId, ct);
+        await EnsureComponentVendorsValidAsync(request.CostComponents, ct);
+
+        var components = NormalizeComponents(request.CostComponents);
 
         entity.CategoryId = request.CategoryId;
         entity.SubCategoryId = request.SubCategoryId;
@@ -178,7 +189,8 @@ public class ProductService : IProductService
         entity.Description = request.Description;
         entity.Color = request.Color;
         entity.Material = request.Material;
-        entity.OriginalPrice = request.OriginalPrice;
+        // Cost lines, when supplied, drive the unit cost; otherwise use the direct value.
+        entity.OriginalPrice = components.Count > 0 ? components.Sum(c => c.Amount) : request.OriginalPrice;
         entity.SalePrice = request.SalePrice;
         entity.ReorderThreshold = request.ReorderThreshold;
         entity.ImageUrl = request.ImageUrl;
@@ -186,6 +198,7 @@ public class ProductService : IProductService
         entity.UpdatedAt = DateTime.UtcNow;
 
         SyncVariants(entity, NormalizeVariants(request.Variants, request.Size, request.QuantityOnHand));
+        SyncCostComponents(entity, components);
 
         // Optimistic concurrency — reject if the row changed since the client read it.
         if (!string.IsNullOrEmpty(request.RowVersion))
@@ -318,6 +331,17 @@ public class ProductService : IProductService
             throw new NotFoundException(nameof(Owner), id);
     }
 
+    /// <summary>Every vendor referenced by a cost line (if any) must exist.</summary>
+    private async Task EnsureComponentVendorsValidAsync(IReadOnlyList<ProductCostComponentInput>? components, CancellationToken ct)
+    {
+        if (components is null) return;
+        var ids = components.Where(c => c.VendorId is int).Select(c => c.VendorId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return;
+        var found = await _db.Vendors.Where(v => ids.Contains(v.Id) && !v.IsDeleted).Select(v => v.Id).ToListAsync(ct);
+        var missing = ids.Except(found).FirstOrDefault();
+        if (missing != 0) throw new NotFoundException(nameof(Vendor), missing);
+    }
+
     private async Task EnsureSkuUniqueAsync(string sku, int? excludeId, CancellationToken ct)
     {
         var normalized = sku.Trim();
@@ -357,6 +381,11 @@ public class ProductService : IProductService
             .Where(v => !v.IsDeleted)
             .OrderBy(v => v.Id)
             .Select(v => new ProductVariantDto(v.Id, v.Size, v.QuantityOnHand))
+            .ToList(),
+        (p.CostComponents ?? new List<ProductCostComponent>())
+            .Where(c => !c.IsDeleted)
+            .OrderBy(c => c.Id)
+            .Select(c => new ProductCostComponentDto(c.Id, c.Label, c.VendorId, c.Vendor?.Name, c.Amount))
             .ToList(),
         Convert.ToBase64String(p.RowVersion));
 
@@ -403,5 +432,43 @@ public class ProductService : IProductService
     {
         var sizes = variants.Select(v => v.Size).Where(s => !string.Equals(s, "One Size", StringComparison.OrdinalIgnoreCase)).ToList();
         return sizes.Count == 0 ? null : string.Join(", ", sizes);
+    }
+
+    // ---- Cost component helpers ----
+
+    /// <summary>Trim/validate cost lines: drop blank-label lines, clamp negatives to 0.</summary>
+    private static List<(string Label, int? VendorId, decimal Amount)> NormalizeComponents(
+        IReadOnlyList<ProductCostComponentInput>? inputs)
+    {
+        if (inputs is null) return new();
+        return inputs
+            .Where(c => !string.IsNullOrWhiteSpace(c.Label))
+            .Select(c => (Label: c.Label.Trim(), c.VendorId, Amount: c.Amount < 0 ? 0m : Math.Round(c.Amount, 2)))
+            .ToList();
+    }
+
+    /// <summary>Reconcile a product's cost-component rows with the desired set (add/update/soft-delete).
+    /// Matches existing rows in order so labels/vendors/amounts can all change.</summary>
+    private static void SyncCostComponents(Product product, List<(string Label, int? VendorId, decimal Amount)> desired)
+    {
+        var existing = product.CostComponents.Where(c => !c.IsDeleted).OrderBy(c => c.Id).ToList();
+        for (int i = 0; i < desired.Count; i++)
+        {
+            if (i < existing.Count)
+            {
+                existing[i].Label = desired[i].Label;
+                existing[i].VendorId = desired[i].VendorId;
+                existing[i].Amount = desired[i].Amount;
+            }
+            else
+            {
+                product.CostComponents.Add(new ProductCostComponent
+                {
+                    Label = desired[i].Label, VendorId = desired[i].VendorId, Amount = desired[i].Amount
+                });
+            }
+        }
+        for (int i = desired.Count; i < existing.Count; i++)
+            existing[i].IsDeleted = true;
     }
 }
