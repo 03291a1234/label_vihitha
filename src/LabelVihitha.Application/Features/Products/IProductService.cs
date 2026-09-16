@@ -9,5 +9,6 @@ public interface IProductService
     Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken ct = default);
     Task<ProductDto> UpdateAsync(int id, UpdateProductRequest request, CancellationToken ct = default);
+    Task<BulkSetPaidByResult> BulkSetPaidByOwnerAsync(BulkSetPaidByRequest request, CancellationToken ct = default);
     Task DeleteAsync(int id, CancellationToken ct = default);
 }

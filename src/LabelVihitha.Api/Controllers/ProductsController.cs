@@ -41,6 +41,11 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<ProductDto>> Update(int id, UpdateProductRequest request, CancellationToken ct)
         => Ok(await _service.UpdateAsync(id, request, ct));
 
+    [HttpPost("bulk-paid-by")]
+    [Authorize(Roles = ManageRoles)]
+    public async Task<ActionResult<BulkSetPaidByResult>> BulkSetPaidBy(BulkSetPaidByRequest request, CancellationToken ct)
+        => Ok(await _service.BulkSetPaidByOwnerAsync(request, ct));
+
     [HttpDelete("{id:int}")]
     [Authorize(Roles = ManageRoles)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)

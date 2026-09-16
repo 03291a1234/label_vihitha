@@ -197,6 +197,23 @@ export interface ProductVariant {
   quantityOnHand: number;
 }
 
+export interface BulkSetPaidByRequest {
+  categoryId?: number | null;
+  subCategoryId?: number | null;
+  inventoryId?: number | null;
+  vendorId?: number | null;
+  lowStockOnly: boolean;
+  search?: string | null;
+  paidByOwnerId: number | null;
+  recordOwnerContribution: boolean;
+}
+
+export interface BulkSetPaidByResult {
+  productsUpdated: number;
+  totalCost: number;
+  contributionPosted: boolean;
+}
+
 export interface ProductImportResult {
   productsCreated: number;
   variantsCreated: number;

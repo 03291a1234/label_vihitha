@@ -20,6 +20,7 @@ import { Category, SubCategory, Inventory, Vendor, InventorySummary, Product } f
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ProductEditDialog } from './product-edit.dialog';
 import { ImportResultDialog } from './import-result.dialog';
+import { BulkPaidByDialog } from './bulk-paid-by.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
 @Component({
@@ -44,6 +45,10 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <button mat-stroked-button (click)="xlsx.click()" [disabled]="importing()">
               @if (importing()) { <mat-spinner diameter="18"></mat-spinner> } @else { <mat-icon>upload_file</mat-icon> }
               Import Excel
+            </button>
+            <button mat-stroked-button (click)="openBulkPaidBy()" [disabled]="loading()"
+                    title="Set who funded the products matching the current filters">
+              <mat-icon>account_balance_wallet</mat-icon> Set paid by
             </button>
             <button mat-raised-button color="primary" (click)="openEdit(null)">
               <mat-icon>add</mat-icon> New product
@@ -143,6 +148,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
                   <div class="muted meta">
                     @if (p.inventoryName) { <span><mat-icon class="inv-icon">inventory</mat-icon> {{ p.inventoryName }}</span> }
                     @if (p.vendorName) { <span><mat-icon class="inv-icon">storefront</mat-icon> {{ p.vendorName }}</span> }
+                    @if (p.paidByOwnerName) { <span class="paid"><mat-icon class="inv-icon">account_balance_wallet</mat-icon> {{ p.paidByOwnerName }}</span> }
                   </div>
                 </div>
               </div>
@@ -207,6 +213,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .product-cell .thumb img { width: 100%; height: 100%; object-fit: cover; }
     .product-cell .thumb mat-icon { color: #b8b8c0; font-size: 22px; height: 22px; width: 22px; }
     .inv-icon { font-size: 14px; height: 14px; width: 14px; vertical-align: -2px; }
+    .meta .paid { color: var(--lv-wine); font-weight: 600; }
     .product-cell .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
     .sizes { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
     .size-chip { background: var(--lv-rose-soft, #f7ebf0); color: var(--lv-wine); border-radius: 999px;
@@ -326,6 +333,42 @@ export class ProductListComponent {
   openEdit(p: Product | null) {
     this.dialog.open(ProductEditDialog, { data: p, width: '640px' }).afterClosed()
       .subscribe(ok => { if (ok) { this.load(); this.loadSummary(); } });
+  }
+
+  /** Bulk-set the "paid by" funder on every product matching the current filters. */
+  openBulkPaidBy() {
+    const filter = {
+      categoryId: this.categoryId,
+      subCategoryId: this.subCategoryId,
+      inventoryId: this.inventoryId,
+      vendorId: this.vendorId,
+      lowStockOnly: this.lowStockOnly,
+      search: this.search || null
+    };
+    const parts: string[] = [];
+    if (this.inventoryId) parts.push(this.inventories().find(i => i.id === this.inventoryId)?.name ?? 'inventory');
+    if (this.vendorId) parts.push(this.vendors().find(v => v.id === this.vendorId)?.name ?? 'vendor');
+    if (this.categoryId) parts.push(this.categories().find(c => c.id === this.categoryId)?.name ?? 'category');
+    if (this.subCategoryId) parts.push(this.subCategories().find(s => s.id === this.subCategoryId)?.name ?? 'subcategory');
+    if (this.lowStockOnly) parts.push('low stock');
+    if (this.search) parts.push(`“${this.search}”`);
+
+    this.dialog.open(BulkPaidByDialog, {
+      width: '460px',
+      data: { filter, count: this.total(), scope: parts.join(' · ') }
+    }).afterClosed().subscribe((body) => {
+      if (!body) return;
+      this.loading.set(true);
+      this.api.bulkSetPaidBy(body).subscribe({
+        next: (res) => {
+          const who = body.paidByOwnerId ? 'set' : 'cleared';
+          const contrib = res.contributionPosted ? ` · contribution of $${res.totalCost.toFixed(2)} posted` : '';
+          this.notify.success(`Paid by ${who} on ${res.productsUpdated} product(s)${contrib}`);
+          this.load();
+        },
+        error: (e) => { this.loading.set(false); this.notify.error(e); }
+      });
+    });
   }
 
   onImportSelected(event: Event) {

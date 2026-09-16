@@ -5,7 +5,8 @@ import { environment } from '../../../environments/environment';
 import {
   Category, SubCategory, Inventory, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
-  ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult
+  ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult,
+  BulkSetPaidByRequest, BulkSetPaidByResult
 } from '../models';
 
 const base = environment.apiUrl;
@@ -112,6 +113,9 @@ export class ProductApi {
   create(body: unknown) { return this.http.post<Product>(`${base}/products`, body); }
   update(id: number, body: unknown) { return this.http.put<Product>(`${base}/products/${id}`, body); }
   remove(id: number) { return this.http.delete<void>(`${base}/products/${id}`); }
+  bulkSetPaidBy(body: BulkSetPaidByRequest) {
+    return this.http.post<BulkSetPaidByResult>(`${base}/products/bulk-paid-by`, body);
+  }
 
   uploadImage(file: File): Observable<{ url: string }> {
     const form = new FormData();

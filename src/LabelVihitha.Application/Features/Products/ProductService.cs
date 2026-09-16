@@ -214,6 +214,51 @@ public class ProductService : IProductService
         return await GetByIdAsync(entity.Id, ct);
     }
 
+    /// <summary>Set (or clear, when owner is null) the per-product "paid by" funder on every
+    /// product matching the given filters — the same filters as the product list. Optionally
+    /// posts a single owner capital contribution equal to the affected stock's total cost.</summary>
+    public async Task<BulkSetPaidByResult> BulkSetPaidByOwnerAsync(BulkSetPaidByRequest request, CancellationToken ct = default)
+    {
+        await EnsureOwnerValidAsync(request.PaidByOwnerId, ct);
+
+        var q = _db.Products.Where(p => !p.IsDeleted);
+        if (request.CategoryId is int cid) q = q.Where(p => p.CategoryId == cid);
+        if (request.SubCategoryId is int scid) q = q.Where(p => p.SubCategoryId == scid);
+        if (request.InventoryId is int invId) q = q.Where(p => p.InventoryId == invId);
+        if (request.VendorId is int venId) q = q.Where(p => p.VendorId == venId);
+        if (request.LowStockOnly) q = q.Where(p => p.QuantityOnHand <= p.ReorderThreshold);
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var term = request.Search.Trim();
+            q = q.Where(p => p.Name.Contains(term) || p.SKU.Contains(term));
+        }
+
+        var products = await q.ToListAsync(ct);
+        foreach (var p in products)
+        {
+            p.PaidByOwnerId = request.PaidByOwnerId;
+            p.UpdatedAt = DateTime.UtcNow;
+        }
+
+        var totalCost = Math.Round(products.Sum(p => p.OriginalPrice * p.QuantityOnHand), 2);
+        var posted = false;
+        if (request.RecordOwnerContribution && request.PaidByOwnerId is int ownerId && totalCost > 0)
+        {
+            _db.OwnerTransactions.Add(new OwnerTransaction
+            {
+                OwnerId = ownerId,
+                Date = DateTime.UtcNow,
+                Type = Domain.Enums.OwnerTransactionType.Contribution,
+                Amount = totalCost,
+                Notes = $"Bulk inventory funding: {products.Count} product(s)"
+            });
+            posted = true;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return new BulkSetPaidByResult(products.Count, totalCost, posted);
+    }
+
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var entity = await _db.Products.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)

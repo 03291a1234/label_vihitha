@@ -74,6 +74,19 @@ public record UpdateProductRequest(
     string RowVersion,   // base64 concurrency token
     IReadOnlyList<ProductVariantInput>? Variants = null);   // authoritative per-size stock when provided
 
+// ---- Bulk "set paid-by owner" over a filtered set of products ----
+public record BulkSetPaidByRequest(
+    int? CategoryId,
+    int? SubCategoryId,
+    int? InventoryId,
+    int? VendorId,
+    bool LowStockOnly,
+    string? Search,
+    int? PaidByOwnerId,                        // null clears the per-product override
+    bool RecordOwnerContribution = false);     // when set + owner, post ONE contribution = total cost
+
+public record BulkSetPaidByResult(int ProductsUpdated, decimal TotalCost, bool ContributionPosted);
+
 // ---- Inventory count summary (by category → subcategory) ----
 public record SubCategoryCount(int? SubCategoryId, string SubCategoryName, int ProductCount, int TotalUnits);
 public record CategoryCount(int CategoryId, string CategoryName, int ProductCount, int TotalUnits,
