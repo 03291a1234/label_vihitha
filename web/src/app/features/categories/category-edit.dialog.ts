@@ -8,14 +8,13 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CategoryApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Category } from '../../core/models';
-import { MoneyInputComponent } from '../../shared/money-input.component';
 
 @Component({
   selector: 'app-category-edit',
   standalone: true,
   imports: [
     ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatButtonModule, MatSlideToggleModule, MoneyInputComponent
+    MatButtonModule, MatSlideToggleModule
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Edit category' : 'New category' }}</h2>
@@ -29,10 +28,6 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
           <mat-label>Description</mat-label>
           <textarea matInput rows="2" formControlName="description"></textarea>
         </mat-form-field>
-        <div class="form-row">
-          <app-money-input formControlName="defaultOriginalPrice" label="Default cost" placeholder="optional" />
-          <app-money-input formControlName="defaultSalePrice" label="Default sale" placeholder="optional" />
-        </div>
         @if (data) {
           <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle>
         }
@@ -54,8 +49,6 @@ export class CategoryEditDialog {
   form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     description: [''],
-    defaultOriginalPrice: [null as number | null],
-    defaultSalePrice: [null as number | null],
     isActive: [true]
   });
 
@@ -64,8 +57,6 @@ export class CategoryEditDialog {
       this.form.patchValue({
         name: data.name,
         description: data.description ?? '',
-        defaultOriginalPrice: data.defaultOriginalPrice ?? null,
-        defaultSalePrice: data.defaultSalePrice ?? null,
         isActive: data.isActive
       });
     }
@@ -75,16 +66,8 @@ export class CategoryEditDialog {
     if (this.form.invalid) return;
     this.saving.set(true);
     const v = this.form.getRawValue();
-    const body = {
-      name: v.name,
-      description: v.description || null,
-      defaultOriginalPrice: v.defaultOriginalPrice,
-      defaultSalePrice: v.defaultSalePrice,
-      isActive: v.isActive
-    };
-    const req = this.data
-      ? this.api.update(this.data.id, body)
-      : this.api.create(body);
+    const body = { name: v.name, description: v.description || null, isActive: v.isActive };
+    const req = this.data ? this.api.update(this.data.id, body) : this.api.create(body);
     req.subscribe({
       next: () => { this.notify.success('Category saved'); this.ref.close(true); },
       error: (e) => { this.saving.set(false); this.notify.error(e); }

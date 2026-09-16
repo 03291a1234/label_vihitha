@@ -5,19 +5,13 @@ public record CategoryDto(
     string Name,
     string? Description,
     bool IsActive,
-    decimal? DefaultOriginalPrice,
-    decimal? DefaultSalePrice,
     int ProductCount);
 
 public record CreateCategoryRequest(
     string Name,
-    string? Description,
-    decimal? DefaultOriginalPrice,
-    decimal? DefaultSalePrice);
+    string? Description);
 
 public record UpdateCategoryRequest(
     string Name,
     string? Description,
-    bool IsActive,
-    decimal? DefaultOriginalPrice,
-    decimal? DefaultSalePrice);
+    bool IsActive);

@@ -21,7 +21,6 @@ public class CategoryService : ICategoryService
             .OrderBy(c => c.Name)
             .Select(c => new CategoryDto(
                 c.Id, c.Name, c.Description, c.IsActive,
-                c.DefaultOriginalPrice, c.DefaultSalePrice,
                 c.Products.Count(p => !p.IsDeleted)))
             .ToListAsync(ct);
     }
@@ -32,7 +31,6 @@ public class CategoryService : ICategoryService
             .Where(c => c.Id == id)
             .Select(c => new CategoryDto(
                 c.Id, c.Name, c.Description, c.IsActive,
-                c.DefaultOriginalPrice, c.DefaultSalePrice,
                 c.Products.Count(p => !p.IsDeleted)))
             .FirstOrDefaultAsync(ct);
 
@@ -45,8 +43,6 @@ public class CategoryService : ICategoryService
         {
             Name = request.Name.Trim(),
             Description = request.Description,
-            DefaultOriginalPrice = request.DefaultOriginalPrice,
-            DefaultSalePrice = request.DefaultSalePrice,
             IsActive = true
         };
 
@@ -63,8 +59,6 @@ public class CategoryService : ICategoryService
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
         entity.IsActive = request.IsActive;
-        entity.DefaultOriginalPrice = request.DefaultOriginalPrice;
-        entity.DefaultSalePrice = request.DefaultSalePrice;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
@@ -85,6 +79,5 @@ public class CategoryService : ICategoryService
     }
 
     private static CategoryDto Map(Category c, int productCount) => new(
-        c.Id, c.Name, c.Description, c.IsActive,
-        c.DefaultOriginalPrice, c.DefaultSalePrice, productCount);
+        c.Id, c.Name, c.Description, c.IsActive, productCount);
 }

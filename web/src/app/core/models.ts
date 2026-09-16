@@ -25,8 +25,6 @@ export interface Category {
   name: string;
   description?: string | null;
   isActive: boolean;
-  defaultOriginalPrice?: number | null;
-  defaultSalePrice?: number | null;
   productCount: number;
 }
 

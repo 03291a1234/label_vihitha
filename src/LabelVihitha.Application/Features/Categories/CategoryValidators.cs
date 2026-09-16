@@ -8,8 +8,6 @@ public class CreateCategoryRequestValidator : AbstractValidator<CreateCategoryRe
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(500);
-        RuleFor(x => x.DefaultOriginalPrice).GreaterThanOrEqualTo(0).When(x => x.DefaultOriginalPrice.HasValue);
-        RuleFor(x => x.DefaultSalePrice).GreaterThanOrEqualTo(0).When(x => x.DefaultSalePrice.HasValue);
     }
 }
 
@@ -19,7 +17,5 @@ public class UpdateCategoryRequestValidator : AbstractValidator<UpdateCategoryRe
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(500);
-        RuleFor(x => x.DefaultOriginalPrice).GreaterThanOrEqualTo(0).When(x => x.DefaultOriginalPrice.HasValue);
-        RuleFor(x => x.DefaultSalePrice).GreaterThanOrEqualTo(0).When(x => x.DefaultSalePrice.HasValue);
     }
 }

@@ -1,5 +1,4 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,7 +20,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   selector: 'app-category-list',
   standalone: true,
   imports: [
-    CurrencyPipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
+    FormsModule, MatTableModule, MatButtonModule, MatIconModule,
     MatDialogModule, MatProgressBarModule, MatSlideToggleModule, MatSortModule
   ],
   template: `
@@ -49,14 +48,6 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
               @if (!c.isActive) { <span class="chip Cancelled">inactive</span> }
               <div class="muted">{{ c.description }}</div>
             </td>
-          </ng-container>
-          <ng-container matColumnDef="defaultOriginalPrice">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Default cost</th>
-            <td mat-cell *matCellDef="let c" class="text-right mono">{{ c.defaultOriginalPrice | currency }}</td>
-          </ng-container>
-          <ng-container matColumnDef="defaultSalePrice">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Default sale</th>
-            <td mat-cell *matCellDef="let c" class="text-right mono">{{ c.defaultSalePrice | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="productCount">
             <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Products</th>
@@ -96,7 +87,7 @@ export class CategoryListComponent {
   rows = signal<Category[]>([]);
   loading = signal(false);
   includeInactive = false;
-  cols = ['name', 'defaultOriginalPrice', 'defaultSalePrice', 'productCount', 'subcategories', 'actions'];
+  cols = ['name', 'productCount', 'subcategories', 'actions'];
 
   private data: Category[] = [];
   private sort: Sort = { active: '', direction: '' };

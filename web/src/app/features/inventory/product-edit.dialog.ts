@@ -273,19 +273,10 @@ export class ProductEditDialog {
     this.suggestions.set(subSizes.length ? subSizes : this.standardSizes);
   }
 
-  /** On create, prefill prices from the category's defaults; always refresh subcategories. */
+  /** Category changed → the previously chosen subcategory no longer applies; refresh subcategories. */
   onCategoryChange(catId: number) {
-    // Category changed → the previously chosen subcategory no longer applies.
     this.form.controls.subCategoryId.setValue(null);
     this.loadSubCategories(catId);
-
-    if (this.data) return;
-    const cat = this.categories().find(c => c.id === catId);
-    if (!cat) return;
-    if (!this.form.controls.originalPrice.value && cat.defaultOriginalPrice != null)
-      this.form.controls.originalPrice.setValue(cat.defaultOriginalPrice);
-    if (!this.form.controls.salePrice.value && cat.defaultSalePrice != null)
-      this.form.controls.salePrice.setValue(cat.defaultSalePrice);
   }
 
   onFileSelected(event: Event) {

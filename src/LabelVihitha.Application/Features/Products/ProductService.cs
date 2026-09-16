@@ -118,9 +118,8 @@ public class ProductService : IProductService
             Description = request.Description,
             Color = request.Color,
             Material = request.Material,
-            // Inherit category defaults when a price is omitted.
-            OriginalPrice = request.OriginalPrice ?? category.DefaultOriginalPrice ?? 0m,
-            SalePrice = request.SalePrice ?? category.DefaultSalePrice ?? 0m,
+            OriginalPrice = request.OriginalPrice ?? 0m,
+            SalePrice = request.SalePrice ?? 0m,
             ReorderThreshold = request.ReorderThreshold,
             ImageUrl = request.ImageUrl,
             IsActive = true

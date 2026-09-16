@@ -79,7 +79,7 @@ public static class DbSeeder
 
     // Shape of the embedded seed-catalog.json (generated from the boutique's Excel inventory).
     private sealed record SeedCatalog(List<SeedCategory> Categories, List<SeedInventory>? Inventories, List<SeedProduct> Products);
-    private sealed record SeedCategory(string Name, string? Description, decimal? DefaultOriginalPrice, decimal? DefaultSalePrice);
+    private sealed record SeedCategory(string Name, string? Description);
     private sealed record SeedInventory(string Name, string? Description);
     private sealed record SeedProduct(string Category, string? SubCategory, string? Inventory, string Sku, string Name, string? Description,
         decimal OriginalPrice, decimal SalePrice, int QuantityOnHand, int ReorderThreshold);
@@ -100,8 +100,6 @@ public static class DbSeeder
         {
             Name = c.Name,
             Description = c.Description,
-            DefaultOriginalPrice = c.DefaultOriginalPrice,
-            DefaultSalePrice = c.DefaultSalePrice
         }).ToList();
         db.Categories.AddRange(categories);
         await db.SaveChangesAsync();
