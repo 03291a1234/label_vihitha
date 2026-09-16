@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { ExpenseApi, ExpenseCategoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
@@ -22,7 +23,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   standalone: true,
   imports: [
     CurrencyPipe, DatePipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatSelectModule, MatProgressBarModule, MatPaginatorModule
+    MatFormFieldModule, MatInputModule, MatSelectModule, MatProgressBarModule, MatPaginatorModule, MatSortModule
   ],
   template: `
     <div class="page">
@@ -57,21 +58,21 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       <div class="card">
-        <table mat-table [dataSource]="rows()" class="full">
+        <table mat-table [dataSource]="rows()" class="full" matSort (matSortChange)="onSort($event)">
           <ng-container matColumnDef="date">
-            <th mat-header-cell *matHeaderCellDef>Date</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
             <td mat-cell *matCellDef="let e">{{ e.date | date:'mediumDate' }}</td>
           </ng-container>
           <ng-container matColumnDef="category">
-            <th mat-header-cell *matHeaderCellDef>Category</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
             <td mat-cell *matCellDef="let e"><strong>{{ e.expenseCategoryName }}</strong></td>
           </ng-container>
           <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef>Description</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Description</th>
             <td mat-cell *matCellDef="let e">{{ e.description || '—' }}</td>
           </ng-container>
           <ng-container matColumnDef="paidBy">
-            <th mat-header-cell *matHeaderCellDef>Paid by</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Paid by</th>
             <td mat-cell *matCellDef="let e">{{ e.paidByOwnerName || '—' }}</td>
           </ng-container>
           <ng-container matColumnDef="receipt">
@@ -85,11 +86,11 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             </td>
           </ng-container>
           <ng-container matColumnDef="amountInr">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Amount (INR)</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Amount (INR)</th>
             <td mat-cell *matCellDef="let e" class="text-right mono">{{ e.amount * inrRate | currency:'INR':'symbol':'1.0-0' }}</td>
           </ng-container>
           <ng-container matColumnDef="amount">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Amount (USD)</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Amount (USD)</th>
             <td mat-cell *matCellDef="let e" class="text-right mono">{{ e.amount | currency }}</td>
           </ng-container>
           <ng-container matColumnDef="actions">
@@ -131,6 +132,8 @@ export class ExpenseListComponent {
   categoryId: number | null = null;
   fromDate = '';
   toDate = '';
+  sortBy: string | null = null;
+  sortDir: string | null = null;
   page = 1;
   pageSize = 25;
   cols = ['date', 'category', 'description', 'paidBy', 'receipt', 'amountInr', 'amount', 'actions'];
@@ -148,6 +151,7 @@ export class ExpenseListComponent {
       categoryId: this.categoryId,
       fromDate: this.fromDate ? new Date(this.fromDate).toISOString() : null,
       toDate: this.toDate ? new Date(this.toDate).toISOString() : null,
+      sortBy: this.sortBy, sortDir: this.sortDir,
       page: this.page, pageSize: this.pageSize
     }).subscribe({
       next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
@@ -157,6 +161,11 @@ export class ExpenseListComponent {
 
   reload() { this.page = 1; this.load(); }
   onPage(e: PageEvent) { this.page = e.pageIndex + 1; this.pageSize = e.pageSize; this.load(); }
+  onSort(s: Sort) {
+    this.sortBy = s.direction ? s.active : null;
+    this.sortDir = s.direction || null;
+    this.reload();
+  }
 
   openEdit(e: Expense | null) {
     this.dialog.open(ExpenseEditDialog, { data: e, width: '520px' })

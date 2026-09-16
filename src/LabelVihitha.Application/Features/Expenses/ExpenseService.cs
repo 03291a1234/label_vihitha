@@ -108,8 +108,13 @@ public class ExpenseService : IExpenseService
         var desc = !string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase); // default newest first
         return sortBy?.ToLowerInvariant() switch
         {
-            "amount" => desc ? q.OrderByDescending(e => e.Amount) : q.OrderBy(e => e.Amount),
+            // amountInr and amount are the same underlying value (only the display currency differs).
+            "amount" or "amountinr" => desc ? q.OrderByDescending(e => e.Amount) : q.OrderBy(e => e.Amount),
             "category" => desc ? q.OrderByDescending(e => e.ExpenseCategory.Name) : q.OrderBy(e => e.ExpenseCategory.Name),
+            "description" => desc ? q.OrderByDescending(e => e.Description) : q.OrderBy(e => e.Description),
+            "paidby" => desc ? q.OrderByDescending(e => e.PaidByOwner!.Name) : q.OrderBy(e => e.PaidByOwner!.Name),
+            "date" => desc ? q.OrderByDescending(e => e.Date).ThenByDescending(e => e.Id)
+                           : q.OrderBy(e => e.Date).ThenBy(e => e.Id),
             _ => desc ? q.OrderByDescending(e => e.Date).ThenByDescending(e => e.Id)
                       : q.OrderBy(e => e.Date).ThenBy(e => e.Id)
         };
