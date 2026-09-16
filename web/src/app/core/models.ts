@@ -171,6 +171,17 @@ export interface ProductVariant {
   quantityOnHand: number;
 }
 
+export interface ProductImportResult {
+  productsCreated: number;
+  variantsCreated: number;
+  rowsProcessed: number;
+  createdVendors: string[];
+  createdInventories: string[];
+  createdCategories: string[];
+  createdSubCategories: string[];
+  errors: string[];
+}
+
 export interface Product {
   id: number;
   categoryId: number;

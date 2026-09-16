@@ -17,7 +17,9 @@ import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, resol
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Category, SubCategory, Inventory, Vendor, InventorySummary, Product } from '../../core/models';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ProductEditDialog } from './product-edit.dialog';
+import { ImportResultDialog } from './import-result.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
 @Component({
@@ -26,16 +28,27 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   imports: [
     CurrencyPipe, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatSlideToggleModule,
-    MatPaginatorModule, MatProgressBarModule, MatSortModule
+    MatPaginatorModule, MatProgressBarModule, MatProgressSpinnerModule, MatSortModule
   ],
   template: `
     <div class="page">
       <div class="page-header">
         <h1>Products</h1>
         @if (auth.canManageInventory()) {
-          <button mat-raised-button color="primary" (click)="openEdit(null)">
-            <mat-icon>add</mat-icon> New product
-          </button>
+          <div class="toolbar-row">
+            <input #xlsx type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                   hidden (change)="onImportSelected($event)" />
+            <button mat-stroked-button (click)="downloadTemplate()" [disabled]="importing()">
+              <mat-icon>download</mat-icon> Template
+            </button>
+            <button mat-stroked-button (click)="xlsx.click()" [disabled]="importing()">
+              @if (importing()) { <mat-spinner diameter="18"></mat-spinner> } @else { <mat-icon>upload_file</mat-icon> }
+              Import Excel
+            </button>
+            <button mat-raised-button color="primary" (click)="openEdit(null)">
+              <mat-icon>add</mat-icon> New product
+            </button>
+          </div>
         }
       </div>
 
@@ -238,6 +251,7 @@ export class ProductListComponent {
   showSummary = signal(true);
   total = signal(0);
   loading = signal(false);
+  importing = signal(false);
 
   search = '';
   categoryId: number | null = null;
@@ -312,6 +326,33 @@ export class ProductListComponent {
   openEdit(p: Product | null) {
     this.dialog.open(ProductEditDialog, { data: p, width: '640px' }).afterClosed()
       .subscribe(ok => { if (ok) { this.load(); this.loadSummary(); } });
+  }
+
+  onImportSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.importing.set(true);
+    this.api.importExcel(file).subscribe({
+      next: (res) => {
+        this.importing.set(false); input.value = '';
+        this.dialog.open(ImportResultDialog, { data: res, width: '520px' })
+          .afterClosed().subscribe(() => { this.load(); this.loadSummary(); });
+      },
+      error: (e) => { this.importing.set(false); input.value = ''; this.notify.error(e); }
+    });
+  }
+
+  downloadTemplate() {
+    this.api.downloadTemplate().subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'LabelVihitha-Product-Upload-Template.xlsx';
+        a.click(); URL.revokeObjectURL(url);
+      },
+      error: (e) => this.notify.error(e)
+    });
   }
 
   remove(p: Product) {

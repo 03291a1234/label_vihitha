@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   Category, SubCategory, Inventory, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
-  ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport
+  ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult
 } from '../models';
 
 const base = environment.apiUrl;
@@ -117,6 +117,16 @@ export class ProductApi {
     const form = new FormData();
     form.append('file', file);
     return this.http.post<{ url: string }>(`${base}/uploads/product-image`, form);
+  }
+
+  importExcel(file: File): Observable<ProductImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ProductImportResult>(`${base}/imports/products`, form);
+  }
+
+  downloadTemplate(): Observable<Blob> {
+    return this.http.get(`${base}/imports/products/template`, { responseType: 'blob' });
   }
 }
 
