@@ -102,6 +102,36 @@ import { ProfitLossReport } from '../../core/models';
           <div class="muted foot">Set each inventory's "Paid by" owner (Inventories → edit) to attribute its stock here. A product's own "Paid by" overrides its inventory for exceptions.</div>
         </div>
 
+        <!-- Spend by vendor (by inventory) -->
+        <div class="card funded">
+          <h2>Spend by vendor <span class="muted">(current stock, at cost · by inventory)</span></h2>
+          @for (v of r.spendByVendor; track v.vendorId) {
+            <div class="vendor-block">
+              <div class="vendor-row">
+                <strong [class.muted]="!v.vendorId">{{ v.vendorName }}</strong>
+                <span class="v-figs">
+                  <span class="muted">{{ v.units }} units</span>
+                  <span class="mono strong">{{ v.totalCost | currency }}</span>
+                  <span class="muted inr">≈ {{ v.totalCost * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+                </span>
+              </div>
+              <div class="inv-chips">
+                @for (i of v.inventories; track i.inventoryId) {
+                  <span class="inv-chip" [class.none]="!i.inventoryId">
+                    {{ i.inventoryName }} · <strong>{{ i.cost | currency }}</strong> <span class="u">({{ i.units }} u)</span>
+                  </span>
+                }
+              </div>
+            </div>
+          }
+          @if (r.spendByVendor.length === 0) { <div class="empty-state">No stock on hand.</div> }
+          <div class="totals-line">
+            <span>Total purchase cost of current stock</span>
+            <span class="mono strong">{{ r.inventoryValueAtCost | currency }}</span>
+          </div>
+          <div class="muted foot">Based on stock on hand (cost × quantity); items already sold aren't included. Set a product's Vendor to attribute its spend here.</div>
+        </div>
+
         <!-- Owner equity -->
         <div class="card">
           <div class="owners-head">
@@ -164,6 +194,17 @@ import { ProfitLossReport } from '../../core/models';
     .cash-net .inr { font-weight: 400; margin-left: 8px; }
     .funded { margin-bottom: 16px; }
     .funded .inr { font-weight: 400; margin-left: 6px; font-size: 12px; }
+    .vendor-block { padding: 10px 0; border-bottom: 1px solid var(--lv-line); }
+    .vendor-block:last-of-type { border-bottom: none; }
+    .vendor-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .vendor-row strong { font-size: 15px; }
+    .v-figs { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+    .inv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .inv-chip { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+    .inv-chip.none { background: #eee; color: #666; }
+    .inv-chip .u { font-weight: 400; opacity: .75; }
+    .totals-line { display: flex; justify-content: space-between; padding: 12px 0 2px; margin-top: 6px;
+      border-top: 2px solid var(--lv-line); font-weight: 700; }
     .owners-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
     .warn { color: #8a5a00; }
     .totals { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 24px; padding: 12px 16px; margin-top: 4px;

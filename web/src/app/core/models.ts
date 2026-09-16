@@ -166,6 +166,7 @@ export interface ProfitLossReport {
   totalWithdrawals: number;
   totalOwnerEquity: number;
   inventoryFundedByOwner: OwnerInventory[];
+  spendByVendor: VendorSpend[];
 }
 
 export interface OwnerInventory {
@@ -173,6 +174,21 @@ export interface OwnerInventory {
   ownerName: string;
   inventoryCost: number;
   units: number;
+}
+
+export interface VendorSpendInventory {
+  inventoryId?: number | null;
+  inventoryName: string;
+  cost: number;
+  units: number;
+}
+
+export interface VendorSpend {
+  vendorId?: number | null;
+  vendorName: string;
+  totalCost: number;
+  units: number;
+  inventories: VendorSpendInventory[];
 }
 
 export interface ProductVariant {

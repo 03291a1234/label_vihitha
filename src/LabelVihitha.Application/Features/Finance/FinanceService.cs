@@ -65,7 +65,11 @@ public class FinanceService : IFinanceService
                 ProductOwnerId = p.PaidByOwnerId,
                 ProductOwnerName = p.PaidByOwner != null ? p.PaidByOwner.Name : null,
                 InvOwnerId = p.Inventory != null ? p.Inventory.PaidByOwnerId : null,
-                InvOwnerName = p.Inventory != null && p.Inventory.PaidByOwner != null ? p.Inventory.PaidByOwner.Name : null })
+                InvOwnerName = p.Inventory != null && p.Inventory.PaidByOwner != null ? p.Inventory.PaidByOwner.Name : null,
+                p.VendorId,
+                VendorName = p.Vendor != null ? p.Vendor.Name : null,
+                p.InventoryId,
+                InventoryName = p.Inventory != null ? p.Inventory.Name : null })
             .ToListAsync(ct);
         var invCost = inv.Sum(p => p.OriginalPrice * p.QuantityOnHand);
         var invSale = inv.Sum(p => p.SalePrice * p.QuantityOnHand);
@@ -88,6 +92,25 @@ public class FinanceService : IFinanceService
                 g.Sum(x => x.Cost),
                 g.Sum(x => x.Units)))
             .OrderByDescending(x => x.InventoryCost)
+            .ToList();
+
+        // Amount spent per vendor (current stock, at cost), broken down by inventory batch.
+        var spendByVendor = inv
+            .GroupBy(p => new { p.VendorId, p.VendorName })
+            .Select(vg => new VendorSpendDto(
+                vg.Key.VendorId,
+                vg.Key.VendorName ?? "No vendor",
+                vg.Sum(x => x.OriginalPrice * x.QuantityOnHand),
+                vg.Sum(x => x.QuantityOnHand),
+                vg.GroupBy(x => new { x.InventoryId, x.InventoryName })
+                    .Select(ig => new VendorSpendInventoryDto(
+                        ig.Key.InventoryId,
+                        ig.Key.InventoryName ?? "No inventory",
+                        ig.Sum(x => x.OriginalPrice * x.QuantityOnHand),
+                        ig.Sum(x => x.QuantityOnHand)))
+                    .OrderByDescending(i => i.Cost)
+                    .ToList()))
+            .OrderByDescending(v => v.TotalCost)
             .ToList();
 
         // ---- Owner equity (to date): allocate all-time retained profit by share ----
@@ -129,6 +152,7 @@ public class FinanceService : IFinanceService
             ownerRows.Sum(o => o.Contributions),
             ownerRows.Sum(o => o.Withdrawals),
             ownerRows.Sum(o => o.Equity),
-            fundedByOwner);
+            fundedByOwner,
+            spendByVendor);
     }
 }

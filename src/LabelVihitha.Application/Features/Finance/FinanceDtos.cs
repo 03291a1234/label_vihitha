@@ -6,6 +6,15 @@ public record ExpenseLineDto(int CategoryId, string CategoryName, decimal Amount
 /// A null <see cref="OwnerId"/> is the "jointly funded / unassigned" bucket.</summary>
 public record OwnerInventoryDto(int? OwnerId, string OwnerName, decimal InventoryCost, int Units);
 
+/// <summary>One inventory batch's slice of a vendor's spend (current stock, at cost).
+/// A null <see cref="InventoryId"/> is the "no inventory" bucket.</summary>
+public record VendorSpendInventoryDto(int? InventoryId, string InventoryName, decimal Cost, int Units);
+
+/// <summary>Amount spent with a vendor on current on-hand stock (at cost), broken down
+/// by inventory batch. A null <see cref="VendorId"/> is the "no vendor" bucket.</summary>
+public record VendorSpendDto(int? VendorId, string VendorName, decimal TotalCost, int Units,
+    IReadOnlyList<VendorSpendInventoryDto> Inventories);
+
 public record OwnerEquityDto(
     int OwnerId,
     string Name,
@@ -49,4 +58,7 @@ public record ProfitLossReport(
     decimal TotalOwnerEquity,
 
     // ---- Current inventory (at cost) split by the owner who funded it ----
-    IReadOnlyList<OwnerInventoryDto> InventoryFundedByOwner);
+    IReadOnlyList<OwnerInventoryDto> InventoryFundedByOwner,
+
+    // ---- Amount spent per vendor (current stock, at cost), broken down by inventory ----
+    IReadOnlyList<VendorSpendDto> SpendByVendor);
