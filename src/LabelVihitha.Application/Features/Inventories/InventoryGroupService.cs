@@ -18,7 +18,8 @@ public class InventoryGroupService : IInventoryGroupService
         if (!includeInactive) q = q.Where(i => i.IsActive);
 
         var inventories = await q.OrderBy(i => i.Name)
-            .Select(i => new { i.Id, i.Name, i.Description, i.IsActive })
+            .Select(i => new { i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId,
+                PaidByOwnerName = i.PaidByOwner != null ? i.PaidByOwner.Name : null })
             .ToListAsync(ct);
         var ids = inventories.Select(i => i.Id).ToList();
 
@@ -28,7 +29,7 @@ public class InventoryGroupService : IInventoryGroupService
         {
             var (units, cats) = breakdown.TryGetValue(i.Id, out var b) ? b : (0, new List<CategoryCount>());
             var count = cats.Sum(c => c.ProductCount);
-            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, count, units, cats);
+            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName, count, units, cats);
         }).ToList();
     }
 
@@ -36,13 +37,15 @@ public class InventoryGroupService : IInventoryGroupService
     {
         var i = await _db.Inventories.AsNoTracking()
             .Where(x => x.Id == id)
-            .Select(x => new { x.Id, x.Name, x.Description, x.IsActive })
+            .Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.PaidByOwnerId,
+                PaidByOwnerName = x.PaidByOwner != null ? x.PaidByOwner.Name : null })
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException(nameof(Inventory), id);
 
         var breakdown = await BuildBreakdownAsync(new List<int> { id }, ct);
         var (units, cats) = breakdown.TryGetValue(id, out var b) ? b : (0, new List<CategoryCount>());
-        return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, cats.Sum(c => c.ProductCount), units, cats);
+        return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
+            cats.Sum(c => c.ProductCount), units, cats);
     }
 
     /// <summary>Per-inventory category → subcategory stock breakdown.</summary>
@@ -87,7 +90,9 @@ public class InventoryGroupService : IInventoryGroupService
     public async Task<InventoryDto> CreateAsync(CreateInventoryRequest request, CancellationToken ct = default)
     {
         await EnsureNameUniqueAsync(request.Name, null, ct);
-        var entity = new Inventory { Name = request.Name.Trim(), Description = request.Description, IsActive = true };
+        await EnsureOwnerValidAsync(request.PaidByOwnerId, ct);
+        var entity = new Inventory { Name = request.Name.Trim(), Description = request.Description,
+            PaidByOwnerId = request.PaidByOwnerId, IsActive = true };
         _db.Inventories.Add(entity);
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(entity.Id, ct);
@@ -99,10 +104,12 @@ public class InventoryGroupService : IInventoryGroupService
             ?? throw new NotFoundException(nameof(Inventory), id);
 
         await EnsureNameUniqueAsync(request.Name, id, ct);
+        await EnsureOwnerValidAsync(request.PaidByOwnerId, ct);
 
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
         entity.IsActive = request.IsActive;
+        entity.PaidByOwnerId = request.PaidByOwnerId;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(id, ct);
@@ -121,6 +128,14 @@ public class InventoryGroupService : IInventoryGroupService
         entity.IsActive = false;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>A chosen funding owner (if any) must exist.</summary>
+    private async Task EnsureOwnerValidAsync(int? ownerId, CancellationToken ct)
+    {
+        if (ownerId is not int id) return;
+        if (!await _db.Owners.AnyAsync(o => o.Id == id && !o.IsDeleted, ct))
+            throw new NotFoundException(nameof(Owner), id);
     }
 
     private async Task EnsureNameUniqueAsync(string name, int? excludeId, CancellationToken ct)

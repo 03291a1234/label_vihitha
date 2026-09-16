@@ -99,7 +99,7 @@ import { ProfitLossReport } from '../../core/models';
             <tr mat-row *matRowDef="let row; columns: fundedCols"></tr>
           </table>
           @if (r.inventoryFundedByOwner.length === 0) { <div class="empty-state">No stock on hand.</div> }
-          <div class="muted foot">Tag each product's "Paid by" owner (on the product, in the import, or by editing) to attribute stock here.</div>
+          <div class="muted foot">Set each inventory's "Paid by" owner (Inventories → edit) to attribute its stock here. A product's own "Paid by" overrides its inventory for exceptions.</div>
         </div>
 
         <!-- Owner equity -->

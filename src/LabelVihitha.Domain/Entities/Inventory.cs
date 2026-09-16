@@ -13,5 +13,9 @@ public class Inventory : BaseEntity
     public string? Description { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Which owner/partner funded this inventory/batch (whose capital it represents). Optional.</summary>
+    public int? PaidByOwnerId { get; set; }
+    public Owner? PaidByOwner { get; set; }
+
     public ICollection<Product> Products { get; set; } = new List<Product>();
 }

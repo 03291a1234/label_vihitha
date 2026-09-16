@@ -62,20 +62,31 @@ public class FinanceService : IFinanceService
         // ---- Inventory on hand (current snapshot) ----
         var inv = await _db.Products.AsNoTracking().Where(p => p.IsActive)
             .Select(p => new { p.OriginalPrice, p.SalePrice, p.QuantityOnHand,
-                p.PaidByOwnerId, PaidByOwnerName = p.PaidByOwner != null ? p.PaidByOwner.Name : null })
+                ProductOwnerId = p.PaidByOwnerId,
+                ProductOwnerName = p.PaidByOwner != null ? p.PaidByOwner.Name : null,
+                InvOwnerId = p.Inventory != null ? p.Inventory.PaidByOwnerId : null,
+                InvOwnerName = p.Inventory != null && p.Inventory.PaidByOwner != null ? p.Inventory.PaidByOwner.Name : null })
             .ToListAsync(ct);
         var invCost = inv.Sum(p => p.OriginalPrice * p.QuantityOnHand);
         var invSale = inv.Sum(p => p.SalePrice * p.QuantityOnHand);
         var invUnits = inv.Sum(p => p.QuantityOnHand);
 
-        // Split current stock (at cost) by the owner who funded it; null = jointly funded.
+        // Split current stock (at cost) by the owner who funded it. The funder is set on the
+        // Inventory; a product may override it with its own PaidByOwner. null = jointly funded.
         var fundedByOwner = inv
-            .GroupBy(p => new { p.PaidByOwnerId, p.PaidByOwnerName })
+            .Select(p => new
+            {
+                OwnerId = p.ProductOwnerId ?? p.InvOwnerId,
+                OwnerName = p.ProductOwnerName ?? p.InvOwnerName,
+                Cost = p.OriginalPrice * p.QuantityOnHand,
+                Units = p.QuantityOnHand
+            })
+            .GroupBy(x => new { x.OwnerId, x.OwnerName })
             .Select(g => new OwnerInventoryDto(
-                g.Key.PaidByOwnerId,
-                g.Key.PaidByOwnerName ?? "Jointly funded / unassigned",
-                g.Sum(x => x.OriginalPrice * x.QuantityOnHand),
-                g.Sum(x => x.QuantityOnHand)))
+                g.Key.OwnerId,
+                g.Key.OwnerName ?? "Jointly funded / unassigned",
+                g.Sum(x => x.Cost),
+                g.Sum(x => x.Units)))
             .OrderByDescending(x => x.InventoryCost)
             .ToList();
 

@@ -44,6 +44,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <div class="inv-title">
               <strong>{{ i.name }}</strong>
               @if (!i.isActive) { <span class="chip Cancelled">inactive</span> }
+              @if (i.paidByOwnerName) { <span class="paid-by"><mat-icon>account_balance_wallet</mat-icon>{{ i.paidByOwnerName }}</span> }
               <div class="muted">{{ i.description }}</div>
             </div>
             <div class="inv-stats">
@@ -95,6 +96,10 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .inv-head { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
     .inv-title { flex: 1 1 220px; }
     .inv-title strong { font-size: 18px; }
+    .paid-by { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; vertical-align: middle;
+      background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 2px 10px 2px 8px;
+      font-size: 12px; font-weight: 600; }
+    .paid-by mat-icon { font-size: 15px; height: 15px; width: 15px; }
     .inv-stats { display: flex; gap: 20px; }
     .stat { display: flex; flex-direction: column; align-items: center; }
     .stat .v { font-family: "Cormorant Garamond", Georgia, serif; font-size: 26px; font-weight: 700; color: var(--lv-wine); line-height: 1; }
