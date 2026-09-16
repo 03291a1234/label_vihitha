@@ -135,3 +135,5 @@ table.full { width: 100%; }
 .mat-mdc-dialog-title + .mat-mdc-dialog-content,
 .mat-mdc-dialog-content { padding-top: 14px !important; }
 .mat-mdc-dialog-content { overflow-x: hidden; }
+/* Keep field hints on one line (truncate) so a long hint can't overlap the row below. */
+.mat-mdc-form-field-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }

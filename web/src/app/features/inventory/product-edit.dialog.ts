@@ -53,7 +53,7 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
               <mat-option [value]="null">— None —</mat-option>
               @for (i of inventories(); track i.id) { <mat-option [value]="i.id">{{ i.name }}</mat-option> }
             </mat-select>
-            <mat-hint>Collection this product belongs to (optional)</mat-hint>
+            <mat-hint>Collection (optional)</mat-hint>
           </mat-form-field>
           <mat-form-field>
             <mat-label>Vendor</mat-label>
@@ -61,7 +61,7 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
               <mat-option [value]="null">— None —</mat-option>
               @for (v of vendors(); track v.id) { <mat-option [value]="v.id">{{ v.name }}</mat-option> }
             </mat-select>
-            <mat-hint>Supplier this product came from (optional)</mat-hint>
+            <mat-hint>Supplier (optional)</mat-hint>
           </mat-form-field>
         </div>
         <div class="form-row">
