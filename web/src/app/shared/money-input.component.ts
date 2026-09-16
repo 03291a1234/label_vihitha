@@ -27,7 +27,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
         <mat-button-toggle value="INR">INR</mat-button-toggle>
       </mat-button-toggle-group>
       <mat-form-field class="amt">
-        <mat-label>{{ label }} ({{ currency() }})</mat-label>
+        <mat-label>{{ label }}</mat-label>
         <span matTextPrefix>{{ currency() === 'USD' ? '$' : '₹' }}&nbsp;</span>
         <input matInput type="number" [ngModel]="display()" (ngModelChange)="onInput($event)"
                (blur)="onTouched()" [disabled]="disabled()" [placeholder]="placeholder" />
