@@ -45,13 +45,18 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
         </mat-form-field>
         <mat-form-field>
           <mat-label>From</mat-label>
-          <input matInput type="date" [(ngModel)]="fromDate" (change)="reload()" />
+          <input matInput type="date" [(ngModel)]="fromDate" (change)="reload()" autocomplete="off" />
         </mat-form-field>
         <mat-form-field>
           <mat-label>To</mat-label>
-          <input matInput type="date" [(ngModel)]="toDate" (change)="reload()" />
+          <input matInput type="date" [(ngModel)]="toDate" (change)="reload()" autocomplete="off" />
         </mat-form-field>
-        <div class="total-chip">Total: <strong>{{ pageTotal() | currency }}</strong>
+        <button mat-stroked-button (click)="clearDates()" [disabled]="!fromDate && !toDate">
+          <mat-icon>all_inclusive</mat-icon> All dates
+        </button>
+        <div class="total-chip">
+          <span class="muted range">{{ (fromDate || toDate) ? 'Filtered range' : 'All dates' }}</span>
+          Total: <strong>{{ pageTotal() | currency }}</strong>
           <span class="muted">≈ {{ pageTotal() * inrRate | currency:'INR':'symbol':'1.0-0' }}</span></div>
       </div>
 
@@ -111,6 +116,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   `,
   styles: [`
     .total-chip { margin-left: auto; align-self: center; color: var(--lv-wine); }
+    .total-chip .range { margin-right: 10px; font-size: 12px; }
     .total-chip .muted { margin-left: 8px; font-size: 12px; }
     .receipt-link { color: var(--lv-wine); display: inline-flex; }
     .receipt-link mat-icon { font-size: 20px; height: 20px; width: 20px; }
@@ -160,6 +166,7 @@ export class ExpenseListComponent {
   }
 
   reload() { this.page = 1; this.load(); }
+  clearDates() { this.fromDate = ''; this.toDate = ''; this.reload(); }
   onPage(e: PageEvent) { this.page = e.pageIndex + 1; this.pageSize = e.pageSize; this.load(); }
   onSort(s: Sort) {
     this.sortBy = s.direction ? s.active : null;
