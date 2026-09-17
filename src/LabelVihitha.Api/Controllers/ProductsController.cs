@@ -26,8 +26,9 @@ public class ProductsController : ControllerBase
         => Ok(await _service.GetTotalsAsync(query, ct));
 
     [HttpGet("inventory-summary")]
-    public async Task<ActionResult<InventorySummary>> InventorySummary(CancellationToken ct)
-        => Ok(await _service.GetInventorySummaryAsync(ct));
+    public async Task<ActionResult<InventorySummary>> InventorySummary(
+        [FromQuery] ProductQuery query, CancellationToken ct)
+        => Ok(await _service.GetInventorySummaryAsync(query, ct));
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ProductDto>> GetById(int id, CancellationToken ct)

@@ -109,7 +109,9 @@ export class ProductApi {
     return this.http.get<PagedResult<Product>>(`${base}/products`, { params: toParams(filters as Record<string, unknown>) });
   }
   get(id: number) { return this.http.get<Product>(`${base}/products/${id}`); }
-  inventorySummary() { return this.http.get<InventorySummary>(`${base}/products/inventory-summary`); }
+  inventorySummary(filters: ProductFilters = {}) {
+    return this.http.get<InventorySummary>(`${base}/products/inventory-summary`, { params: toParams(filters as Record<string, unknown>) });
+  }
   totals(filters: ProductFilters = {}): Observable<ProductTotals> {
     return this.http.get<ProductTotals>(`${base}/products/totals`, { params: toParams(filters as Record<string, unknown>) });
   }

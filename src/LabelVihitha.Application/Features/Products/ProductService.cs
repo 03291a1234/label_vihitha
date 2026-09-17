@@ -67,11 +67,11 @@ public class ProductService : IProductService
         return q;
     }
 
-    public async Task<InventorySummary> GetInventorySummaryAsync(CancellationToken ct = default)
+    public async Task<InventorySummary> GetInventorySummaryAsync(ProductQuery? query = null, CancellationToken ct = default)
     {
-        // Flat rows (a translatable join), then group in memory by category → subcategory.
-        var rows = await _db.Products.AsNoTracking()
-            .Where(p => !p.IsDeleted)
+        // Honor the same filters as the product list, so the summary describes whatever set is
+        // in view (e.g. a single vendor). Flat rows, then group in memory by category → subcategory.
+        var rows = await FilteredQuery(query ?? new ProductQuery())
             .Select(p => new
             {
                 p.CategoryId,

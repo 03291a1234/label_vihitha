@@ -61,21 +61,23 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
       @if (summary(); as s) {
         <div class="card summary">
           <div class="summary-head" (click)="showSummary.set(!showSummary())">
-            <span><mat-icon>insights</mat-icon> Inventory summary — <strong>{{ s.totalProducts }}</strong> products · <strong>{{ s.totalUnits }}</strong> units in stock</span>
+            <span><mat-icon>insights</mat-icon> Inventory summary
+              @if (anyFilterActive()) { <span class="filtered-tag">filtered</span> }
+              — <strong>{{ s.totalProducts }}</strong> products · <strong>{{ s.totalUnits }}</strong> units in stock</span>
             <mat-icon>{{ showSummary() ? 'expand_less' : 'expand_more' }}</mat-icon>
           </div>
           @if (showSummary()) {
             <div class="summary-body">
               @for (c of s.categories; track c.categoryId) {
                 <div class="cat-block">
-                  <a class="cat-head" [routerLink]="['/products']" [queryParams]="{ categoryId: c.categoryId }" title="Filter to these products">
+                  <a class="cat-head" [routerLink]="['/products']" [queryParams]="summaryParams(c.categoryId)" title="Filter to these products">
                     <strong>{{ c.categoryName }}</strong>
                     <span class="muted">{{ c.productCount }} products · {{ c.totalUnits }} units</span>
                   </a>
                   <div class="subs">
                     @for (sub of c.subCategories; track sub.subCategoryName) {
                       <a class="sub-chip" [routerLink]="['/products']"
-                         [queryParams]="sub.subCategoryId != null ? { categoryId: c.categoryId, subCategoryId: sub.subCategoryId } : { categoryId: c.categoryId }"
+                         [queryParams]="summaryParams(c.categoryId, sub.subCategoryId)"
                          title="Filter to these products">
                         {{ sub.subCategoryName }} · {{ sub.productCount }}<span class="u"> ({{ sub.totalUnits }} u)</span>
                       </a>
@@ -242,6 +244,8 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .summary { margin-bottom: 16px; padding: 0; overflow: hidden; }
     .summary-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; }
     .summary-head span { display: flex; align-items: center; gap: 8px; color: var(--lv-wine); }
+    .filtered-tag { background: var(--lv-wine); color: #fff; border-radius: 999px; padding: 1px 9px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
     .summary-body { padding: 4px 18px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     .cat-block { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px; background: #fffdfb; }
     .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px;
@@ -309,11 +313,31 @@ export class ProductListComponent {
       this.page = 1;
       this.load();
     });
-    this.loadSummary();
+  }
+
+  /** The active list/summary filters (no paging or sort). */
+  private currentFilters() {
+    return {
+      search: this.search || undefined,
+      categoryId: this.categoryId,
+      subCategoryId: this.subCategoryId,
+      inventoryId: this.inventoryId,
+      vendorId: this.vendorId,
+      lowStockOnly: this.lowStockOnly
+    };
   }
 
   loadSummary() {
-    this.api.inventorySummary().subscribe({ next: (s) => this.summary.set(s) });
+    this.api.inventorySummary(this.currentFilters()).subscribe({ next: (s) => this.summary.set(s) });
+  }
+
+  /** Category/subcategory chip target that keeps the current vendor/inventory scope. */
+  summaryParams(categoryId: number, subCategoryId?: number | null) {
+    const p: Record<string, number> = { categoryId };
+    if (subCategoryId != null) p['subCategoryId'] = subCategoryId;
+    if (this.vendorId) p['vendorId'] = this.vendorId;
+    if (this.inventoryId) p['inventoryId'] = this.inventoryId;
+    return p;
   }
 
   onCategoryFilter() {
@@ -331,19 +355,14 @@ export class ProductListComponent {
 
   load() {
     this.loading.set(true);
-    const filters = {
-      search: this.search || undefined,
-      categoryId: this.categoryId,
-      subCategoryId: this.subCategoryId,
-      inventoryId: this.inventoryId,
-      vendorId: this.vendorId,
-      lowStockOnly: this.lowStockOnly
-    };
+    const filters = this.currentFilters();
     this.api.list({ ...filters, sortBy: this.sortBy, sortDir: this.sortDir, page: this.page, pageSize: this.pageSize })
       .subscribe({
         next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
         error: (e) => { this.loading.set(false); this.notify.error(e); }
       });
+    // Keep the inventory summary describing the same (filtered) set as the list.
+    this.loadSummary();
     // Overall totals for the filtered set (across all pages) — only when a filter is applied.
     if (this.anyFilterActive()) {
       this.api.totals(filters).subscribe({ next: (t) => this.totals.set(t), error: () => this.totals.set(null) });
