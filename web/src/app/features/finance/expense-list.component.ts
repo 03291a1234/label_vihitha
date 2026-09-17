@@ -55,7 +55,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
           <mat-icon>all_inclusive</mat-icon> All dates
         </button>
         <div class="total-chip">
-          <span class="muted range">{{ (fromDate || toDate) ? 'Filtered range' : 'All dates' }}</span>
+          <span class="muted range">{{ rangeLabel() }}</span>
           Total: <strong>{{ pageTotal() | currency }}</strong>
           <span class="muted">≈ {{ pageTotal() * inrRate | currency:'INR':'symbol':'1.0-0' }}</span></div>
       </div>
@@ -136,8 +136,9 @@ export class ExpenseListComponent {
   pageTotal = computed(() => this.rows().reduce((s, e) => s + e.amount, 0));
 
   categoryId: number | null = null;
-  fromDate = '';
-  toDate = '';
+  // Default to the current month (month-to-date); "All dates" clears it.
+  fromDate = this.firstOfThisMonth();
+  toDate = this.todayStr();
   sortBy: string | null = null;
   sortDir: string | null = null;
   page = 1;
@@ -145,6 +146,24 @@ export class ExpenseListComponent {
   cols = ['date', 'category', 'description', 'paidBy', 'receipt', 'amountInr', 'amount', 'actions'];
 
   receiptHref(url: string) { return resolveImageUrl(url); }
+
+  private firstOfThisMonth(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  }
+  private todayStr(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /** Friendly label for the active range shown next to the total. */
+  rangeLabel(): string {
+    if (!this.fromDate && !this.toDate) return 'All dates';
+    if (this.fromDate === this.firstOfThisMonth() && this.toDate === this.todayStr()) {
+      return new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    }
+    return 'Filtered range';
+  }
 
   constructor() {
     this.catApi.list(false).subscribe(c => this.categories.set(c));
