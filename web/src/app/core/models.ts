@@ -229,6 +229,14 @@ export interface ProductTotals {
   totalSaleUsd: number;
 }
 
+export interface FilterOption { id: number; name: string; }
+export interface ProductFilterOptions {
+  categories: FilterOption[];
+  subCategories: FilterOption[];
+  inventories: FilterOption[];
+  vendors: FilterOption[];
+}
+
 export interface ProductImportResult {
   productsCreated: number;
   variantsCreated: number;

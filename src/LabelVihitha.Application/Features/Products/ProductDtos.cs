@@ -98,6 +98,14 @@ public record BulkSetPaidByResult(int ProductsUpdated, decimal TotalCost, bool C
 // ---- Aggregate totals for a filtered product view (values at current prices, in USD) ----
 public record ProductTotalsDto(int ProductCount, int TotalUnits, decimal TotalCostUsd, decimal TotalSaleUsd);
 
+// ---- Faceted filter options: the values still available given the other active filters ----
+public record FilterOptionDto(int Id, string Name);
+public record ProductFilterOptionsDto(
+    IReadOnlyList<FilterOptionDto> Categories,
+    IReadOnlyList<FilterOptionDto> SubCategories,
+    IReadOnlyList<FilterOptionDto> Inventories,
+    IReadOnlyList<FilterOptionDto> Vendors);
+
 // ---- Inventory count summary (by category → subcategory) ----
 public record SubCategoryCount(int? SubCategoryId, string SubCategoryName, int ProductCount, int TotalUnits);
 public record CategoryCount(int CategoryId, string CategoryName, int ProductCount, int TotalUnits,

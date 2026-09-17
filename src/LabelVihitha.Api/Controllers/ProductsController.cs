@@ -25,6 +25,11 @@ public class ProductsController : ControllerBase
         [FromQuery] ProductQuery query, CancellationToken ct)
         => Ok(await _service.GetTotalsAsync(query, ct));
 
+    [HttpGet("filter-options")]
+    public async Task<ActionResult<ProductFilterOptionsDto>> FilterOptions(
+        [FromQuery] ProductQuery query, CancellationToken ct)
+        => Ok(await _service.GetFilterOptionsAsync(query, ct));
+
     [HttpGet("inventory-summary")]
     public async Task<ActionResult<InventorySummary>> InventorySummary(
         [FromQuery] ProductQuery query, CancellationToken ct)

@@ -13,10 +13,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, resolveImageUrl } from '../../core/services/api.services';
+import { ProductApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Category, SubCategory, Inventory, Vendor, InventorySummary, SubCategoryCount, Product, ProductTotals } from '../../core/models';
+import { FilterOption, InventorySummary, SubCategoryCount, Product, ProductTotals } from '../../core/models';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ProductEditDialog } from './product-edit.dialog';
 import { ImportResultDialog } from './import-result.dialog';
@@ -242,10 +242,6 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
 })
 export class ProductListComponent {
   private api = inject(ProductApi);
-  private catApi = inject(CategoryApi);
-  private subApi = inject(SubCategoryApi);
-  private invApi = inject(InventoryApi);
-  private vendorApi = inject(VendorApi);
   private route = inject(ActivatedRoute);
   private dialog = inject(MatDialog);
   private notify = inject(Notify);
@@ -255,10 +251,11 @@ export class ProductListComponent {
   readonly inrRate = 95;
 
   rows = signal<Product[]>([]);
-  categories = signal<Category[]>([]);
-  subCategories = signal<SubCategory[]>([]);
-  inventories = signal<Inventory[]>([]);
-  vendors = signal<Vendor[]>([]);
+  // Faceted filter options — each reflects the products matching the OTHER active filters.
+  categories = signal<FilterOption[]>([]);
+  subCategories = signal<FilterOption[]>([]);
+  inventories = signal<FilterOption[]>([]);
+  vendors = signal<FilterOption[]>([]);
   summary = signal<InventorySummary | null>(null);
   totals = signal<ProductTotals | null>(null);
   showSummary = signal(true);
@@ -279,9 +276,6 @@ export class ProductListComponent {
   cols = ['sku', 'name', 'size', 'costInr', 'originalPrice', 'salePrice', 'quantityOnHand', 'actions'];
 
   constructor() {
-    this.catApi.list(false).subscribe(cs => this.categories.set(cs));
-    this.invApi.list(false).subscribe(inv => this.inventories.set(inv));
-    this.vendorApi.list(false).subscribe(vs => this.vendors.set(vs));
     // Preselect filters when drilled in from another screen (e.g. Inventories, Vendors).
     this.route.queryParamMap.subscribe(q => {
       const num = (k: string) => (q.get(k) ? Number(q.get(k)) : null);
@@ -289,8 +283,6 @@ export class ProductListComponent {
       this.vendorId = num('vendorId');
       this.categoryId = num('categoryId');
       this.subCategoryId = num('subCategoryId');
-      if (this.categoryId) this.subApi.list(this.categoryId, false).subscribe(s => this.subCategories.set(s));
-      else this.subCategories.set([]);
       this.page = 1;
       this.load();
     });
@@ -327,11 +319,21 @@ export class ProductListComponent {
   }
 
   onCategoryFilter() {
-    // Reset subcategory and reload its options when the category filter changes.
+    // Category changed → the previously chosen subcategory may not belong; clear it and reload.
     this.subCategoryId = null;
-    if (this.categoryId) this.subApi.list(this.categoryId, false).subscribe(s => this.subCategories.set(s));
-    else this.subCategories.set([]);
     this.reload();
+  }
+
+  /** Load the faceted options for every filter dropdown, given the current selections. */
+  loadFilterOptions() {
+    this.api.filterOptions(this.currentFilters()).subscribe({
+      next: (o) => {
+        this.categories.set(o.categories);
+        this.subCategories.set(o.subCategories);
+        this.inventories.set(o.inventories);
+        this.vendors.set(o.vendors);
+      }
+    });
   }
 
   /** True when the list is narrowed by any filter (so the filtered-totals bar is worth showing). */
@@ -349,6 +351,8 @@ export class ProductListComponent {
       });
     // Keep the inventory summary describing the same (filtered) set as the list.
     this.loadSummary();
+    // Refresh the faceted filter options so each dropdown reflects the other active filters.
+    this.loadFilterOptions();
     // Overall totals for the filtered set (across all pages) — only when a filter is applied.
     if (this.anyFilterActive()) {
       this.api.totals(filters).subscribe({ next: (t) => this.totals.set(t), error: () => this.totals.set(null) });

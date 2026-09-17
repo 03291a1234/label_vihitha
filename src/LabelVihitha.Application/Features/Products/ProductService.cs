@@ -49,6 +49,49 @@ public class ProductService : IProductService
             rows.Sum(r => r.SalePrice * r.QuantityOnHand));
     }
 
+    /// <summary>Faceted filter options: for each dimension, the values still present among products
+    /// matching ALL the OTHER active filters (so a filter never empties its own list, and picking
+    /// one narrows the others). Category options also drop the subcategory constraint.</summary>
+    public async Task<ProductFilterOptionsDto> GetFilterOptionsAsync(ProductQuery q, CancellationToken ct = default)
+    {
+        // Base query applying only the requested dimensions plus the always-on search/low-stock.
+        IQueryable<Product> Base(bool cat, bool sub, bool inv, bool ven)
+        {
+            var x = _db.Products.AsNoTracking().Where(p => !p.IsDeleted);
+            if (cat && q.CategoryId is int c) x = x.Where(p => p.CategoryId == c);
+            if (sub && q.SubCategoryId is int s) x = x.Where(p => p.SubCategoryId == s);
+            if (inv && q.InventoryId is int i) x = x.Where(p => p.InventoryId == i);
+            if (ven && q.VendorId is int v) x = x.Where(p => p.VendorId == v);
+            if (q.LowStockOnly) x = x.Where(p => p.QuantityOnHand <= p.ReorderThreshold);
+            if (!string.IsNullOrWhiteSpace(q.Search))
+            {
+                var t = q.Search.Trim();
+                x = x.Where(p => p.Name.Contains(t) || p.SKU.Contains(t));
+            }
+            return x;
+        }
+
+        // Distinct on raw columns in SQL, then map to the DTO and sort in memory (EF can't order
+        // by a member of a projected record after Distinct).
+        static List<FilterOptionDto> Map(IEnumerable<(int Id, string Name)> rows) =>
+            rows.Select(r => new FilterOptionDto(r.Id, r.Name)).OrderBy(o => o.Name).ToList();
+
+        var categories = Map((await Base(false, false, true, true)
+            .Select(p => new { Id = p.CategoryId, p.Category.Name }).Distinct().ToListAsync(ct))
+            .Select(x => (x.Id, x.Name)));
+        var subCategories = Map((await Base(true, false, true, true).Where(p => p.SubCategoryId != null)
+            .Select(p => new { Id = p.SubCategoryId!.Value, p.SubCategory!.Name }).Distinct().ToListAsync(ct))
+            .Select(x => (x.Id, x.Name)));
+        var inventories = Map((await Base(true, true, false, true).Where(p => p.InventoryId != null)
+            .Select(p => new { Id = p.InventoryId!.Value, p.Inventory!.Name }).Distinct().ToListAsync(ct))
+            .Select(x => (x.Id, x.Name)));
+        var vendors = Map((await Base(true, true, true, false).Where(p => p.VendorId != null)
+            .Select(p => new { Id = p.VendorId!.Value, p.Vendor!.Name }).Distinct().ToListAsync(ct))
+            .Select(x => (x.Id, x.Name)));
+
+        return new ProductFilterOptionsDto(categories, subCategories, inventories, vendors);
+    }
+
     /// <summary>The product list's filter predicate, shared by the paged list and its totals.</summary>
     private IQueryable<Product> FilteredQuery(ProductQuery query)
     {
