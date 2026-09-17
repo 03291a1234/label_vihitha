@@ -222,6 +222,13 @@ export interface BulkSetPaidByResult {
   contributionPosted: boolean;
 }
 
+export interface ProductTotals {
+  productCount: number;
+  totalUnits: number;
+  totalCostUsd: number;
+  totalSaleUsd: number;
+}
+
 export interface ProductImportResult {
   productsCreated: number;
   variantsCreated: number;

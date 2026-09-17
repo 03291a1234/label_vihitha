@@ -20,6 +20,11 @@ public class ProductsController : ControllerBase
         [FromQuery] ProductQuery query, CancellationToken ct)
         => Ok(await _service.GetAsync(query, ct));
 
+    [HttpGet("totals")]
+    public async Task<ActionResult<ProductTotalsDto>> Totals(
+        [FromQuery] ProductQuery query, CancellationToken ct)
+        => Ok(await _service.GetTotalsAsync(query, ct));
+
     [HttpGet("inventory-summary")]
     public async Task<ActionResult<InventorySummary>> InventorySummary(CancellationToken ct)
         => Ok(await _service.GetInventorySummaryAsync(ct));

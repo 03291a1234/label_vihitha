@@ -17,25 +17,7 @@ public class ProductService : IProductService
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = query.PageSize is < 1 or > 200 ? 25 : query.PageSize;
 
-        var q = _db.Products.AsNoTracking().Where(p => !p.IsDeleted);
-
-        if (query.CategoryId is int cid)
-            q = q.Where(p => p.CategoryId == cid);
-        if (query.SubCategoryId is int scid)
-            q = q.Where(p => p.SubCategoryId == scid);
-        if (query.InventoryId is int invId)
-            q = q.Where(p => p.InventoryId == invId);
-        if (query.VendorId is int venId)
-            q = q.Where(p => p.VendorId == venId);
-        if (query.IsActive is bool active)
-            q = q.Where(p => p.IsActive == active);
-        if (query.LowStockOnly)
-            q = q.Where(p => p.QuantityOnHand <= p.ReorderThreshold);
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            var term = query.Search.Trim();
-            q = q.Where(p => p.Name.Contains(term) || p.SKU.Contains(term));
-        }
+        var q = FilteredQuery(query);
 
         var total = await q.CountAsync(ct);
         var ordered = ApplySort(q.Include(p => p.Category).Include(p => p.SubCategory).Include(p => p.Inventory).Include(p => p.Vendor).Include(p => p.PaidByOwner).Include(p => p.Variants).Include(p => p.CostComponents).ThenInclude(c => c.Vendor), query.SortBy, query.SortDir);
@@ -51,6 +33,38 @@ public class ProductService : IProductService
             Page = page,
             PageSize = pageSize
         };
+    }
+
+    /// <summary>Aggregate totals (count, units, cost & sale value at current prices) for the
+    /// SAME filters as the product list — so a filtered view can show its overall figures.</summary>
+    public async Task<ProductTotalsDto> GetTotalsAsync(ProductQuery query, CancellationToken ct = default)
+    {
+        var rows = await FilteredQuery(query)
+            .Select(p => new { p.OriginalPrice, p.SalePrice, p.QuantityOnHand })
+            .ToListAsync(ct);
+        return new ProductTotalsDto(
+            rows.Count,
+            rows.Sum(r => r.QuantityOnHand),
+            rows.Sum(r => r.OriginalPrice * r.QuantityOnHand),
+            rows.Sum(r => r.SalePrice * r.QuantityOnHand));
+    }
+
+    /// <summary>The product list's filter predicate, shared by the paged list and its totals.</summary>
+    private IQueryable<Product> FilteredQuery(ProductQuery query)
+    {
+        var q = _db.Products.AsNoTracking().Where(p => !p.IsDeleted);
+        if (query.CategoryId is int cid) q = q.Where(p => p.CategoryId == cid);
+        if (query.SubCategoryId is int scid) q = q.Where(p => p.SubCategoryId == scid);
+        if (query.InventoryId is int invId) q = q.Where(p => p.InventoryId == invId);
+        if (query.VendorId is int venId) q = q.Where(p => p.VendorId == venId);
+        if (query.IsActive is bool active) q = q.Where(p => p.IsActive == active);
+        if (query.LowStockOnly) q = q.Where(p => p.QuantityOnHand <= p.ReorderThreshold);
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = query.Search.Trim();
+            q = q.Where(p => p.Name.Contains(term) || p.SKU.Contains(term));
+        }
+        return q;
     }
 
     public async Task<InventorySummary> GetInventorySummaryAsync(CancellationToken ct = default)

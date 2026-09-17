@@ -16,7 +16,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Category, SubCategory, Inventory, Vendor, InventorySummary, Product } from '../../core/models';
+import { Category, SubCategory, Inventory, Vendor, InventorySummary, Product, ProductTotals } from '../../core/models';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ProductEditDialog } from './product-edit.dialog';
 import { ImportResultDialog } from './import-result.dialog';
@@ -125,6 +125,19 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
         <mat-slide-toggle [(ngModel)]="lowStockOnly" (change)="reload()">Low stock only</mat-slide-toggle>
       </div>
 
+      @if (totals(); as t) {
+        <div class="filtered-totals">
+          <mat-icon>filter_alt</mat-icon>
+          <span class="ft-lead">Filtered totals</span>
+          <span class="ft-item"><strong>{{ t.productCount }}</strong> products</span>
+          <span class="ft-item"><strong>{{ t.totalUnits }}</strong> units</span>
+          <span class="ft-item">Cost <strong>{{ t.totalCostUsd * inrRate | currency:'INR':'symbol':'1.0-0' }}</strong>
+            <span class="muted">({{ t.totalCostUsd | currency }})</span></span>
+          <span class="ft-item">Sale <strong>{{ t.totalSaleUsd | currency }}</strong></span>
+          <span class="ft-item muted">Margin {{ t.totalSaleUsd - t.totalCostUsd | currency }}</span>
+        </div>
+      }
+
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       <div class="card">
@@ -214,6 +227,13 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .product-cell .thumb mat-icon { color: #b8b8c0; font-size: 22px; height: 22px; width: 22px; }
     .inv-icon { font-size: 14px; height: 14px; width: 14px; vertical-align: -2px; }
     .meta .paid { color: var(--lv-wine); font-weight: 600; }
+    .filtered-totals { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px;
+      background: var(--lv-rose-soft, #f7ebf0); border: 1px solid var(--lv-line); border-radius: 10px;
+      padding: 10px 16px; margin-bottom: 12px; color: var(--lv-wine); font-size: 14px; }
+    .filtered-totals mat-icon { font-size: 18px; height: 18px; width: 18px; }
+    .filtered-totals .ft-lead { font-weight: 700; margin-right: 4px; }
+    .filtered-totals strong { font-weight: 700; }
+    .filtered-totals .muted { color: rgba(58,37,48,.6); font-weight: 400; }
     .product-cell .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
     .sizes { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
     .size-chip { background: var(--lv-rose-soft, #f7ebf0); color: var(--lv-wine); border-radius: 999px;
@@ -255,6 +275,7 @@ export class ProductListComponent {
   inventories = signal<Inventory[]>([]);
   vendors = signal<Vendor[]>([]);
   summary = signal<InventorySummary | null>(null);
+  totals = signal<ProductTotals | null>(null);
   showSummary = signal(true);
   total = signal(0);
   loading = signal(false);
@@ -303,21 +324,32 @@ export class ProductListComponent {
     this.reload();
   }
 
+  /** True when the list is narrowed by any filter (so the filtered-totals bar is worth showing). */
+  anyFilterActive(): boolean {
+    return !!(this.search || this.categoryId || this.subCategoryId || this.inventoryId || this.vendorId || this.lowStockOnly);
+  }
+
   load() {
     this.loading.set(true);
-    this.api.list({
+    const filters = {
       search: this.search || undefined,
       categoryId: this.categoryId,
       subCategoryId: this.subCategoryId,
       inventoryId: this.inventoryId,
       vendorId: this.vendorId,
-      lowStockOnly: this.lowStockOnly,
-      sortBy: this.sortBy, sortDir: this.sortDir,
-      page: this.page, pageSize: this.pageSize
-    }).subscribe({
-      next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
-      error: (e) => { this.loading.set(false); this.notify.error(e); }
-    });
+      lowStockOnly: this.lowStockOnly
+    };
+    this.api.list({ ...filters, sortBy: this.sortBy, sortDir: this.sortDir, page: this.page, pageSize: this.pageSize })
+      .subscribe({
+        next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
+        error: (e) => { this.loading.set(false); this.notify.error(e); }
+      });
+    // Overall totals for the filtered set (across all pages) — only when a filter is applied.
+    if (this.anyFilterActive()) {
+      this.api.totals(filters).subscribe({ next: (t) => this.totals.set(t), error: () => this.totals.set(null) });
+    } else {
+      this.totals.set(null);
+    }
   }
 
   img(url: string | null | undefined) { return resolveImageUrl(url); }

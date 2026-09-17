@@ -6,7 +6,7 @@ import {
   Category, SubCategory, Inventory, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
   ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult,
-  BulkSetPaidByRequest, BulkSetPaidByResult
+  BulkSetPaidByRequest, BulkSetPaidByResult, ProductTotals
 } from '../models';
 
 const base = environment.apiUrl;
@@ -110,6 +110,9 @@ export class ProductApi {
   }
   get(id: number) { return this.http.get<Product>(`${base}/products/${id}`); }
   inventorySummary() { return this.http.get<InventorySummary>(`${base}/products/inventory-summary`); }
+  totals(filters: ProductFilters = {}): Observable<ProductTotals> {
+    return this.http.get<ProductTotals>(`${base}/products/totals`, { params: toParams(filters as Record<string, unknown>) });
+  }
   create(body: unknown) { return this.http.post<Product>(`${base}/products`, body); }
   update(id: number, body: unknown) { return this.http.put<Product>(`${base}/products/${id}`, body); }
   remove(id: number) { return this.http.delete<void>(`${base}/products/${id}`); }

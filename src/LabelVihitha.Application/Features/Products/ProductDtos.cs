@@ -95,6 +95,9 @@ public record BulkSetPaidByRequest(
 
 public record BulkSetPaidByResult(int ProductsUpdated, decimal TotalCost, bool ContributionPosted);
 
+// ---- Aggregate totals for a filtered product view (values at current prices, in USD) ----
+public record ProductTotalsDto(int ProductCount, int TotalUnits, decimal TotalCostUsd, decimal TotalSaleUsd);
+
 // ---- Inventory count summary (by category → subcategory) ----
 public record SubCategoryCount(int? SubCategoryId, string SubCategoryName, int ProductCount, int TotalUnits);
 public record CategoryCount(int CategoryId, string CategoryName, int ProductCount, int TotalUnits,
