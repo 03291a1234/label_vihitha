@@ -22,6 +22,7 @@ import { ProductEditDialog } from './product-edit.dialog';
 import { ImportResultDialog } from './import-result.dialog';
 import { BulkPaidByDialog } from './bulk-paid-by.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
+import { SearchSelectComponent } from '../../shared/search-select.component';
 
 @Component({
   selector: 'app-product-list',
@@ -29,7 +30,8 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   imports: [
     CurrencyPipe, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatSlideToggleModule,
-    MatPaginatorModule, MatProgressBarModule, MatProgressSpinnerModule, MatSortModule
+    MatPaginatorModule, MatProgressBarModule, MatProgressSpinnerModule, MatSortModule,
+    SearchSelectComponent
   ],
   template: `
     <div class="page">
@@ -96,34 +98,14 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
           <input matInput [(ngModel)]="search" (keyup.enter)="reload()" placeholder="Name or SKU" />
           <button matSuffix mat-icon-button (click)="reload()" aria-label="Search"><mat-icon>search</mat-icon></button>
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Category</mat-label>
-          <mat-select [(ngModel)]="categoryId" (selectionChange)="onCategoryFilter()">
-            <mat-option [value]="null">All</mat-option>
-            @for (c of categories(); track c.id) { <mat-option [value]="c.id">{{ c.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Subcategory</mat-label>
-          <mat-select [(ngModel)]="subCategoryId" (selectionChange)="reload()" [disabled]="!categoryId">
-            <mat-option [value]="null">All</mat-option>
-            @for (s of subCategories(); track s.id) { <mat-option [value]="s.id">{{ s.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Inventory</mat-label>
-          <mat-select [(ngModel)]="inventoryId" (selectionChange)="reload()">
-            <mat-option [value]="null">All</mat-option>
-            @for (i of inventories(); track i.id) { <mat-option [value]="i.id">{{ i.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Vendor</mat-label>
-          <mat-select [(ngModel)]="vendorId" (selectionChange)="reload()">
-            <mat-option [value]="null">All</mat-option>
-            @for (v of vendors(); track v.id) { <mat-option [value]="v.id">{{ v.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
+        <app-search-select label="Category" [items]="categories()" [(ngModel)]="categoryId"
+          nullOption nullLabel="All" (selectionChange)="onCategoryFilter()" />
+        <app-search-select label="Subcategory" [items]="subCategories()" [(ngModel)]="subCategoryId"
+          nullOption nullLabel="All" [disabled]="!categoryId" (selectionChange)="reload()" />
+        <app-search-select label="Inventory" [items]="inventories()" [(ngModel)]="inventoryId"
+          nullOption nullLabel="All" (selectionChange)="reload()" />
+        <app-search-select label="Vendor" [items]="vendors()" [(ngModel)]="vendorId"
+          nullOption nullLabel="All" (selectionChange)="reload()" />
         <mat-slide-toggle [(ngModel)]="lowStockOnly" (change)="reload()">Low stock only</mat-slide-toggle>
       </div>
 

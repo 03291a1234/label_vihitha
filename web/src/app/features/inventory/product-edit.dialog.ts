@@ -13,6 +13,7 @@ import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, Owner
 import { Notify } from '../../core/services/notify.service';
 import { Category, SubCategory, Inventory, Vendor, Owner, Product } from '../../core/models';
 import { MoneyInputComponent } from '../../shared/money-input.component';
+import { SearchSelectComponent } from '../../shared/search-select.component';
 
 @Component({
   selector: 'app-product-edit',
@@ -20,60 +21,28 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
   imports: [
     DecimalPipe, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule,
-    MoneyInputComponent
+    MoneyInputComponent, SearchSelectComponent
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Edit product' : 'New product' }}</h2>
     <mat-dialog-content>
       <form [formGroup]="form" class="dialog-form">
         <div class="form-row">
-          <mat-form-field>
-            <mat-label>Category</mat-label>
-            <mat-select formControlName="categoryId" (selectionChange)="onCategoryChange($event.value)">
-              @for (c of categories(); track c.id) {
-                <mat-option [value]="c.id">{{ c.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Subcategory</mat-label>
-            <mat-select formControlName="subCategoryId" [disabled]="!form.controls.categoryId.value"
-                        (selectionChange)="updateSizeOptions()">
-              <mat-option [value]="null">— None —</mat-option>
-              @for (s of subCategories(); track s.id) {
-                <mat-option [value]="s.id">{{ s.name }}</mat-option>
-              }
-            </mat-select>
-            <mat-hint>Optional</mat-hint>
-          </mat-form-field>
+          <app-search-select label="Category" [items]="categories()" formControlName="categoryId"
+            (selectionChange)="onCategoryChange($event)" />
+          <app-search-select label="Subcategory" [items]="subCategories()" formControlName="subCategoryId"
+            nullOption [disabled]="!form.controls.categoryId.value" (selectionChange)="updateSizeOptions()"
+            hint="Optional" />
         </div>
         <div class="form-row">
-          <mat-form-field>
-            <mat-label>Inventory</mat-label>
-            <mat-select formControlName="inventoryId">
-              <mat-option [value]="null">— None —</mat-option>
-              @for (i of inventories(); track i.id) { <mat-option [value]="i.id">{{ i.name }}</mat-option> }
-            </mat-select>
-            <mat-hint>Collection (optional)</mat-hint>
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Vendor</mat-label>
-            <mat-select formControlName="vendorId">
-              <mat-option [value]="null">— None —</mat-option>
-              @for (v of vendors(); track v.id) { <mat-option [value]="v.id">{{ v.name }}</mat-option> }
-            </mat-select>
-            <mat-hint>Supplier (optional)</mat-hint>
-          </mat-form-field>
+          <app-search-select label="Inventory" [items]="inventories()" formControlName="inventoryId"
+            nullOption hint="Collection (optional)" />
+          <app-search-select label="Vendor" [items]="vendors()" formControlName="vendorId"
+            nullOption hint="Supplier (optional)" />
         </div>
         <div class="form-row">
-          <mat-form-field>
-            <mat-label>Paid by</mat-label>
-            <mat-select formControlName="paidByOwnerId">
-              <mat-option [value]="null">— None —</mat-option>
-              @for (o of owners(); track o.id) { <mat-option [value]="o.id">{{ o.name }}</mat-option> }
-            </mat-select>
-            <mat-hint>Owner who funded this stock (optional)</mat-hint>
-          </mat-form-field>
+          <app-search-select label="Paid by" [items]="owners()" formControlName="paidByOwnerId"
+            nullOption hint="Owner who funded this stock (optional)" />
           <div class="contrib">
             @if (!data && form.controls.paidByOwnerId.value) {
               <mat-slide-toggle formControlName="recordOwnerContribution">Record as their capital contribution</mat-slide-toggle>
@@ -115,11 +84,7 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
               <div class="cbrow" [formGroupName]="i">
                 <mat-form-field class="cb-item"><mat-label>Item</mat-label>
                   <input matInput formControlName="label" placeholder="e.g. Cloth, Stitching" /></mat-form-field>
-                <mat-form-field class="cb-vendor"><mat-label>Vendor</mat-label>
-                  <mat-select formControlName="vendorId">
-                    <mat-option [value]="null">— None —</mat-option>
-                    @for (v of vendors(); track v.id) { <mat-option [value]="v.id">{{ v.name }}</mat-option> }
-                  </mat-select></mat-form-field>
+                <app-search-select class="cb-vendor" label="Vendor" [items]="vendors()" formControlName="vendorId" nullOption />
                 <app-money-input class="cb-amt" formControlName="amount" label="Cost / unit" />
                 <button mat-icon-button type="button" color="warn" (click)="removeComponent(i)" title="Remove line"><mat-icon>close</mat-icon></button>
               </div>
