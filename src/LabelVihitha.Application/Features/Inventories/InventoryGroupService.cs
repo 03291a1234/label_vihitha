@@ -27,9 +27,9 @@ public class InventoryGroupService : IInventoryGroupService
 
         return inventories.Select(i =>
         {
-            var (units, cats) = breakdown.TryGetValue(i.Id, out var b) ? b : (0, new List<CategoryCount>());
+            var (units, cost, cats) = breakdown.TryGetValue(i.Id, out var b) ? b : (0, 0m, new List<CategoryCount>());
             var count = cats.Sum(c => c.ProductCount);
-            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName, count, units, cats);
+            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName, count, units, cost, cats);
         }).ToList();
     }
 
@@ -43,13 +43,13 @@ public class InventoryGroupService : IInventoryGroupService
             ?? throw new NotFoundException(nameof(Inventory), id);
 
         var breakdown = await BuildBreakdownAsync(new List<int> { id }, ct);
-        var (units, cats) = breakdown.TryGetValue(id, out var b) ? b : (0, new List<CategoryCount>());
+        var (units, cost, cats) = breakdown.TryGetValue(id, out var b) ? b : (0, 0m, new List<CategoryCount>());
         return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
-            cats.Sum(c => c.ProductCount), units, cats);
+            cats.Sum(c => c.ProductCount), units, cost, cats);
     }
 
-    /// <summary>Per-inventory category → subcategory stock breakdown.</summary>
-    private async Task<Dictionary<int, (int Units, List<CategoryCount> Categories)>> BuildBreakdownAsync(
+    /// <summary>Per-inventory category → subcategory stock breakdown, plus total units and cost.</summary>
+    private async Task<Dictionary<int, (int Units, decimal Cost, List<CategoryCount> Categories)>> BuildBreakdownAsync(
         List<int> inventoryIds, CancellationToken ct)
     {
         if (inventoryIds.Count == 0)
@@ -64,7 +64,8 @@ public class InventoryGroupService : IInventoryGroupService
                 CategoryName = p.Category.Name,
                 p.SubCategoryId,
                 SubCategoryName = p.SubCategory != null ? p.SubCategory.Name : null,
-                p.QuantityOnHand
+                p.QuantityOnHand,
+                p.OriginalPrice
             })
             .ToListAsync(ct);
 
@@ -74,6 +75,7 @@ public class InventoryGroupService : IInventoryGroupService
                 g => g.Key,
                 g => (
                     g.Sum(x => x.QuantityOnHand),
+                    g.Sum(x => x.OriginalPrice * x.QuantityOnHand),
                     g.GroupBy(x => new { x.CategoryId, x.CategoryName })
                         .Select(cg => new CategoryCount(
                             cg.Key.CategoryId, cg.Key.CategoryName, cg.Count(), cg.Sum(x => x.QuantityOnHand),

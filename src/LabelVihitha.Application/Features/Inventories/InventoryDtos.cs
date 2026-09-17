@@ -11,6 +11,7 @@ public record InventoryDto(
     string? PaidByOwnerName,
     int ProductCount,
     int TotalUnits,
+    decimal TotalCostUsd,
     IReadOnlyList<CategoryCount> Categories);
 
 public record CreateInventoryRequest(string Name, string? Description, int? PaidByOwnerId);

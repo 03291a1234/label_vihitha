@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,7 +18,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   selector: 'app-inventory-list',
   standalone: true,
   imports: [
-    FormsModule, RouterLink, MatButtonModule, MatIconModule,
+    CurrencyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule,
     MatDialogModule, MatProgressBarModule, MatSlideToggleModule
   ],
   template: `
@@ -50,6 +51,11 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <div class="inv-stats">
               <div class="stat"><span class="v">{{ i.productCount }}</span><span class="l">products</span></div>
               <div class="stat"><span class="v">{{ i.totalUnits }}</span><span class="l">units</span></div>
+              <div class="stat cost">
+                <span class="v">{{ i.totalCostUsd | currency:'USD':'symbol':'1.0-0' }}</span>
+                <span class="l">at cost</span>
+                <span class="inr">≈ {{ i.totalCostUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+              </div>
             </div>
             <div class="inv-actions">
               <button mat-stroked-button [routerLink]="['/products']" [queryParams]="{ inventoryId: i.id }">
@@ -104,6 +110,8 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .stat { display: flex; flex-direction: column; align-items: center; }
     .stat .v { font-family: "Cormorant Garamond", Georgia, serif; font-size: 26px; font-weight: 700; color: var(--lv-wine); line-height: 1; }
     .stat .l { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: rgba(58,37,48,.55); }
+    .stat.cost .v { font-size: 22px; }
+    .stat.cost .inr { font-size: 11px; color: rgba(58,37,48,.55); margin-top: 1px; }
     .inv-actions { display: flex; align-items: center; gap: 4px; }
     .breakdown { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--lv-line);
       display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }

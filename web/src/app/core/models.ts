@@ -48,6 +48,7 @@ export interface Inventory {
   paidByOwnerName?: string | null;
   productCount: number;
   totalUnits: number;
+  totalCostUsd: number;
   categories: CategoryCount[];
 }
 
