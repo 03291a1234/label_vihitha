@@ -16,7 +16,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Category, SubCategory, Inventory, Vendor, InventorySummary, Product, ProductTotals } from '../../core/models';
+import { Category, SubCategory, Inventory, Vendor, InventorySummary, SubCategoryCount, Product, ProductTotals } from '../../core/models';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ProductEditDialog } from './product-edit.dialog';
 import { ImportResultDialog } from './import-result.dialog';
@@ -62,7 +62,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
         <div class="card summary">
           <div class="summary-head" (click)="showSummary.set(!showSummary())">
             <span><mat-icon>insights</mat-icon> Inventory summary
-              @if (anyFilterActive()) { <span class="filtered-tag">filtered</span> }
+              @if (anyFilterActive()) { <span class="filtered-tag">(filtered)</span> }
               — <strong>{{ s.totalProducts }}</strong> products · <strong>{{ s.totalUnits }}</strong> units in stock</span>
             <mat-icon>{{ showSummary() ? 'expand_less' : 'expand_more' }}</mat-icon>
           </div>
@@ -75,7 +75,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
                     <span class="muted">{{ c.productCount }} products · {{ c.totalUnits }} units</span>
                   </a>
                   <div class="subs">
-                    @for (sub of c.subCategories; track sub.subCategoryName) {
+                    @for (sub of namedSubs(c.subCategories); track sub.subCategoryName) {
                       <a class="sub-chip" [routerLink]="['/products']"
                          [queryParams]="summaryParams(c.categoryId, sub.subCategoryId)"
                          title="Filter to these products">
@@ -244,8 +244,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .summary { margin-bottom: 16px; padding: 0; overflow: hidden; }
     .summary-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; }
     .summary-head span { display: flex; align-items: center; gap: 8px; color: var(--lv-wine); }
-    .filtered-tag { background: var(--lv-wine); color: #fff; border-radius: 999px; padding: 1px 9px;
-      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+    .filtered-tag { color: var(--lv-wine); opacity: .7; font-size: 13px; font-weight: 600; font-style: italic; }
     .summary-body { padding: 4px 18px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     .cat-block { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px; background: #fffdfb; }
     .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px;
@@ -329,6 +328,11 @@ export class ProductListComponent {
 
   loadSummary() {
     this.api.inventorySummary(this.currentFilters()).subscribe({ next: (s) => this.summary.set(s) });
+  }
+
+  /** Only real subcategories — the "Unassigned" (null) bucket is not shown as a chip. */
+  namedSubs(subs: SubCategoryCount[]): SubCategoryCount[] {
+    return subs.filter(s => s.subCategoryId != null);
   }
 
   /** Category/subcategory chip target that keeps the current vendor/inventory scope. */

@@ -9,7 +9,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { InventoryApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Inventory } from '../../core/models';
+import { Inventory, SubCategoryCount } from '../../core/models';
 import { InventoryEditDialog } from './inventory-edit.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
@@ -72,7 +72,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
                     <span class="muted">{{ c.productCount }} products · {{ c.totalUnits }} units</span>
                   </a>
                   <div class="subs">
-                    @for (sub of c.subCategories; track sub.subCategoryName) {
+                    @for (sub of namedSubs(c.subCategories); track sub.subCategoryName) {
                       <a class="sub-chip" [routerLink]="['/products']"
                          [queryParams]="subParams(i.id, c.categoryId, sub.subCategoryId)" title="View these products">
                         {{ sub.subCategoryName }} · {{ sub.productCount }}<span class="u"> ({{ sub.totalUnits }} u)</span>
@@ -131,6 +131,11 @@ export class InventoryListComponent {
   includeInactive = false;
 
   constructor() { this.load(); }
+
+  /** Only real subcategories — the "Unassigned" (null) bucket is not shown as a chip. */
+  namedSubs(subs: SubCategoryCount[]): SubCategoryCount[] {
+    return subs.filter(s => s.subCategoryId != null);
+  }
 
   /** Build the /products query params, including subcategory only when it's a real one. */
   subParams(inventoryId: number, categoryId: number, subCategoryId: number | null | undefined) {
