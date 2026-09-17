@@ -51,7 +51,13 @@ import { ProfitLossReport } from '../../core/models';
               <span>{{ r.netProfit < 0 ? 'Net loss' : 'Net profit' }} <span class="muted">({{ r.netMarginPct | number:'1.0-1' }}%)</span></span>
               <span class="mono">{{ r.netProfit | currency }}</span>
             </div>
-            <div class="muted foot">{{ r.orderCount }} orders · {{ r.unitsSold }} units sold</div>
+            <div class="line memo bt">
+              <span>Inventory on hand (at cost) <span class="muted">— asset, not a loss</span></span>
+              <span class="mono">{{ r.inventoryValueAtCost | currency }}
+                <span class="muted inr">≈ {{ r.inventoryValueAtCost * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+            </div>
+            <div class="muted foot">{{ r.orderCount }} orders · {{ r.unitsSold }} units sold · Stock purchases are capital,
+              expensed as cost-of-goods only when sold — so they don't reduce profit here.</div>
           </div>
 
           <!-- Inventory on hand -->
@@ -59,8 +65,10 @@ import { ProfitLossReport } from '../../core/models';
             <h2>Inventory on hand <span class="muted">(now)</span></h2>
             <div class="kpi"><div class="k-label">Capital in stock (at cost)</div><div class="k-val">{{ r.inventoryValueAtCost | currency }}</div>
               <div class="muted">≈ {{ r.inventoryValueAtCost * 95 | currency:'INR':'symbol':'1.0-0' }}</div></div>
-            <div class="kpi"><div class="k-label">Retail value (at sale)</div><div class="k-val">{{ r.inventoryValueAtSale | currency }}</div></div>
-            <div class="kpi"><div class="k-label">Potential margin</div><div class="k-val">{{ r.inventoryValueAtSale - r.inventoryValueAtCost | currency }}</div></div>
+            <div class="kpi"><div class="k-label">Retail value (at sale)</div><div class="k-val">{{ r.inventoryValueAtSale | currency }}</div>
+              <div class="muted">≈ {{ r.inventoryValueAtSale * 95 | currency:'INR':'symbol':'1.0-0' }}</div></div>
+            <div class="kpi"><div class="k-label">Potential margin</div><div class="k-val">{{ r.inventoryValueAtSale - r.inventoryValueAtCost | currency }}</div>
+              <div class="muted">≈ {{ (r.inventoryValueAtSale - r.inventoryValueAtCost) * 95 | currency:'INR':'symbol':'1.0-0' }}</div></div>
             <div class="kpi"><div class="k-label">Units in stock</div><div class="k-val">{{ r.inventoryUnits }}</div></div>
           </div>
         </div>
@@ -181,6 +189,8 @@ import { ProfitLossReport } from '../../core/models';
     .line.bt { border-top: 1px solid var(--lv-line); margin-top: 4px; padding-top: 8px; }
     .line.net { font-weight: 800; font-size: 17px; color: #1e7d3a; }
     .line.net.loss { color: #b3261e; }
+    .line.memo { color: var(--lv-wine); font-weight: 600; }
+    .line.memo .inr { font-weight: 400; margin-left: 6px; font-size: 12px; }
     .section-label { margin-top: 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: #8a6; color: var(--lv-wine); opacity: .7; }
     .neg { color: #b3261e; }
     .foot { margin-top: 10px; font-size: 12px; }
