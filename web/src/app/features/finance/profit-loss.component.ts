@@ -32,6 +32,30 @@ import { ProfitLossReport } from '../../core/models';
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       @if (report(); as r) {
+        <!-- Headline metrics -->
+        <div class="kpi-strip">
+          <div class="card k-card">
+            <div class="k-top">Total invested</div>
+            <div class="k-big">{{ r.inventoryValueAtCost + r.expensesTotal | currency }}</div>
+            <div class="k-sub">≈ {{ (r.inventoryValueAtCost + r.expensesTotal) * 95 | currency:'INR':'symbol':'1.0-0' }} · stock + expenses</div>
+          </div>
+          <div class="card k-card">
+            <div class="k-top">Sales</div>
+            <div class="k-big">{{ r.revenue | currency }}</div>
+            <div class="k-sub">{{ r.orderCount }} orders · {{ r.unitsSold }} units sold</div>
+          </div>
+          <div class="card k-card">
+            <div class="k-top">{{ r.netProfit < 0 ? 'Net loss' : 'Net profit' }}</div>
+            <div class="k-big" [class.pos]="r.netProfit >= 0" [class.neg2]="r.netProfit < 0">{{ r.netProfit | currency }}</div>
+            <div class="k-sub">revenue − cost of goods − expenses</div>
+          </div>
+          <div class="card k-card">
+            <div class="k-top">Stock in hand (at cost)</div>
+            <div class="k-big">{{ r.inventoryValueAtCost | currency }}</div>
+            <div class="k-sub">≈ {{ r.inventoryValueAtCost * 95 | currency:'INR':'symbol':'1.0-0' }} · {{ r.inventoryUnits }} units</div>
+          </div>
+        </div>
+
         <div class="grid">
           <!-- P&L statement -->
           <div class="card statement">
@@ -40,12 +64,7 @@ import { ProfitLossReport } from '../../core/models';
             <div class="line sub"><span>Cost of goods sold</span><span class="mono neg">−{{ r.cogs | currency }}</span></div>
             <div class="line strong bt"><span>Gross profit <span class="muted">({{ r.grossMarginPct | number:'1.0-1' }}%)</span></span><span class="mono">{{ r.grossProfit | currency }}</span></div>
 
-            <div class="section-label">Operating expenses</div>
-            @for (e of r.expensesByCategory; track e.categoryId) {
-              <div class="line sub"><span>{{ e.categoryName }}</span><span class="mono neg">−{{ e.amount | currency }}</span></div>
-            }
-            @if (r.expensesByCategory.length === 0) { <div class="line sub muted"><span>No expenses in range</span><span>—</span></div> }
-            <div class="line sub bt"><span>Total expenses</span><span class="mono neg">−{{ r.expensesTotal | currency }}</span></div>
+            <div class="line bt"><span>Operating expenses <span class="muted">— itemised on the Expenses tab</span></span><span class="mono neg">−{{ r.expensesTotal | currency }}</span></div>
 
             <div class="line net bt" [class.loss]="r.netProfit < 0">
               <span>{{ r.netProfit < 0 ? 'Net loss' : 'Net profit' }} <span class="muted">({{ r.netMarginPct | number:'1.0-1' }}%)</span></span>
@@ -88,6 +107,42 @@ import { ProfitLossReport } from '../../core/models';
             </div>
           </div>
           <div class="muted foot">Buying stock moves cash into "inventory at cost", so it's deducted here automatically. Assumes sales are collected in full (no receivables tracked).</div>
+        </div>
+
+        <!-- Owner equity -->
+        <div class="card">
+          <div class="owners-head">
+            <h2>Owner equity <span class="muted">(to date)</span></h2>
+            <div class="muted">Retained net profit to date: <strong>{{ r.allTimeNetProfit | currency }}</strong>
+              @if (r.totalSharePercent !== 100 && r.owners.length) { · <span class="warn">shares total {{ r.totalSharePercent }}%</span> }
+            </div>
+          </div>
+          <table mat-table [dataSource]="r.owners" class="full">
+            <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Owner</th>
+              <td mat-cell *matCellDef="let o"><strong>{{ o.name }}</strong></td></ng-container>
+            <ng-container matColumnDef="share"><th mat-header-cell *matHeaderCellDef class="text-right">Share</th>
+              <td mat-cell *matCellDef="let o" class="text-right mono">{{ o.sharePercent | number:'1.0-2' }}%</td></ng-container>
+            <ng-container matColumnDef="contrib"><th mat-header-cell *matHeaderCellDef class="text-right">Contributions</th>
+              <td mat-cell *matCellDef="let o" class="text-right mono">{{ o.contributions | currency }}</td></ng-container>
+            <ng-container matColumnDef="withdraw"><th mat-header-cell *matHeaderCellDef class="text-right">Withdrawals</th>
+              <td mat-cell *matCellDef="let o" class="text-right mono neg">{{ o.withdrawals | currency }}</td></ng-container>
+            <ng-container matColumnDef="profit"><th mat-header-cell *matHeaderCellDef class="text-right">Profit share</th>
+              <td mat-cell *matCellDef="let o" class="text-right mono">{{ o.profitShare | currency }}</td></ng-container>
+            <ng-container matColumnDef="equity"><th mat-header-cell *matHeaderCellDef class="text-right">Equity balance</th>
+              <td mat-cell *matCellDef="let o" class="text-right mono strong">{{ o.equity | currency }}</td></ng-container>
+            <tr mat-header-row *matHeaderRowDef="ownerCols"></tr>
+            <tr mat-row *matRowDef="let row; columns: ownerCols"></tr>
+          </table>
+          @if (r.owners.length === 0) { <div class="empty-state">No owners yet — add owners with profit shares to see the split.</div> }
+          @if (r.owners.length) {
+            <div class="totals">
+              <span>Totals</span>
+              <span class="mono">{{ r.totalContributions | currency }}</span>
+              <span class="mono neg">{{ r.totalWithdrawals | currency }}</span>
+              <span class="mono">{{ r.allTimeNetProfit | currency }}</span>
+              <span class="mono strong">{{ r.totalOwnerEquity | currency }}</span>
+            </div>
+          }
         </div>
 
         <!-- Who funded the inventory -->
@@ -139,46 +194,18 @@ import { ProfitLossReport } from '../../core/models';
           </div>
           <div class="muted foot">Based on stock on hand (cost × quantity); items already sold aren't included. Set a product's Vendor to attribute its spend here.</div>
         </div>
-
-        <!-- Owner equity -->
-        <div class="card">
-          <div class="owners-head">
-            <h2>Owner equity <span class="muted">(to date)</span></h2>
-            <div class="muted">Retained net profit to date: <strong>{{ r.allTimeNetProfit | currency }}</strong>
-              @if (r.totalSharePercent !== 100 && r.owners.length) { · <span class="warn">shares total {{ r.totalSharePercent }}%</span> }
-            </div>
-          </div>
-          <table mat-table [dataSource]="r.owners" class="full">
-            <ng-container matColumnDef="name"><th mat-header-cell *matHeaderCellDef>Owner</th>
-              <td mat-cell *matCellDef="let o"><strong>{{ o.name }}</strong></td></ng-container>
-            <ng-container matColumnDef="share"><th mat-header-cell *matHeaderCellDef class="text-right">Share</th>
-              <td mat-cell *matCellDef="let o" class="text-right mono">{{ o.sharePercent | number:'1.0-2' }}%</td></ng-container>
-            <ng-container matColumnDef="contrib"><th mat-header-cell *matHeaderCellDef class="text-right">Contributions</th>
-              <td mat-cell *matCellDef="let o" class="text-right mono">{{ o.contributions | currency }}</td></ng-container>
-            <ng-container matColumnDef="withdraw"><th mat-header-cell *matHeaderCellDef class="text-right">Withdrawals</th>
-              <td mat-cell *matCellDef="let o" class="text-right mono neg">{{ o.withdrawals | currency }}</td></ng-container>
-            <ng-container matColumnDef="profit"><th mat-header-cell *matHeaderCellDef class="text-right">Profit share</th>
-              <td mat-cell *matCellDef="let o" class="text-right mono">{{ o.profitShare | currency }}</td></ng-container>
-            <ng-container matColumnDef="equity"><th mat-header-cell *matHeaderCellDef class="text-right">Equity balance</th>
-              <td mat-cell *matCellDef="let o" class="text-right mono strong">{{ o.equity | currency }}</td></ng-container>
-            <tr mat-header-row *matHeaderRowDef="ownerCols"></tr>
-            <tr mat-row *matRowDef="let row; columns: ownerCols"></tr>
-          </table>
-          @if (r.owners.length === 0) { <div class="empty-state">No owners yet — add owners with profit shares to see the split.</div> }
-          @if (r.owners.length) {
-            <div class="totals">
-              <span>Totals</span>
-              <span class="mono">{{ r.totalContributions | currency }}</span>
-              <span class="mono neg">{{ r.totalWithdrawals | currency }}</span>
-              <span class="mono">{{ r.allTimeNetProfit | currency }}</span>
-              <span class="mono strong">{{ r.totalOwnerEquity | currency }}</span>
-            </div>
-          }
-        </div>
       }
     </div>
   `,
   styles: [`
+    .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 900px) { .kpi-strip { grid-template-columns: repeat(2, 1fr); } }
+    .k-card { padding: 16px 18px; }
+    .k-top { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: rgba(58,37,48,.6); font-weight: 600; }
+    .k-big { font-size: 26px; font-weight: 800; color: var(--lv-wine); margin: 6px 0 2px; line-height: 1.1; }
+    .k-big.pos { color: #1e7d3a; }
+    .k-big.neg2 { color: #b3261e; }
+    .k-sub { font-size: 12px; color: #777; }
     .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; margin-bottom: 16px; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
     .card { padding: 18px 20px; }
