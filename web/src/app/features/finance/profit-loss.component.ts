@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -15,7 +16,7 @@ import { ProfitLossReport } from '../../core/models';
   selector: 'app-profit-loss',
   standalone: true,
   imports: [
-    CurrencyPipe, DecimalPipe, FormsModule, MatFormFieldModule, MatInputModule,
+    CurrencyPipe, DecimalPipe, RouterLink, FormsModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatIconModule, MatTableModule, MatProgressBarModule
   ],
   template: `
@@ -64,7 +65,7 @@ import { ProfitLossReport } from '../../core/models';
             <div class="line sub"><span>Cost of goods sold</span><span class="mono neg">−{{ r.cogs | currency }}</span></div>
             <div class="line strong bt"><span>Gross profit <span class="muted">({{ r.grossMarginPct | number:'1.0-1' }}%)</span></span><span class="mono">{{ r.grossProfit | currency }}</span></div>
 
-            <div class="line bt"><span>Operating expenses <span class="muted">— itemised on the Expenses tab</span></span><span class="mono neg">−{{ r.expensesTotal | currency }}</span></div>
+            <div class="line bt"><span>Operating expenses <span class="muted">— itemised on the <a routerLink="/expenses" class="link">Expenses tab</a></span></span><span class="mono neg">−{{ r.expensesTotal | currency }}</span></div>
 
             <div class="line net bt" [class.loss]="r.netProfit < 0">
               <span>{{ r.netProfit < 0 ? 'Net loss' : 'Net profit' }} <span class="muted">({{ r.netMarginPct | number:'1.0-1' }}%)</span></span>
@@ -220,6 +221,8 @@ import { ProfitLossReport } from '../../core/models';
     .line.memo .inr { font-weight: 400; margin-left: 6px; font-size: 12px; }
     .section-label { margin-top: 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: #8a6; color: var(--lv-wine); opacity: .7; }
     .neg { color: #b3261e; }
+    .link { color: var(--lv-wine); font-weight: 600; text-decoration: none; border-bottom: 1px solid currentColor; }
+    .link:hover { opacity: .8; }
     .foot { margin-top: 10px; font-size: 12px; }
     .kpis .kpi { padding: 8px 0; border-bottom: 1px solid var(--lv-line); }
     .kpis .kpi:last-child { border-bottom: none; }
