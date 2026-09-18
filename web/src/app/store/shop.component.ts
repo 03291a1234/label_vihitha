@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { StoreApi } from './store.api';
 import { CartService } from './cart.service';
@@ -22,7 +23,7 @@ type View = 'shop' | 'checkout' | 'done';
   standalone: true,
   imports: [
     CurrencyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatSelectModule, MatProgressBarModule
+    MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonToggleModule, MatProgressBarModule
   ],
   template: `
     <div class="store">
@@ -155,11 +156,27 @@ type View = 'shop' | 'checkout' | 'done';
               </div>
               @if (promoMsg()) { <div class="promo-msg" [class.ok]="appliedDiscount() > 0" [class.err]="appliedDiscount() === 0">{{ promoMsg() }}</div> }
 
+              <div class="manual">
+                <mat-form-field class="md-field" subscriptSizing="dynamic">
+                  <mat-label>Manual discount</mat-label>
+                  <input matInput type="number" min="0" [(ngModel)]="manualValue" />
+                  <span matTextPrefix>{{ manualType === 'amount' ? '$ ' : '' }}</span>
+                  <span matTextSuffix>{{ manualType === 'percent' ? '%' : '' }}</span>
+                </mat-form-field>
+                <mat-button-toggle-group [(ngModel)]="manualType" aria-label="Discount type">
+                  <mat-button-toggle value="amount">$</mat-button-toggle>
+                  <mat-button-toggle value="percent">%</mat-button-toggle>
+                </mat-button-toggle-group>
+              </div>
+
               <div class="sline sub"><span>Subtotal</span><span class="mono">{{ cart.total() | currency }}</span></div>
               @if (appliedDiscount() > 0) {
-                <div class="sline disc"><span>Discount <span class="muted">({{ appliedCode() }})</span></span><span class="mono">−{{ appliedDiscount() | currency }}</span></div>
+                <div class="sline disc"><span>Promo <span class="muted">({{ appliedCode() }})</span></span><span class="mono">−{{ appliedDiscount() | currency }}</span></div>
               }
-              <div class="ctotal"><span>Total</span><strong>{{ cart.total() - appliedDiscount() | currency }}</strong></div>
+              @if (manualDiscountAmount() > 0) {
+                <div class="sline disc"><span>Manual discount</span><span class="mono">−{{ manualDiscountAmount() | currency }}</span></div>
+              }
+              <div class="ctotal"><span>Total</span><strong>{{ finalTotal() | currency }}</strong></div>
               <button mat-raised-button color="primary" class="full" (click)="placeOrder()" [disabled]="!name.trim() || placing()">
                 {{ placing() ? 'Placing…' : 'Place order' }}
               </button>
@@ -239,6 +256,9 @@ type View = 'shop' | 'checkout' | 'done';
     .promo-field { flex: 1; }
     .promo-msg { font-size: 13px; margin: 2px 0 6px; }
     .promo-msg.ok { color: #1e7d3a; } .promo-msg.err { color: #b3261e; }
+    .manual { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; }
+    .manual .md-field { flex: 1; }
+    .manual mat-button-toggle-group { height: 40px; }
     .saved { color: #1e7d3a; font-weight: 700; }
     .done { display: grid; place-items: center; min-height: 60vh; }
     .done-card { text-align: center; max-width: 460px; }
@@ -276,6 +296,10 @@ export class ShopComponent {
   promoMsg = signal('');
   appliedDiscount = signal(0);
   appliedCode = signal<string | null>(null);
+
+  // Manual (ad-hoc) discount
+  manualValue: number | null = null;
+  manualType: 'amount' | 'percent' = 'amount';
 
   constructor() { this.load(); }
 
@@ -326,6 +350,19 @@ export class ShopComponent {
   private cartItems() {
     return this.cart.lines().map(l => ({ productId: l.product.id, quantity: l.quantity, productVariantId: l.variant.id }));
   }
+  /** The manual discount as a $ amount (from a fixed value or a % of subtotal), capped at subtotal. */
+  manualDiscountAmount(): number {
+    const v = Number(this.manualValue) || 0;
+    if (v <= 0) return 0;
+    const sub = this.cart.total();
+    const amt = this.manualType === 'percent' ? sub * v / 100 : v;
+    return Math.min(Math.round(amt * 100) / 100, sub);
+  }
+  /** Combined promo + manual discount, capped at subtotal. */
+  private totalDiscount(): number {
+    return Math.min(this.cart.total(), this.appliedDiscount() + this.manualDiscountAmount());
+  }
+  finalTotal(): number { return this.cart.total() - this.totalDiscount(); }
   /** Editing the code invalidates a previously applied discount until re-applied. */
   onPromoChange() {
     if (this.appliedCode() && this.promoCode.trim().toUpperCase() !== this.appliedCode()) {
@@ -357,7 +394,8 @@ export class ShopComponent {
       paymentMethod: this.method,
       notes: this.notes || null,
       items: this.cartItems(),
-      promoCode: this.appliedCode()
+      promoCode: this.appliedCode(),
+      manualDiscount: this.manualDiscountAmount()
     }).subscribe({
       next: (r) => { this.result.set(r); this.cart.clear(); this.view.set('done'); this.placing.set(false); },
       error: (e) => { this.placing.set(false); this.notify.error(e); }
@@ -368,6 +406,7 @@ export class ShopComponent {
     this.name = this.phone = this.email = this.notes = '';
     this.method = 'Zelle';
     this.promoCode = ''; this.promoMsg.set(''); this.appliedDiscount.set(0); this.appliedCode.set(null);
+    this.manualValue = null; this.manualType = 'amount';
     this.result.set(null);
     this.view.set('shop');
     this.load();

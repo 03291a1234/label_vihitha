@@ -77,7 +77,10 @@ public class StoreService : IStoreService
         // Validate any promo code against the authoritative cart subtotal.
         var subtotal = await CartSubtotalAsync(request.Items, ct);
         var promo = await _promos.ValidateAsync(request.PromoCode, subtotal, ct);
-        var discount = promo.Valid ? promo.DiscountAmount : 0m;
+        var promoDiscount = promo.Valid ? promo.DiscountAmount : 0m;
+        var manualDiscount = Math.Max(0m, request.ManualDiscount);
+        // Promo + manual discount together, but never below zero.
+        var discount = Math.Min(subtotal, promoDiscount + manualDiscount);
 
         var order = await _orders.CreateAsync(new CreateOrderRequest(
             customer.Id,

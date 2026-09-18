@@ -14,6 +14,7 @@ export interface CheckoutBody {
   notes?: string | null;
   items: CheckoutItem[];
   promoCode?: string | null;
+  manualDiscount?: number;
 }
 
 @Injectable({ providedIn: 'root' })

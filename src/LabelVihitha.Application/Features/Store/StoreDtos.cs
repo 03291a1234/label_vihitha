@@ -26,7 +26,8 @@ public record StoreCheckoutRequest(
     PaymentMethod PaymentMethod,
     string? Notes,
     IReadOnlyList<StoreCheckoutItem> Items,
-    string? PromoCode = null);
+    string? PromoCode = null,
+    decimal ManualDiscount = 0m);   // staff-applied ad-hoc discount ($), stacks with a promo
 
 public record StoreCheckoutResult(
     string OrderNumber,
