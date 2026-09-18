@@ -108,7 +108,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .paid-by mat-icon { font-size: 15px; height: 15px; width: 15px; }
     .inv-stats { display: flex; gap: 20px; }
     .stat { display: flex; flex-direction: column; align-items: center; }
-    .stat .v { font-family: "Cormorant Garamond", Georgia, serif; font-size: 26px; font-weight: 700; color: var(--lv-wine); line-height: 1; }
+    .stat .v { font-size: 22px; font-weight: 700; color: var(--lv-wine); line-height: 1.1; }
     .stat .l { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: rgba(58,37,48,.55); }
     .stat.cost .inr { font-size: 11px; color: rgba(58,37,48,.55); margin-top: 1px; }
     .inv-actions { display: flex; align-items: center; gap: 4px; }
