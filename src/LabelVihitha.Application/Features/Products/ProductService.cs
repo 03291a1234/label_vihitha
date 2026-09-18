@@ -352,6 +352,9 @@ public class ProductService : IProductService
             "originalprice" => desc ? q.OrderByDescending(p => p.OriginalPrice) : q.OrderBy(p => p.OriginalPrice),
             "saleprice" => desc ? q.OrderByDescending(p => p.SalePrice) : q.OrderBy(p => p.SalePrice),
             "quantityonhand" => desc ? q.OrderByDescending(p => p.QuantityOnHand) : q.OrderBy(p => p.QuantityOnHand),
+            "sold" => desc
+                ? q.OrderByDescending(p => p.OrderItems.Where(i => SoldStatuses.Contains(i.Order.Status)).Sum(i => (int?)i.Quantity) ?? 0)
+                : q.OrderBy(p => p.OrderItems.Where(i => SoldStatuses.Contains(i.Order.Status)).Sum(i => (int?)i.Quantity) ?? 0),
             "name" => desc ? q.OrderByDescending(p => p.Name) : q.OrderBy(p => p.Name),
             _ => q.OrderBy(p => p.Name)
         };

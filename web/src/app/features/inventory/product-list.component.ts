@@ -184,7 +184,7 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
             </td>
           </ng-container>
           <ng-container matColumnDef="sold">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Sold</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Sold</th>
             <td mat-cell *matCellDef="let p" class="text-right mono">
               @if (p.unitsSold > 0) { <span class="sold-badge">{{ p.unitsSold }}</span> } @else { <span class="muted">—</span> }
             </td>
