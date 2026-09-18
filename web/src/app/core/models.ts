@@ -285,6 +285,7 @@ export interface Product {
   originalPrice: number;
   salePrice: number;
   quantityOnHand: number;
+  unitsSold: number;
   reorderThreshold: number;
   isLowStock: boolean;
   imageUrl?: string | null;

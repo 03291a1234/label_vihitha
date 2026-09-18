@@ -64,7 +64,9 @@ type View = 'shop' | 'checkout' | 'done';
                   <div class="pimg">
                     @if (img(p.imageUrl); as src) { <img [src]="src" alt="" /> }
                     @else { <mat-icon>checkroom</mat-icon> }
-                    @if (!p.inStock) { <span class="sold">Sold out</span> }
+                    @if (!p.inStock) {
+                      <div class="soldout-overlay"><span class="soldout-stamp">Sold out</span></div>
+                    }
                   </div>
                   <div class="pbody">
                     <div class="pname">{{ p.name }}</div>
@@ -224,7 +226,11 @@ type View = 'shop' | 'checkout' | 'done';
     .pimg { position: relative; height: 180px; background: #f3ead9; display: grid; place-items: center; }
     .pimg img { width: 100%; height: 100%; object-fit: cover; }
     .pimg mat-icon { font-size: 46px; height: 46px; width: 46px; color: #c9a24b; }
-    .sold { position: absolute; top: 10px; left: 10px; background: #6b5560; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+    .soldout-overlay { position: absolute; inset: 0; display: grid; place-items: center;
+      background: rgba(58,37,48,.45); backdrop-filter: saturate(.6); }
+    .soldout-stamp { transform: rotate(-12deg); border: 3px solid #fff; color: #fff; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 2px; font-size: 18px; padding: 6px 16px; border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.25); }
     .pbody { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
     .pname { font-weight: 600; line-height: 1.2; }
     .pmeta { font-size: 12px; color: rgba(58,37,48,.55); }

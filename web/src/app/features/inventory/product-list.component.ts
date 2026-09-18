@@ -177,9 +177,16 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
           </ng-container>
           <ng-container matColumnDef="quantityOnHand">
             <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Stock</th>
-            <td mat-cell *matCellDef="let p" class="text-right mono" [class.low-stock]="p.isLowStock">
+            <td mat-cell *matCellDef="let p" class="text-right mono" [class.low-stock]="p.isLowStock" [class.sold-out]="p.quantityOnHand === 0">
               {{ p.quantityOnHand }}
-              @if (p.isLowStock) { <mat-icon class="warn-icon" title="At/under reorder threshold">warning</mat-icon> }
+              @if (p.quantityOnHand === 0) { <mat-icon class="warn-icon" title="Sold out">block</mat-icon> }
+              @else if (p.isLowStock) { <mat-icon class="warn-icon" title="At/under reorder threshold">warning</mat-icon> }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="sold">
+            <th mat-header-cell *matHeaderCellDef class="text-right">Sold</th>
+            <td mat-cell *matCellDef="let p" class="text-right mono">
+              @if (p.unitsSold > 0) { <span class="sold-badge">{{ p.unitsSold }}</span> } @else { <span class="muted">—</span> }
             </td>
           </ng-container>
           <ng-container matColumnDef="actions">
@@ -202,6 +209,9 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
   `,
   styles: [`
     .warn-icon { font-size: 16px; height: 16px; width: 16px; vertical-align: middle; }
+    .sold-out { color: #b3261e; font-weight: 700; }
+    .sold-badge { display: inline-block; background: var(--lv-rose-soft, #f7ebf0); color: var(--lv-wine);
+      border-radius: 999px; padding: 1px 9px; font-weight: 700; font-size: 12px; }
     .product-cell { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
     .product-cell .thumb {
       width: 44px; height: 44px; border-radius: 8px; background: #f0f0f3;
@@ -273,7 +283,7 @@ export class ProductListComponent {
   sortDir: string | null = null;
   page = 1;
   pageSize = 25;
-  cols = ['sku', 'name', 'size', 'costInr', 'originalPrice', 'salePrice', 'quantityOnHand', 'actions'];
+  cols = ['sku', 'name', 'size', 'costInr', 'originalPrice', 'salePrice', 'quantityOnHand', 'sold', 'actions'];
 
   constructor() {
     // Preselect filters when drilled in from another screen (e.g. Inventories, Vendors).

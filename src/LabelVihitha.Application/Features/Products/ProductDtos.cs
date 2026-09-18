@@ -27,6 +27,7 @@ public record ProductDto(
     decimal OriginalPrice,
     decimal SalePrice,
     int QuantityOnHand,
+    int UnitsSold,
     int ReorderThreshold,
     bool IsLowStock,
     string? ImageUrl,

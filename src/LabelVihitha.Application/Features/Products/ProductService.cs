@@ -26,9 +26,10 @@ public class ProductService : IProductService
             .Take(pageSize)
             .ToListAsync(ct);
 
+        var sold = await SoldUnitsAsync(entities.Select(e => e.Id), ct);
         return new PagedResult<ProductDto>
         {
-            Items = entities.Select(MapToDto).ToList(),
+            Items = entities.Select(e => MapToDto(e, sold.GetValueOrDefault(e.Id))).ToList(),
             TotalCount = total,
             Page = page,
             PageSize = pageSize
@@ -153,7 +154,9 @@ public class ProductService : IProductService
             .Include(p => p.Variants)
             .Include(p => p.CostComponents).ThenInclude(c => c.Vendor)
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
-        return entity is null ? throw new NotFoundException(nameof(Product), id) : MapToDto(entity);
+        if (entity is null) throw new NotFoundException(nameof(Product), id);
+        var sold = await SoldUnitsAsync(new[] { id }, ct);
+        return MapToDto(entity, sold.GetValueOrDefault(id));
     }
 
     public async Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken ct = default)
@@ -399,6 +402,23 @@ public class ProductService : IProductService
         if (missing != 0) throw new NotFoundException(nameof(Vendor), missing);
     }
 
+    // Committed sale statuses (Pending/Cancelled don't count as sold).
+    private static readonly Domain.Enums.OrderStatus[] SoldStatuses =
+        { Domain.Enums.OrderStatus.Confirmed, Domain.Enums.OrderStatus.Fulfilled };
+
+    /// <summary>Total units sold (committed orders) per product, for the given product ids.</summary>
+    private async Task<Dictionary<int, int>> SoldUnitsAsync(IEnumerable<int> productIds, CancellationToken ct)
+    {
+        var ids = productIds.Distinct().ToList();
+        if (ids.Count == 0) return new();
+        var rows = await _db.OrderItems.AsNoTracking()
+            .Where(i => ids.Contains(i.ProductId) && SoldStatuses.Contains(i.Order.Status))
+            .GroupBy(i => i.ProductId)
+            .Select(g => new { ProductId = g.Key, Units = g.Sum(x => x.Quantity) })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.ProductId, r => r.Units);
+    }
+
     private async Task EnsureSkuUniqueAsync(string sku, int? excludeId, CancellationToken ct)
     {
         var normalized = sku.Trim();
@@ -409,7 +429,7 @@ public class ProductService : IProductService
     }
 
     // In-memory mapping (never used inside an EF expression tree — Category must be loaded).
-    private static ProductDto MapToDto(Product p) => new(
+    private static ProductDto MapToDto(Product p, int unitsSold = 0) => new(
         p.Id,
         p.CategoryId,
         p.Category?.Name ?? string.Empty,
@@ -430,6 +450,7 @@ public class ProductService : IProductService
         p.OriginalPrice,
         p.SalePrice,
         p.QuantityOnHand,
+        unitsSold,
         p.ReorderThreshold,
         p.QuantityOnHand <= p.ReorderThreshold,
         p.ImageUrl,
