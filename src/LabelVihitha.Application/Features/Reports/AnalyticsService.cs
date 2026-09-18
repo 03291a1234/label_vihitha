@@ -55,7 +55,12 @@ public class AnalyticsService : IAnalyticsService
         var (f, t) = Range(from, to);
         var lines = await FetchSoldLinesAsync(f, t, null, ct);
 
-        var revenue = lines.Sum(l => l.FinalRevenue);
+        // Order-level discounts (promo / manual) reduce actual revenue but aren't on the line items.
+        var orderDiscounts = await _db.Orders.AsNoTracking()
+            .Where(o => SoldStatuses.Contains(o.Status) && o.OrderDate >= f && o.OrderDate <= t)
+            .SumAsync(o => (decimal?)o.OrderDiscount, ct) ?? 0m;
+
+        var revenue = lines.Sum(l => l.FinalRevenue) - orderDiscounts;
         var cost = lines.Sum(l => l.OriginalCost);
         var margin = revenue - cost;
 

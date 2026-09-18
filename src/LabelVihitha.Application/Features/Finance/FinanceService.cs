@@ -29,7 +29,14 @@ public class FinanceService : IFinanceService
             .Where(i => SoldStatuses.Contains(i.Order.Status) && i.Order.OrderDate >= f && i.Order.OrderDate <= t)
             .Select(i => new { i.OrderId, Revenue = i.FinalPriceAtSale * i.Quantity, Cost = i.OriginalPriceAtSale * i.Quantity, i.Quantity })
             .ToListAsync(ct);
-        return (lines.Sum(l => l.Revenue), lines.Sum(l => l.Cost),
+
+        // Order-level discounts (promo / manual) reduce what the customer actually paid, so they
+        // reduce revenue — the per-line FinalPriceAtSale doesn't include them.
+        var orderDiscounts = await _db.Orders.AsNoTracking()
+            .Where(o => SoldStatuses.Contains(o.Status) && o.OrderDate >= f && o.OrderDate <= t)
+            .SumAsync(o => (decimal?)o.OrderDiscount, ct) ?? 0m;
+
+        return (lines.Sum(l => l.Revenue) - orderDiscounts, lines.Sum(l => l.Cost),
                 lines.Select(l => l.OrderId).Distinct().Count(), lines.Sum(l => l.Quantity));
     }
 
