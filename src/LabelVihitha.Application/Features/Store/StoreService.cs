@@ -2,6 +2,7 @@ using LabelVihitha.Application.Common.Exceptions;
 using LabelVihitha.Application.Common.Interfaces;
 using LabelVihitha.Application.Features.Invoices;
 using LabelVihitha.Application.Features.Orders;
+using LabelVihitha.Application.Features.Promotions;
 using LabelVihitha.Domain.Entities;
 using LabelVihitha.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -18,12 +19,29 @@ public class StoreService : IStoreService
     private readonly IApplicationDbContext _db;
     private readonly IOrderService _orders;
     private readonly IInvoiceService _invoices;
+    private readonly IPromoCodeService _promos;
 
-    public StoreService(IApplicationDbContext db, IOrderService orders, IInvoiceService invoices)
+    public StoreService(IApplicationDbContext db, IOrderService orders, IInvoiceService invoices, IPromoCodeService promos)
     {
         _db = db;
         _orders = orders;
         _invoices = invoices;
+        _promos = promos;
+    }
+
+    /// <summary>Authoritative cart subtotal from live product sale prices.</summary>
+    private async Task<decimal> CartSubtotalAsync(IReadOnlyList<StoreCheckoutItem> items, CancellationToken ct)
+    {
+        var ids = items.Select(i => i.ProductId).Distinct().ToList();
+        var prices = await _db.Products.AsNoTracking().Where(p => ids.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.SalePrice, ct);
+        return items.Sum(i => (prices.TryGetValue(i.ProductId, out var pr) ? pr : 0m) * i.Quantity);
+    }
+
+    public async Task<PromoValidationResult> ValidatePromoAsync(StorePromoRequest request, CancellationToken ct = default)
+    {
+        var subtotal = await CartSubtotalAsync(request.Items ?? new List<StoreCheckoutItem>(), ct);
+        return await _promos.ValidateAsync(request.Code, subtotal, ct);
     }
 
     public async Task<IReadOnlyList<StoreProductDto>> GetProductsAsync(string? search, int? categoryId, CancellationToken ct = default)
@@ -56,20 +74,29 @@ public class StoreService : IStoreService
 
         var customer = await FindOrCreateCustomerAsync(request, ct);
 
+        // Validate any promo code against the authoritative cart subtotal.
+        var subtotal = await CartSubtotalAsync(request.Items, ct);
+        var promo = await _promos.ValidateAsync(request.PromoCode, subtotal, ct);
+        var discount = promo.Valid ? promo.DiscountAmount : 0m;
+
         var order = await _orders.CreateAsync(new CreateOrderRequest(
             customer.Id,
             request.Notes,
-            request.Items.Select(i => new CreateOrderItemRequest(i.ProductId, i.Quantity, null, i.ProductVariantId)).ToList()), ct);
+            request.Items.Select(i => new CreateOrderItemRequest(i.ProductId, i.Quantity, null, i.ProductVariantId)).ToList(),
+            discount,
+            promo.Valid ? promo.Code : null), ct);
 
         // Storefront purchases are committed immediately.
         await _orders.UpdateStatusAsync(order.Id, new UpdateOrderStatusRequest(OrderStatus.Confirmed), ct);
+
+        if (promo.Valid) await _promos.MarkUsedAsync(promo.Code, ct);
 
         var invoice = await _invoices.CreateAsync(new CreateInvoiceRequest(
             order.Id, request.PaymentMethod, null,
             $"Online order for {customer.Name}"), ct);
 
         return new StoreCheckoutResult(
-            order.OrderNumber, invoice.InvoiceNumber, order.GrandTotal,
+            order.OrderNumber, invoice.InvoiceNumber, order.SubTotal, order.DiscountTotal, order.GrandTotal,
             request.PaymentMethod.ToString(), customer.Name);
     }
 

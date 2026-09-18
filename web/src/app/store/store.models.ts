@@ -27,7 +27,16 @@ export interface CartLine {
 export interface CheckoutResult {
   orderNumber: string;
   invoiceNumber: string;
+  subTotal: number;
+  discount: number;
   grandTotal: number;
   paymentMethod: string;
   customerName: string;
+}
+
+export interface PromoValidation {
+  valid: boolean;
+  discountAmount: number;
+  message: string;
+  code?: string | null;
 }

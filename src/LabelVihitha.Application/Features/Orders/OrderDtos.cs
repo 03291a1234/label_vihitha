@@ -52,7 +52,9 @@ public record CreateOrderItemRequest(
 public record CreateOrderRequest(
     int CustomerId,
     string? Notes,
-    IReadOnlyList<CreateOrderItemRequest> Items);
+    IReadOnlyList<CreateOrderItemRequest> Items,
+    decimal OrderDiscount = 0m,        // order-level discount (promo/manual)
+    string? PromoCode = null);
 
 public record UpdateOrderItemRequest(
     int Quantity,

@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IExpenseService, ExpenseService>();
         services.AddScoped<IOwnerService, OwnerService>();
         services.AddScoped<IFinanceService, FinanceService>();
+        services.AddScoped<Features.Promotions.IPromoCodeService, Features.Promotions.PromoCodeService>();
 
         return services;
     }

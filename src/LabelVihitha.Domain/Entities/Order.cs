@@ -19,6 +19,13 @@ public class Order : BaseEntity
     /// <summary>Explicit discount amount (promo/negotiation reporting), not just inferred.</summary>
     public decimal DiscountTotal { get; set; }
 
+    /// <summary>Order-level discount applied at checkout (promo code or manual), on top of any
+    /// per-line negotiation. Subtracted from the grand total.</summary>
+    public decimal OrderDiscount { get; set; }
+
+    /// <summary>The promo code applied at checkout, if any (for reporting).</summary>
+    public string? PromoCode { get; set; }
+
     public decimal GrandTotal { get; set; }
 
     /// <summary>General free text — alteration requests, special instructions.</summary>

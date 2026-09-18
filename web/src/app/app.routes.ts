@@ -75,6 +75,10 @@ export const routes: Routes = [
       {
         path: 'customers',
         loadComponent: () => import('./features/customers/customer-list.component').then(m => m.CustomerListComponent)
+      },
+      {
+        path: 'promo-codes',
+        loadComponent: () => import('./features/promotions/promo-code-list.component').then(m => m.PromoCodeListComponent)
       }
     ]
   },

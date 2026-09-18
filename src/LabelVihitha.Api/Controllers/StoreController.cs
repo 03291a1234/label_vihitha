@@ -1,3 +1,4 @@
+using LabelVihitha.Application.Features.Promotions;
 using LabelVihitha.Application.Features.Store;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,4 +23,8 @@ public class StoreController : ControllerBase
     [HttpPost("checkout")]
     public async Task<ActionResult<StoreCheckoutResult>> Checkout(StoreCheckoutRequest request, CancellationToken ct)
         => Ok(await _store.CheckoutAsync(request, ct));
+
+    [HttpPost("validate-promo")]
+    public async Task<ActionResult<PromoValidationResult>> ValidatePromo(StorePromoRequest request, CancellationToken ct)
+        => Ok(await _store.ValidatePromoAsync(request, ct));
 }

@@ -37,3 +37,10 @@ public enum OwnerTransactionType
     Contribution = 0,
     Withdrawal = 1
 }
+
+/// <summary>How a promo code reduces the order total.</summary>
+public enum PromoDiscountType
+{
+    Percentage = 0,   // Value is a percent (0–100) off the subtotal
+    FixedAmount = 1   // Value is a flat amount (USD) off the subtotal
+}

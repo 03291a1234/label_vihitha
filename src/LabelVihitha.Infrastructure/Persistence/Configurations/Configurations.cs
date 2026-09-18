@@ -172,6 +172,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Notes).HasMaxLength(2000);
         b.Property(x => x.CreatedBy).HasMaxLength(100);
+        b.Property(x => x.PromoCode).HasMaxLength(40);
 
         b.HasOne(x => x.Customer)
             .WithMany(c => c.Orders)
@@ -308,6 +309,20 @@ public class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
             .HasForeignKey(x => x.PaidByOwnerId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public class PromoCodeConfiguration : IEntityTypeConfiguration<PromoCode>
+{
+    public void Configure(EntityTypeBuilder<PromoCode> b)
+    {
+        b.Property(x => x.Code).IsRequired().HasMaxLength(40);
+        b.Property(x => x.Description).HasMaxLength(200);
+        b.Property(x => x.Value).HasPrecision(18, 2);
+        b.Property(x => x.MinOrderAmount).HasPrecision(18, 2);
+        // Unique code among non-deleted promo codes (filtered index).
+        b.HasIndex(x => x.Code).IsUnique().HasFilter("[IsDeleted] = 0");
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

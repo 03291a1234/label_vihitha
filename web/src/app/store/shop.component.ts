@@ -53,7 +53,7 @@ type View = 'shop' | 'checkout' | 'done';
             <div class="search-row">
               <mat-form-field class="search">
                 <mat-label>Search sarees</mat-label>
-                <input matInput [(ngModel)]="search" (keyup.enter)="load()" placeholder="Name or SKU" />
+                <input matInput [ngModel]="search" (ngModelChange)="onSearchChange($event)" (keyup.enter)="load()" placeholder="Name or SKU" />
               </mat-form-field>
               <button mat-button (click)="load()"><mat-icon>search</mat-icon></button>
             </div>
@@ -142,7 +142,24 @@ type View = 'shop' | 'checkout' | 'done';
               @for (l of cart.lines(); track l.variant.id) {
                 <div class="sline"><span>{{ l.quantity }} × {{ l.product.name }}@if (l.variant.size !== 'One Size') { ({{ l.variant.size }}) }</span><span class="mono">{{ l.product.price * l.quantity | currency }}</span></div>
               }
-              <div class="ctotal"><span>Total</span><strong>{{ cart.total() | currency }}</strong></div>
+
+              <div class="promo">
+                <mat-form-field class="promo-field" subscriptSizing="dynamic">
+                  <mat-label>Promo code</mat-label>
+                  <input matInput [(ngModel)]="promoCode" (keyup.enter)="applyPromo()"
+                         (ngModelChange)="onPromoChange()" placeholder="e.g. FESTIVE10" />
+                </mat-form-field>
+                <button mat-stroked-button (click)="applyPromo()" [disabled]="!promoCode.trim() || promoChecking()">
+                  {{ appliedDiscount() > 0 ? 'Update' : 'Apply' }}
+                </button>
+              </div>
+              @if (promoMsg()) { <div class="promo-msg" [class.ok]="appliedDiscount() > 0" [class.err]="appliedDiscount() === 0">{{ promoMsg() }}</div> }
+
+              <div class="sline sub"><span>Subtotal</span><span class="mono">{{ cart.total() | currency }}</span></div>
+              @if (appliedDiscount() > 0) {
+                <div class="sline disc"><span>Discount <span class="muted">({{ appliedCode() }})</span></span><span class="mono">−{{ appliedDiscount() | currency }}</span></div>
+              }
+              <div class="ctotal"><span>Total</span><strong>{{ cart.total() - appliedDiscount() | currency }}</strong></div>
               <button mat-raised-button color="primary" class="full" (click)="placeOrder()" [disabled]="!name.trim() || placing()">
                 {{ placing() ? 'Placing…' : 'Place order' }}
               </button>
@@ -158,6 +175,7 @@ type View = 'shop' | 'checkout' | 'done';
             <mat-icon class="ok">check_circle</mat-icon>
             <h2>Thank you, {{ r.customerName }}!</h2>
             <p>Your order <strong>{{ r.orderNumber }}</strong> is confirmed.</p>
+            @if (r.discount > 0) { <p class="saved">You saved {{ r.discount | currency }}!</p> }
             <p>Invoice <strong>{{ r.invoiceNumber }}</strong> for <strong>{{ r.grandTotal | currency }}</strong> — pay by {{ r.paymentMethod }}.</p>
             <button mat-raised-button color="primary" (click)="continueShopping()">Continue shopping</button>
           </div>
@@ -215,6 +233,13 @@ type View = 'shop' | 'checkout' | 'done';
     .card h3 { margin: 0 0 14px; font-family: "Cormorant Garamond", Georgia, serif; color: var(--lv-wine); }
     .form-row { display: flex; gap: 12px; } .form-row > * { flex: 1; }
     .sline { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 14px; }
+    .sline.sub { border-top: 1px solid var(--lv-line); margin-top: 6px; padding-top: 10px; }
+    .sline.disc { color: #1e7d3a; font-weight: 600; }
+    .promo { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 4px; }
+    .promo-field { flex: 1; }
+    .promo-msg { font-size: 13px; margin: 2px 0 6px; }
+    .promo-msg.ok { color: #1e7d3a; } .promo-msg.err { color: #b3261e; }
+    .saved { color: #1e7d3a; font-weight: 700; }
     .done { display: grid; place-items: center; min-height: 60vh; }
     .done-card { text-align: center; max-width: 460px; }
     .done-card .ok { font-size: 56px; height: 56px; width: 56px; color: #2e7d32; }
@@ -245,9 +270,27 @@ export class ShopComponent {
   method: 'Zelle' | 'Cash' = 'Zelle';
   notes = '';
 
+  // Promo code
+  promoCode = '';
+  promoChecking = signal(false);
+  promoMsg = signal('');
+  appliedDiscount = signal(0);
+  appliedCode = signal<string | null>(null);
+
   constructor() { this.load(); }
 
   img(url: string | null | undefined) { return resolveImageUrl(url); }
+
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Reload as the user types once they've entered 3+ characters, or the moment they clear it. */
+  onSearchChange(value: string) {
+    this.search = value;
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    const q = value.trim();
+    if (q.length === 0 || q.length >= 3) {
+      this.searchTimer = setTimeout(() => this.load(), 300);
+    }
+  }
 
   load() {
     this.loading.set(true);
@@ -280,6 +323,30 @@ export class ShopComponent {
   goHome() { this.view.set('shop'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* ignore */ } }
   goCheckout() { if (this.cart.count() > 0) this.view.set('checkout'); }
 
+  private cartItems() {
+    return this.cart.lines().map(l => ({ productId: l.product.id, quantity: l.quantity, productVariantId: l.variant.id }));
+  }
+  /** Editing the code invalidates a previously applied discount until re-applied. */
+  onPromoChange() {
+    if (this.appliedCode() && this.promoCode.trim().toUpperCase() !== this.appliedCode()) {
+      this.appliedDiscount.set(0); this.appliedCode.set(null); this.promoMsg.set('');
+    }
+  }
+  applyPromo() {
+    const code = this.promoCode.trim();
+    if (!code || this.cart.count() === 0) return;
+    this.promoChecking.set(true);
+    this.api.validatePromo(code, this.cartItems()).subscribe({
+      next: (r) => {
+        this.promoChecking.set(false);
+        this.promoMsg.set(r.message);
+        this.appliedDiscount.set(r.valid ? r.discountAmount : 0);
+        this.appliedCode.set(r.valid ? (r.code ?? code.toUpperCase()) : null);
+      },
+      error: (e) => { this.promoChecking.set(false); this.appliedDiscount.set(0); this.appliedCode.set(null); this.notify.error(e); }
+    });
+  }
+
   placeOrder() {
     if (!this.name.trim() || this.cart.count() === 0) return;
     this.placing.set(true);
@@ -289,7 +356,8 @@ export class ShopComponent {
       customerEmail: this.email || null,
       paymentMethod: this.method,
       notes: this.notes || null,
-      items: this.cart.lines().map(l => ({ productId: l.product.id, quantity: l.quantity, productVariantId: l.variant.id }))
+      items: this.cartItems(),
+      promoCode: this.appliedCode()
     }).subscribe({
       next: (r) => { this.result.set(r); this.cart.clear(); this.view.set('done'); this.placing.set(false); },
       error: (e) => { this.placing.set(false); this.notify.error(e); }
@@ -299,6 +367,7 @@ export class ShopComponent {
   continueShopping() {
     this.name = this.phone = this.email = this.notes = '';
     this.method = 'Zelle';
+    this.promoCode = ''; this.promoMsg.set(''); this.appliedDiscount.set(0); this.appliedCode.set(null);
     this.result.set(null);
     this.view.set('shop');
     this.load();

@@ -25,11 +25,17 @@ public record StoreCheckoutRequest(
     string? CustomerEmail,
     PaymentMethod PaymentMethod,
     string? Notes,
-    IReadOnlyList<StoreCheckoutItem> Items);
+    IReadOnlyList<StoreCheckoutItem> Items,
+    string? PromoCode = null);
 
 public record StoreCheckoutResult(
     string OrderNumber,
     string InvoiceNumber,
+    decimal SubTotal,
+    decimal Discount,
     decimal GrandTotal,
     string PaymentMethod,
     string CustomerName);
+
+/// <summary>Preview a promo code against the current cart (public, pre-checkout).</summary>
+public record StorePromoRequest(string Code, IReadOnlyList<StoreCheckoutItem> Items);

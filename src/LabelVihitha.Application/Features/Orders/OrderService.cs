@@ -73,6 +73,8 @@ public class OrderService : IOrderService
             OrderDate = DateTime.UtcNow,
             Status = OrderStatus.Pending,
             Notes = request.Notes,
+            OrderDiscount = request.OrderDiscount < 0 ? 0m : request.OrderDiscount,
+            PromoCode = string.IsNullOrWhiteSpace(request.PromoCode) ? null : request.PromoCode.Trim().ToUpperInvariant(),
             CreatedBy = _currentUser.UserName ?? _currentUser.UserId,
             OrderNumber = await GenerateOrderNumberAsync(ct)
         };
@@ -277,9 +279,12 @@ public class OrderService : IOrderService
     private static void RecalculateTotals(Order order)
     {
         var live = order.Items.Where(i => !i.IsDeleted).ToList();
+        var lineSum = live.Sum(i => i.LineTotal);
+        // The order-level discount can't take the total below zero.
+        var orderDiscount = Math.Min(Math.Max(order.OrderDiscount, 0m), lineSum);
         order.SubTotal = live.Sum(i => i.SalePriceAtSale * i.Quantity);
-        order.DiscountTotal = live.Sum(i => i.DiscountAmount * i.Quantity);
-        order.GrandTotal = live.Sum(i => i.LineTotal);
+        order.DiscountTotal = live.Sum(i => i.DiscountAmount * i.Quantity) + orderDiscount;
+        order.GrandTotal = lineSum - orderDiscount;
     }
 
     private static bool IsTransitionAllowed(OrderStatus from, OrderStatus to) => from switch

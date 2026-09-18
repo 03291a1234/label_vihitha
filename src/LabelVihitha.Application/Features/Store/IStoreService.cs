@@ -4,4 +4,5 @@ public interface IStoreService
 {
     Task<IReadOnlyList<StoreProductDto>> GetProductsAsync(string? search, int? categoryId, CancellationToken ct = default);
     Task<StoreCheckoutResult> CheckoutAsync(StoreCheckoutRequest request, CancellationToken ct = default);
+    Task<Promotions.PromoValidationResult> ValidatePromoAsync(StorePromoRequest request, CancellationToken ct = default);
 }

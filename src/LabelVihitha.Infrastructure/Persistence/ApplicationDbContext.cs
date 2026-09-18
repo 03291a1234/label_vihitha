@@ -40,6 +40,7 @@ public class ApplicationDbContext
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<Owner> Owners => Set<Owner>();
     public DbSet<OwnerTransaction> OwnerTransactions => Set<OwnerTransaction>();
+    public DbSet<PromoCode> PromoCodes => Set<PromoCode>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

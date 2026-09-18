@@ -230,6 +230,21 @@ export interface ProductTotals {
   totalSaleUsd: number;
 }
 
+export type PromoDiscountType = 'Percentage' | 'FixedAmount';
+export interface PromoCode {
+  id: number;
+  code: string;
+  description?: string | null;
+  discountType: PromoDiscountType;
+  value: number;
+  minOrderAmount?: number | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  maxUses?: number | null;
+  timesUsed: number;
+  isActive: boolean;
+}
+
 export interface FilterOption { id: number; name: string; }
 export interface ProductFilterOptions {
   categories: FilterOption[];

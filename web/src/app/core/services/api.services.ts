@@ -6,7 +6,7 @@ import {
   Category, SubCategory, Inventory, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
   ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult,
-  BulkSetPaidByRequest, BulkSetPaidByResult, ProductTotals, ProductFilterOptions
+  BulkSetPaidByRequest, BulkSetPaidByResult, ProductTotals, ProductFilterOptions, PromoCode
 } from '../models';
 
 const base = environment.apiUrl;
@@ -314,4 +314,15 @@ export class FollowUpApi {
   update(id: number, body: { status: FollowUp['status']; note?: string | null; followUpDate?: string | null; resolutionNote?: string | null }) {
     return this.http.put<FollowUp>(`${base}/follow-ups/${id}`, body);
   }
+}
+
+@Injectable({ providedIn: 'root' })
+export class PromoCodeApi {
+  constructor(private http: HttpClient) {}
+  list(includeInactive = false): Observable<PromoCode[]> {
+    return this.http.get<PromoCode[]>(`${base}/promo-codes`, { params: toParams({ includeInactive }) });
+  }
+  create(body: Partial<PromoCode>) { return this.http.post<PromoCode>(`${base}/promo-codes`, body); }
+  update(id: number, body: Partial<PromoCode>) { return this.http.put<PromoCode>(`${base}/promo-codes/${id}`, body); }
+  remove(id: number) { return this.http.delete<void>(`${base}/promo-codes/${id}`); }
 }
