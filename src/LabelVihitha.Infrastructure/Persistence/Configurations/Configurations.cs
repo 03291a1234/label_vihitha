@@ -130,6 +130,24 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
     }
 }
 
+public class InventoryBillConfiguration : IEntityTypeConfiguration<InventoryBill>
+{
+    public void Configure(EntityTypeBuilder<InventoryBill> b)
+    {
+        b.Property(x => x.FileUrl).IsRequired().HasMaxLength(500);
+        b.Property(x => x.FileName).HasMaxLength(200);
+        b.Property(x => x.Note).HasMaxLength(500);
+        b.Property(x => x.Amount).HasPrecision(18, 2);
+
+        b.HasOne(x => x.Inventory)
+            .WithMany(i => i.Bills)
+            .HasForeignKey(x => x.InventoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
 public class SubCategoryConfiguration : IEntityTypeConfiguration<SubCategory>
 {
     public void Configure(EntityTypeBuilder<SubCategory> b)

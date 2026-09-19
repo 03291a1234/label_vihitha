@@ -18,4 +18,7 @@ public class Inventory : BaseEntity
     public Owner? PaidByOwner { get; set; }
 
     public ICollection<Product> Products { get; set; } = new List<Product>();
+
+    /// <summary>Supplier bills / invoices attached to this inventory batch.</summary>
+    public ICollection<InventoryBill> Bills { get; set; } = new List<InventoryBill>();
 }

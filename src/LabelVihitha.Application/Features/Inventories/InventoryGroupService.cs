@@ -24,12 +24,15 @@ public class InventoryGroupService : IInventoryGroupService
         var ids = inventories.Select(i => i.Id).ToList();
 
         var breakdown = await BuildBreakdownAsync(ids, ct);
+        var bills = await BuildBillsAsync(ids, ct);
 
         return inventories.Select(i =>
         {
             var (units, cost, cats) = breakdown.TryGetValue(i.Id, out var b) ? b : (0, 0m, new List<CategoryCount>());
             var count = cats.Sum(c => c.ProductCount);
-            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName, count, units, cost, cats);
+            var bl = bills.TryGetValue(i.Id, out var lst) ? lst : new List<InventoryBillDto>();
+            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
+                count, units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m));
         }).ToList();
     }
 
@@ -44,8 +47,52 @@ public class InventoryGroupService : IInventoryGroupService
 
         var breakdown = await BuildBreakdownAsync(new List<int> { id }, ct);
         var (units, cost, cats) = breakdown.TryGetValue(id, out var b) ? b : (0, 0m, new List<CategoryCount>());
+        var bills = await BuildBillsAsync(new List<int> { id }, ct);
+        var bl = bills.TryGetValue(id, out var lst) ? lst : new List<InventoryBillDto>();
         return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
-            cats.Sum(c => c.ProductCount), units, cost, cats);
+            cats.Sum(c => c.ProductCount), units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m));
+    }
+
+    /// <summary>Bills attached to each inventory, newest first.</summary>
+    private async Task<Dictionary<int, List<InventoryBillDto>>> BuildBillsAsync(List<int> inventoryIds, CancellationToken ct)
+    {
+        if (inventoryIds.Count == 0) return new();
+        var rows = await _db.InventoryBills.AsNoTracking()
+            .Where(x => inventoryIds.Contains(x.InventoryId))
+            .OrderByDescending(x => x.BillDate ?? x.CreatedAt)
+            .Select(x => new { x.InventoryId, Dto = new InventoryBillDto(x.Id, x.FileUrl, x.FileName, x.Amount, x.BillDate, x.Note) })
+            .ToListAsync(ct);
+        return rows.GroupBy(r => r.InventoryId).ToDictionary(g => g.Key, g => g.Select(r => r.Dto).ToList());
+    }
+
+    public async Task<InventoryBillDto> AddBillAsync(int inventoryId, AddInventoryBillRequest request, CancellationToken ct = default)
+    {
+        if (!await _db.Inventories.AnyAsync(i => i.Id == inventoryId, ct))
+            throw new NotFoundException(nameof(Inventory), inventoryId);
+        if (string.IsNullOrWhiteSpace(request.FileUrl))
+            throw new FluentValidation.ValidationException("A bill file is required.");
+
+        var entity = new InventoryBill
+        {
+            InventoryId = inventoryId,
+            FileUrl = request.FileUrl.Trim(),
+            FileName = string.IsNullOrWhiteSpace(request.FileName) ? "bill" : request.FileName.Trim(),
+            Amount = request.Amount is > 0 ? request.Amount : null,
+            BillDate = request.BillDate,
+            Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim()
+        };
+        _db.InventoryBills.Add(entity);
+        await _db.SaveChangesAsync(ct);
+        return new InventoryBillDto(entity.Id, entity.FileUrl, entity.FileName, entity.Amount, entity.BillDate, entity.Note);
+    }
+
+    public async Task DeleteBillAsync(int inventoryId, int billId, CancellationToken ct = default)
+    {
+        var bill = await _db.InventoryBills.FirstOrDefaultAsync(x => x.Id == billId && x.InventoryId == inventoryId, ct)
+            ?? throw new NotFoundException(nameof(InventoryBill), billId);
+        bill.IsDeleted = true;
+        bill.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
     }
 
     /// <summary>Per-inventory category → subcategory stock breakdown, plus total units and cost.</summary>

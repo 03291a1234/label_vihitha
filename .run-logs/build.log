@@ -1,0 +1,36 @@
+❯ Building...
+✔ Building...
+Initial chunk files   | Names                  |  Raw size | Estimated transfer size
+chunk-MBFAJRAF.js     | -                      | 195.74 kB |                56.54 kB
+chunk-72USQCO4.js     | -                      |  93.50 kB |                23.44 kB
+chunk-UMTKFGFO.js     | -                      |  70.33 kB |                17.28 kB
+styles-JCPAZJRA.css   | styles                 |  58.92 kB |                 6.80 kB
+chunk-BX57NON4.js     | -                      |  53.57 kB |                 8.91 kB
+polyfills-FFHMD2TL.js | polyfills              |  34.52 kB |                11.28 kB
+main-R6TRBN2K.js      | main                   |   5.93 kB |                 1.92 kB
+chunk-CMRQO5KY.js     | -                      |   1.44 kB |               632 bytes
+
+                      | Initial total          | 513.95 kB |               126.80 kB
+
+Lazy chunk files      | Names                  |  Raw size | Estimated transfer size
+chunk-V2QAUFWN.js     | analytics-component    | 217.01 kB |                64.73 kB
+chunk-3VVNAIGN.js     | -                      | 135.07 kB |                25.98 kB
+chunk-SKEXMVQY.js     | browser                |  63.57 kB |                16.84 kB
+chunk-DJMRRNME.js     | shell-component        |  57.22 kB |                12.35 kB
+chunk-WTLFKPFF.js     | product-list-component |  49.50 kB |                11.95 kB
+chunk-S76K2BK6.js     | -                      |  38.12 kB |                 7.88 kB
+chunk-UKFLVQFD.js     | -                      |  29.48 kB |                 7.44 kB
+chunk-GRQZ646A.js     | -                      |  28.81 kB |                 6.66 kB
+chunk-XPR44MKZ.js     | -                      |  27.45 kB |                 4.38 kB
+chunk-BCEVDS27.js     | -                      |  24.23 kB |                 6.55 kB
+chunk-XUBE2R6R.js     | shop-component         |  23.36 kB |                 6.45 kB
+chunk-STCXEGJS.js     | -                      |  22.27 kB |                 3.95 kB
+chunk-AIXW4VMF.js     | expense-list-component |  21.69 kB |                 5.89 kB
+chunk-3YXT4VVC.js     | -                      |  20.15 kB |                 4.20 kB
+chunk-AADJKE3G.js     | profit-loss-component  |  19.60 kB |                 5.11 kB
+...and 24 more lazy chunks files. Use "--verbose" to show all the files.
+
+Application bundle generation complete. [7.107 seconds]
+
+Output location: /Users/uchintha/Desktop/label_vihitha/web/dist/labelvihitha-web
+

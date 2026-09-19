@@ -50,6 +50,17 @@ export interface Inventory {
   totalUnits: number;
   totalCostUsd: number;
   categories: CategoryCount[];
+  bills: InventoryBill[];
+  totalBillsUsd: number;
+}
+
+export interface InventoryBill {
+  id: number;
+  fileUrl: string;
+  fileName: string;
+  amount?: number | null;
+  billDate?: string | null;
+  note?: string | null;
 }
 
 export interface Vendor {

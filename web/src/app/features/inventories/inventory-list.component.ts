@@ -12,6 +12,7 @@ import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Inventory, SubCategoryCount } from '../../core/models';
 import { InventoryEditDialog } from './inventory-edit.dialog';
+import { InventoryBillsDialog } from './inventory-bills.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
 @Component({
@@ -56,10 +57,21 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
                 <span class="l">at cost</span>
                 <span class="inr">≈ {{ i.totalCostUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
               </div>
+              @if (i.totalBillsUsd > 0) {
+                <div class="stat cost">
+                  <span class="v">{{ i.totalBillsUsd | currency:'USD':'symbol':'1.0-0' }}</span>
+                  <span class="l">billed</span>
+                  <span class="inr">≈ {{ i.totalBillsUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+                </div>
+              }
             </div>
             <div class="inv-actions">
               <button mat-stroked-button [routerLink]="['/products']" [queryParams]="{ inventoryId: i.id }">
                 <mat-icon>inventory_2</mat-icon> View products
+              </button>
+              <button mat-stroked-button (click)="openBills(i)" [class.has-bills]="i.bills.length">
+                <mat-icon>receipt_long</mat-icon> Bills
+                @if (i.bills.length) { <span class="bills-badge">{{ i.bills.length }}</span> }
               </button>
               @if (auth.canManageInventory()) {
                 <button mat-icon-button (click)="openEdit(i)"><mat-icon>edit</mat-icon></button>
@@ -125,6 +137,9 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .sub-chip:hover { background: #ecd4de; box-shadow: 0 1px 4px rgba(110,31,62,.15); }
     .sub-chip .u { font-weight: 400; opacity: .75; }
     .no-stock { margin-top: 12px; }
+    .bills-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+      padding: 0 5px; margin-left: 6px; border-radius: 999px; background: var(--lv-wine); color: #fff; font-size: 11px; font-weight: 700; }
+    .has-bills { border-color: var(--lv-wine); }
   `]
 })
 export class InventoryListComponent {
@@ -157,6 +172,11 @@ export class InventoryListComponent {
       next: (r) => { this.rows.set(r); this.loading.set(false); },
       error: (e) => { this.loading.set(false); this.notify.error(e); }
     });
+  }
+
+  openBills(i: Inventory) {
+    this.dialog.open(InventoryBillsDialog, { data: i, width: '600px' }).afterClosed()
+      .subscribe(changed => { if (changed) this.load(); });
   }
 
   openEdit(i: Inventory | null) {

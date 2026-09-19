@@ -44,4 +44,18 @@ public class InventoriesController : ControllerBase
         await _service.DeleteAsync(id, ct);
         return NoContent();
     }
+
+    // ---- Bills attached to an inventory batch ----
+    [HttpPost("{id:int}/bills")]
+    [Authorize(Roles = "Admin,Inventory,Owner")]
+    public async Task<ActionResult<InventoryBillDto>> AddBill(int id, AddInventoryBillRequest request, CancellationToken ct)
+        => Ok(await _service.AddBillAsync(id, request, ct));
+
+    [HttpDelete("{id:int}/bills/{billId:int}")]
+    [Authorize(Roles = "Admin,Inventory,Owner")]
+    public async Task<IActionResult> DeleteBill(int id, int billId, CancellationToken ct)
+    {
+        await _service.DeleteBillAsync(id, billId, ct);
+        return NoContent();
+    }
 }

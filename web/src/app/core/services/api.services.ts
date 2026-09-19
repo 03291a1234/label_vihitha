@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  Category, SubCategory, Inventory, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
+  Category, SubCategory, Inventory, InventoryBill, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
   ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult,
   BulkSetPaidByRequest, BulkSetPaidByResult, ProductTotals, ProductFilterOptions, PromoCode
@@ -86,6 +86,19 @@ export class InventoryApi {
     return this.http.put<Inventory>(`${base}/inventories/${id}`, body);
   }
   remove(id: number) { return this.http.delete<void>(`${base}/inventories/${id}`); }
+
+  // ---- Bills ----
+  addBill(inventoryId: number, body: { fileUrl: string; fileName: string; amount?: number | null; billDate?: string | null; note?: string | null }) {
+    return this.http.post<InventoryBill>(`${base}/inventories/${inventoryId}/bills`, body);
+  }
+  removeBill(inventoryId: number, billId: number) {
+    return this.http.delete<void>(`${base}/inventories/${inventoryId}/bills/${billId}`);
+  }
+  uploadBill(file: File): Observable<{ url: string; fileName: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<{ url: string; fileName: string }>(`${base}/uploads/bill`, form);
+  }
 }
 
 export interface ProductFilters {
