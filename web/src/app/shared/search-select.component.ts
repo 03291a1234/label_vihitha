@@ -1,7 +1,7 @@
 import { Component, ElementRef, EventEmitter, Input, Output, ViewChild, booleanAttribute, computed, forwardRef, input, signal } from '@angular/core';
 import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
@@ -18,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
   template: `
     <mat-form-field class="ss">
       <mat-label>{{ label }}</mat-label>
-      <mat-select [value]="value()" (selectionChange)="onSelect($event.value)"
+      <mat-select #sel [value]="value()" (selectionChange)="onSelect($event.value)"
                   [disabled]="isDisabled()" (openedChange)="onOpened($event)" panelClass="ss-panel">
         <mat-option class="ss-search-opt" [value]="SEARCH" (click)="$event.stopPropagation()">
           <span class="ss-search">
@@ -62,6 +62,7 @@ export class SearchSelectComponent implements ControlValueAccessor {
 
   @Output() selectionChange = new EventEmitter<any>();
   @ViewChild('search') searchEl?: ElementRef<HTMLInputElement>;
+  @ViewChild('sel') sel?: MatSelect;
 
   /** Sentinel value for the non-selectable search row. */
   readonly SEARCH = Symbol('ss-search');
@@ -93,7 +94,12 @@ export class SearchSelectComponent implements ControlValueAccessor {
   onTouched: () => void = () => {};
 
   onSelect(v: any) {
-    if (v === this.SEARCH) return;   // the search row is not a real choice
+    if (v === this.SEARCH) {
+      // Clicking the search row itself must never become the value — restore the real
+      // selection so mat-select doesn't display the sentinel option.
+      if (this.sel) this.sel.value = this.value();
+      return;
+    }
     this.value.set(v); this.onChange(v); this.selectionChange.emit(v);
   }
 

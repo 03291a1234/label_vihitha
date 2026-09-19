@@ -264,10 +264,12 @@ export class OrderCreateComponent {
   productOptions = computed(() => this.products().map(p => ({
     id: p.id, label: `${p.sku} — ${p.name} (${p.quantityOnHand} in stock)`
   })));
-  sizeOptions = computed(() => {
+  // A method (not a computed): it depends on pickProductId, a plain ngModel property, so it must
+  // re-evaluate each change-detection cycle rather than track signal reads.
+  sizeOptions() {
     const p = this.products().find(x => x.id === this.pickProductId);
     return (p?.variants ?? []).map(v => ({ id: v.id, label: `${v.size} (${v.quantityOnHand} in stock)` }));
-  });
+  }
 
   private v = signal(0);
   subTotal = computed(() => { this.v(); return this.lines().reduce((s, l) => s + l.product.salePrice * l.quantity, 0); });
