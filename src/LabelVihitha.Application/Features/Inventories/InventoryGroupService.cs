@@ -30,7 +30,8 @@ public class InventoryGroupService : IInventoryGroupService
         var breakdown = await BuildBreakdownAsync(ids, ct);
         var bills = await BuildBillsAsync(ids, ct);
         var sold = await BuildSoldAsync(ids, ct);
-        var (expenses, totalInvRev) = await AllocationBasisAsync(ct);
+        var expenses = await TotalExpensesAsync(ct);
+        var totalInvRev = sold.Values.Sum(v => v.Revenue);
 
         return inventories.Select(i =>
         {
@@ -58,46 +59,73 @@ public class InventoryGroupService : IInventoryGroupService
         var (units, cost, cats) = breakdown.TryGetValue(id, out var b) ? b : (0, 0m, new List<CategoryCount>());
         var bills = await BuildBillsAsync(new List<int> { id }, ct);
         var bl = bills.TryGetValue(id, out var lst) ? lst : new List<InventoryBillDto>();
-        var sold = await BuildSoldAsync(new List<int> { id }, ct);
-        var (rev, cogs) = sold.TryGetValue(id, out var s) ? s : (0m, 0m);
-        var (expenses, totalInvRev) = await AllocationBasisAsync(ct);
+        // Compute across all inventories so this one's expense share matches the list view.
+        var allIds = await _db.Inventories.AsNoTracking().Select(x => x.Id).ToListAsync(ct);
+        var allSold = await BuildSoldAsync(allIds, ct);
+        var (rev, cogs) = allSold.TryGetValue(id, out var s) ? s : (0m, 0m);
+        var totalInvRev = allSold.Values.Sum(v => v.Revenue);
+        var expenses = await TotalExpensesAsync(ct);
         var alloc = totalInvRev > 0 ? Math.Round(expenses * (rev / totalInvRev), 2) : 0m;
         return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
             cats.Sum(c => c.ProductCount), units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m),
             rev, cogs, cost + cogs, rev - cogs, alloc, rev - cogs - alloc);
     }
 
-    /// <summary>Basis for spreading operating expenses across inventories: total all-time expenses,
-    /// and the total committed sales revenue attributable to inventoried products (the denominator
-    /// for each inventory's revenue share).</summary>
-    private async Task<(decimal Expenses, decimal InvRevenue)> AllocationBasisAsync(CancellationToken ct)
-    {
-        var expenses = await _db.Expenses.AsNoTracking().SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
-        var invRev = await _db.OrderItems.AsNoTracking().IgnoreQueryFilters()
-            .Where(oi => !oi.IsDeleted && !oi.Order.IsDeleted && SoldStatuses.Contains(oi.Order.Status)
-                         && oi.Product.InventoryId != null)
-            .SumAsync(oi => (decimal?)(oi.FinalPriceAtSale * oi.Quantity), ct) ?? 0m;
-        return (expenses, invRev);
-    }
+    /// <summary>Total all-time operating expenses — the pool spread across inventories by sales share.</summary>
+    private async Task<decimal> TotalExpensesAsync(CancellationToken ct) =>
+        await _db.Expenses.AsNoTracking().SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
 
     /// <summary>Revenue and cost of goods sold to date, per inventory, from committed sales.
     /// Prices are the snapshots taken at sale time; a sold line is attributed to its product's
-    /// current inventory. Ignores query filters so sales of later-deleted products still count.</summary>
+    /// current inventory. Order-level service charges (stitching, shipping…) are revenue too, so
+    /// each order's charges are spread across its inventoried lines in proportion to their revenue.
+    /// Ignores query filters so sales of later-deleted products still count.</summary>
     private async Task<Dictionary<int, (decimal Revenue, decimal Cogs)>> BuildSoldAsync(List<int> inventoryIds, CancellationToken ct)
     {
         if (inventoryIds.Count == 0) return new();
-        var rows = await _db.OrderItems.AsNoTracking().IgnoreQueryFilters()
+        var lines = await _db.OrderItems.AsNoTracking().IgnoreQueryFilters()
             .Where(oi => !oi.IsDeleted && !oi.Order.IsDeleted && SoldStatuses.Contains(oi.Order.Status)
                          && oi.Product.InventoryId != null && inventoryIds.Contains(oi.Product.InventoryId.Value))
-            .GroupBy(oi => oi.Product.InventoryId!.Value)
-            .Select(g => new
+            .Select(oi => new
             {
-                InventoryId = g.Key,
-                Revenue = g.Sum(x => x.FinalPriceAtSale * x.Quantity),
-                Cogs = g.Sum(x => x.OriginalPriceAtSale * x.Quantity)
+                oi.OrderId,
+                InvId = oi.Product.InventoryId!.Value,
+                Revenue = oi.FinalPriceAtSale * oi.Quantity,
+                Cogs = oi.OriginalPriceAtSale * oi.Quantity
             })
             .ToListAsync(ct);
-        return rows.ToDictionary(r => r.InventoryId, r => (r.Revenue, r.Cogs));
+        if (lines.Count == 0) return new();
+
+        var orderIds = lines.Select(l => l.OrderId).Distinct().ToList();
+
+        // Order-level service charges (add) for the orders that touch these inventories.
+        var chargeByOrder = (await _db.OrderCharges.AsNoTracking()
+                .Where(c => orderIds.Contains(c.OrderId))
+                .GroupBy(c => c.OrderId)
+                .Select(g => new { OrderId = g.Key, Amount = g.Sum(x => x.Amount) })
+                .ToListAsync(ct))
+            .ToDictionary(x => x.OrderId, x => x.Amount);
+
+        // Order-level discounts (promo / manual; subtract).
+        var discountByOrder = (await _db.Orders.AsNoTracking()
+                .Where(o => orderIds.Contains(o.Id))
+                .Select(o => new { o.Id, o.OrderDiscount })
+                .ToListAsync(ct))
+            .ToDictionary(x => x.Id, x => x.OrderDiscount);
+
+        // Inventoried line revenue per order (denominator for spreading that order's adjustments).
+        var orderLineRev = lines.GroupBy(l => l.OrderId).ToDictionary(g => g.Key, g => g.Sum(x => x.Revenue));
+
+        var result = new Dictionary<int, (decimal Revenue, decimal Cogs)>();
+        foreach (var l in lines)
+        {
+            // Net order-level adjustment = service charges − discounts, spread by line-revenue share.
+            var adjust = chargeByOrder.GetValueOrDefault(l.OrderId) - discountByOrder.GetValueOrDefault(l.OrderId);
+            var share = orderLineRev[l.OrderId] > 0 ? adjust * (l.Revenue / orderLineRev[l.OrderId]) : 0m;
+            var cur = result.TryGetValue(l.InvId, out var v) ? v : (0m, 0m);
+            result[l.InvId] = (cur.Item1 + l.Revenue + share, cur.Item2 + l.Cogs);
+        }
+        return result;
     }
 
     /// <summary>Bills attached to each inventory, newest first.</summary>

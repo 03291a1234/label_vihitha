@@ -64,7 +64,12 @@ public class AnalyticsService : IAnalyticsService
             .Where(o => SoldStatuses.Contains(o.Status) && o.OrderDate >= f && o.OrderDate <= t)
             .SumAsync(o => (decimal?)o.OrderDiscount, ct) ?? 0m;
 
-        var revenue = lines.Sum(l => l.FinalRevenue) - orderDiscounts;
+        // Additional service charges (stitching, shipping…) are revenue with no cost of goods.
+        var charges = await _db.OrderCharges.AsNoTracking()
+            .Where(c => SoldStatuses.Contains(c.Order.Status) && c.Order.OrderDate >= f && c.Order.OrderDate <= t)
+            .SumAsync(c => (decimal?)c.Amount, ct) ?? 0m;
+
+        var revenue = lines.Sum(l => l.FinalRevenue) - orderDiscounts + charges;
         var cost = lines.Sum(l => l.OriginalCost);
         var margin = revenue - cost;
 

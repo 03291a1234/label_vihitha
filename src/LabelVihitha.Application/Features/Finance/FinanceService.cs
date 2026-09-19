@@ -36,7 +36,13 @@ public class FinanceService : IFinanceService
             .Where(o => SoldStatuses.Contains(o.Status) && o.OrderDate >= f && o.OrderDate <= t)
             .SumAsync(o => (decimal?)o.OrderDiscount, ct) ?? 0m;
 
-        return (lines.Sum(l => l.Revenue) - orderDiscounts, lines.Sum(l => l.Cost),
+        // Additional service charges (stitching, shipping…) are revenue the customer paid, with no
+        // cost of goods — add them on top of the product line revenue.
+        var charges = await _db.OrderCharges.AsNoTracking()
+            .Where(c => SoldStatuses.Contains(c.Order.Status) && c.Order.OrderDate >= f && c.Order.OrderDate <= t)
+            .SumAsync(c => (decimal?)c.Amount, ct) ?? 0m;
+
+        return (lines.Sum(l => l.Revenue) - orderDiscounts + charges, lines.Sum(l => l.Cost),
                 lines.Select(l => l.OrderId).Distinct().Count(), lines.Sum(l => l.Quantity));
     }
 
