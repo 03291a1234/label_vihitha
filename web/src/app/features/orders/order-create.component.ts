@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { CustomerApi, OrderApi, ProductApi, CreateOrderItem } from '../../core/services/api.services';
+import { CustomerApi, OrderApi, ProductApi, CreateOrderItem, OrderChargeInput } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Customer, Product, ProductVariant } from '../../core/models';
 
@@ -29,12 +29,19 @@ interface Line { product: Product; variant: ProductVariant; quantity: number; fi
       </div>
 
       <div class="card" style="margin-bottom:16px;">
-        <mat-form-field style="width:100%;max-width:420px;">
-          <mat-label>Customer</mat-label>
-          <mat-select [(ngModel)]="customerId">
-            @for (c of customers(); track c.id) { <mat-option [value]="c.id">{{ c.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
+        <div class="toolbar-row">
+          <mat-form-field style="flex:1;min-width:280px;">
+            <mat-label>Customer</mat-label>
+            <mat-select [(ngModel)]="customerId">
+              @for (c of customers(); track c.id) { <mat-option [value]="c.id">{{ c.name }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field style="width:190px;">
+            <mat-label>Order date</mat-label>
+            <input matInput type="date" [max]="today" [(ngModel)]="orderDate" />
+            <mat-hint>Backdate to log a past sale</mat-hint>
+          </mat-form-field>
+        </div>
         <mat-form-field style="width:100%;">
           <mat-label>Order notes</mat-label>
           <textarea matInput rows="2" [(ngModel)]="notes" placeholder="Alteration requests, special instructions…"></textarea>
@@ -111,9 +118,34 @@ interface Line { product: Product; variant: ProductVariant; quantity: number; fi
         </table>
         @if (lines().length === 0) { <div class="empty-state">No line items yet — add a product above.</div> }
 
+        <div class="services">
+          <h3>Additional services <span class="muted">(stitching, shipping, alteration…)</span></h3>
+          @for (s of services(); track $index) {
+            <div class="svc-row">
+              <span class="svc-label">{{ s.label }}</span>
+              <span class="mono svc-amt">{{ s.amount | currency }}</span>
+              <button mat-icon-button color="warn" (click)="removeService($index)"><mat-icon>close</mat-icon></button>
+            </div>
+          }
+          <div class="toolbar-row svc-add">
+            <mat-form-field style="flex:1;min-width:200px;">
+              <mat-label>Service</mat-label>
+              <input matInput [(ngModel)]="svcLabel" placeholder="e.g. Stitching" (keydown.enter)="addService()" />
+            </mat-form-field>
+            <mat-form-field style="width:150px;">
+              <mat-label>Amount (USD)</mat-label>
+              <input matInput type="number" min="0" step="0.01" [(ngModel)]="svcAmount" (keydown.enter)="addService()" />
+            </mat-form-field>
+            <button mat-stroked-button (click)="addService()"><mat-icon>add</mat-icon> Add service</button>
+          </div>
+        </div>
+
         <div class="totals">
           <div><span class="muted">Subtotal (list)</span> <span class="mono">{{ subTotal() | currency }}</span></div>
           <div><span class="muted">Discount</span> <span class="mono">−{{ discountTotal() | currency }}</span></div>
+          @if (servicesTotal() > 0) {
+            <div><span class="muted">Services</span> <span class="mono">+{{ servicesTotal() | currency }}</span></div>
+          }
           <div class="grand"><span>Grand total</span> <span class="mono">{{ grandTotal() | currency }}</span></div>
         </div>
 
@@ -133,6 +165,12 @@ interface Line { product: Product; variant: ProductVariant; quantity: number; fi
     .totals { margin-top: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
     .totals > div { display: flex; gap: 24px; min-width: 260px; justify-content: space-between; }
     .totals .grand { font-size: 18px; font-weight: 600; border-top: 1px solid #eee; padding-top: 8px; margin-top: 4px; }
+    .services { margin-top: 20px; padding-top: 12px; border-top: 1px solid #eee; }
+    .services h3 { margin: 0 0 10px; }
+    .svc-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+    .svc-label { flex: 1; }
+    .svc-amt { min-width: 90px; text-align: right; }
+    .svc-add { margin-top: 6px; }
   `]
 })
 export class OrderCreateComponent {
@@ -145,13 +183,18 @@ export class OrderCreateComponent {
   customers = signal<Customer[]>([]);
   products = signal<Product[]>([]);
   lines = signal<Line[]>([]);
+  services = signal<OrderChargeInput[]>([]);
   saving = signal(false);
 
+  today = new Date().toISOString().slice(0, 10);
   customerId: number | null = null;
+  orderDate = this.today;
   notes = '';
   pickProductId: number | null = null;
   pickVariantId: number | null = null;
   pickQty = 1;
+  svcLabel = '';
+  svcAmount: number | null = null;
   cols = ['product', 'quantity', 'salePrice', 'finalPrice', 'lineTotal', 'actions'];
 
   pickVariants(): ProductVariant[] {
@@ -161,8 +204,10 @@ export class OrderCreateComponent {
   // Recompute triggers via a version signal bumped on edits.
   private v = signal(0);
   subTotal = computed(() => { this.v(); return this.lines().reduce((s, l) => s + l.product.salePrice * l.quantity, 0); });
-  grandTotal = computed(() => { this.v(); return this.lines().reduce((s, l) => s + l.finalPrice * l.quantity, 0); });
-  discountTotal = computed(() => this.subTotal() - this.grandTotal());
+  linesTotal = computed(() => { this.v(); return this.lines().reduce((s, l) => s + l.finalPrice * l.quantity, 0); });
+  servicesTotal = computed(() => this.services().reduce((s, x) => s + x.amount, 0));
+  grandTotal = computed(() => this.linesTotal() + this.servicesTotal());
+  discountTotal = computed(() => this.subTotal() - this.linesTotal());
 
   constructor() {
     this.customerApi.list().subscribe(cs => this.customers.set(cs));
@@ -187,13 +232,30 @@ export class OrderCreateComponent {
 
   removeLine(i: number) { this.lines.update(ls => ls.filter((_, idx) => idx !== i)); this.touch(); }
 
+  addService() {
+    const label = this.svcLabel.trim();
+    const amount = Number(this.svcAmount);
+    if (!label) { this.notify.error(null, 'Name the service'); return; }
+    if (!amount || amount <= 0) { this.notify.error(null, 'Enter a service amount'); return; }
+    this.services.update(ss => [...ss, { label, amount }]);
+    this.svcLabel = ''; this.svcAmount = null;
+  }
+
+  removeService(i: number) { this.services.update(ss => ss.filter((_, idx) => idx !== i)); }
+
   submit() {
     if (!this.customerId || this.lines().length === 0) return;
     this.saving.set(true);
     const items: CreateOrderItem[] = this.lines().map(l => ({
       productId: l.product.id, quantity: l.quantity, finalPrice: l.finalPrice, productVariantId: l.variant.id
     }));
-    this.orderApi.create({ customerId: this.customerId, notes: this.notes || null, items }).subscribe({
+    // Send the chosen order date as UTC midnight; null when it's today (server defaults to now).
+    const orderDate = this.orderDate && this.orderDate !== this.today
+      ? new Date(this.orderDate + 'T00:00:00Z').toISOString() : null;
+    this.orderApi.create({
+      customerId: this.customerId, notes: this.notes || null, items,
+      charges: this.services(), orderDate
+    }).subscribe({
       next: (o) => { this.notify.success(`Order ${o.orderNumber} created`); this.router.navigate(['/orders', o.id]); },
       error: (e) => { this.saving.set(false); this.notify.error(e); }
     });

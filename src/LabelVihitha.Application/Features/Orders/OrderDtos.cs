@@ -16,6 +16,9 @@ public record OrderItemDto(
     decimal DiscountAmount,
     decimal LineTotal);
 
+public record OrderChargeDto(int Id, string Label, decimal Amount);
+public record OrderChargeInput(string Label, decimal Amount);
+
 public record OrderDto(
     int Id,
     string OrderNumber,
@@ -30,7 +33,9 @@ public record OrderDto(
     string? CreatedBy,
     bool HasInvoice,
     int? InvoiceId,
-    IReadOnlyList<OrderItemDto> Items);
+    IReadOnlyList<OrderItemDto> Items,
+    IReadOnlyList<OrderChargeDto> Charges,
+    decimal ChargesTotal);
 
 public record OrderListItemDto(
     int Id,
@@ -54,7 +59,9 @@ public record CreateOrderRequest(
     string? Notes,
     IReadOnlyList<CreateOrderItemRequest> Items,
     decimal OrderDiscount = 0m,        // order-level discount (promo/manual)
-    string? PromoCode = null);
+    string? PromoCode = null,
+    IReadOnlyList<OrderChargeInput>? Charges = null,   // additional services (stitching, shipping…)
+    DateTime? OrderDate = null);       // backdate an order; null → now
 
 public record UpdateOrderItemRequest(
     int Quantity,

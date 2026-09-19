@@ -225,6 +225,22 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
     }
 }
 
+public class OrderChargeConfiguration : IEntityTypeConfiguration<OrderCharge>
+{
+    public void Configure(EntityTypeBuilder<OrderCharge> b)
+    {
+        b.Property(x => x.Label).IsRequired().HasMaxLength(80);
+        b.Property(x => x.Amount).HasPrecision(18, 2);
+
+        b.HasOne(x => x.Order)
+            .WithMany(o => o.Charges)
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
 public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 {
     public void Configure(EntityTypeBuilder<Invoice> b)

@@ -13,4 +13,8 @@ public interface IOrderService
     Task<OrderDto> AddItemAsync(int orderId, CreateOrderItemRequest request, CancellationToken ct = default);
     Task<OrderDto> UpdateItemAsync(int orderId, int itemId, UpdateOrderItemRequest request, CancellationToken ct = default);
     Task<OrderDto> RemoveItemAsync(int orderId, int itemId, CancellationToken ct = default);
+
+    // Additional service charges — only permitted while the order is Pending.
+    Task<OrderDto> AddChargeAsync(int orderId, OrderChargeInput request, CancellationToken ct = default);
+    Task<OrderDto> RemoveChargeAsync(int orderId, int chargeId, CancellationToken ct = default);
 }

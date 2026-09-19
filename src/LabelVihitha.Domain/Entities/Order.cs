@@ -35,6 +35,10 @@ public class Order : BaseEntity
     public string? CreatedBy { get; set; }
 
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
+
+    /// <summary>Additional services / charges (stitching, shipping…) beyond product lines.</summary>
+    public ICollection<OrderCharge> Charges { get; set; } = new List<OrderCharge>();
+
     public ICollection<OrderFollowUp> FollowUps { get; set; } = new List<OrderFollowUp>();
     public Invoice? Invoice { get; set; }
 }

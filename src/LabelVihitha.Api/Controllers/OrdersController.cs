@@ -53,4 +53,16 @@ public class OrdersController : ControllerBase
     [Authorize(Roles = ManageRoles)]
     public async Task<ActionResult<OrderDto>> RemoveItem(int id, int itemId, CancellationToken ct)
         => Ok(await _service.RemoveItemAsync(id, itemId, ct));
+
+    // ---- additional service charges (only while Pending) ----
+
+    [HttpPost("{id:int}/charges")]
+    [Authorize(Roles = ManageRoles)]
+    public async Task<ActionResult<OrderDto>> AddCharge(int id, OrderChargeInput request, CancellationToken ct)
+        => Ok(await _service.AddChargeAsync(id, request, ct));
+
+    [HttpDelete("{id:int}/charges/{chargeId:int}")]
+    [Authorize(Roles = ManageRoles)]
+    public async Task<ActionResult<OrderDto>> RemoveCharge(int id, int chargeId, CancellationToken ct)
+        => Ok(await _service.RemoveChargeAsync(id, chargeId, ct));
 }

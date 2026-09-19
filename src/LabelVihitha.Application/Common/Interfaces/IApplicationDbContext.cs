@@ -19,6 +19,7 @@ public interface IApplicationDbContext
     DbSet<Customer> Customers { get; }
     DbSet<Order> Orders { get; }
     DbSet<OrderItem> OrderItems { get; }
+    DbSet<OrderCharge> OrderCharges { get; }
     DbSet<Invoice> Invoices { get; }
     DbSet<Payment> Payments { get; }
     DbSet<OrderFollowUp> OrderFollowUps { get; }

@@ -180,7 +180,14 @@ export interface OrderFilters {
 }
 
 export interface CreateOrderItem { productId: number; quantity: number; finalPrice?: number | null; productVariantId?: number | null; }
-export interface CreateOrder { customerId: number; notes?: string | null; items: CreateOrderItem[]; }
+export interface OrderChargeInput { label: string; amount: number; }
+export interface CreateOrder {
+  customerId: number;
+  notes?: string | null;
+  items: CreateOrderItem[];
+  charges?: OrderChargeInput[];
+  orderDate?: string | null;
+}
 
 @Injectable({ providedIn: 'root' })
 export class OrderApi {
@@ -196,6 +203,8 @@ export class OrderApi {
     return this.http.put<Order>(`${base}/orders/${id}/items/${itemId}`, body);
   }
   removeItem(id: number, itemId: number) { return this.http.delete<Order>(`${base}/orders/${id}/items/${itemId}`); }
+  addCharge(id: number, body: OrderChargeInput) { return this.http.post<Order>(`${base}/orders/${id}/charges`, body); }
+  removeCharge(id: number, chargeId: number) { return this.http.delete<Order>(`${base}/orders/${id}/charges/${chargeId}`); }
 }
 
 export interface InvoiceFilters {

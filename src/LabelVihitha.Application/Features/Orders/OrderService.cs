@@ -54,6 +54,7 @@ public class OrderService : IOrderService
         var order = await _db.Orders.AsNoTracking()
             .Include(o => o.Customer)
             .Include(o => o.Items.Where(i => !i.IsDeleted)).ThenInclude(i => i.Product)
+            .Include(o => o.Charges.Where(c => !c.IsDeleted))
             .Include(o => o.Invoice)
             .FirstOrDefaultAsync(o => o.Id == id, ct);
         return order is null ? throw new NotFoundException(nameof(Order), id) : MapToDto(order);
@@ -67,20 +68,29 @@ public class OrderService : IOrderService
         var customer = await _db.Customers.FirstOrDefaultAsync(c => c.Id == request.CustomerId, ct)
             ?? throw new NotFoundException(nameof(Customer), request.CustomerId);
 
+        // Order date: backdated when supplied (e.g. logging a past sale), else now.
+        var orderDate = request.OrderDate is DateTime d ? DateTime.SpecifyKind(d, DateTimeKind.Utc) : DateTime.UtcNow;
+
         var order = new Order
         {
             CustomerId = customer.Id,
-            OrderDate = DateTime.UtcNow,
+            OrderDate = orderDate,
             Status = OrderStatus.Pending,
             Notes = request.Notes,
             OrderDiscount = request.OrderDiscount < 0 ? 0m : request.OrderDiscount,
             PromoCode = string.IsNullOrWhiteSpace(request.PromoCode) ? null : request.PromoCode.Trim().ToUpperInvariant(),
             CreatedBy = _currentUser.UserName ?? _currentUser.UserId,
-            OrderNumber = await GenerateOrderNumberAsync(ct)
+            OrderNumber = await GenerateOrderNumberAsync(orderDate, ct)
         };
 
         foreach (var line in request.Items)
             order.Items.Add(await BuildLineAsync(line, ct));
+
+        // Additional service charges (stitching, shipping…).
+        if (request.Charges is not null)
+            foreach (var c in request.Charges)
+                if (!string.IsNullOrWhiteSpace(c.Label) && c.Amount > 0)
+                    order.Charges.Add(new OrderCharge { Label = c.Label.Trim(), Amount = c.Amount });
 
         RecalculateTotals(order);
 
@@ -185,6 +195,7 @@ public class OrderService : IOrderService
     {
         var order = await _db.Orders
             .Include(o => o.Items.Where(i => !i.IsDeleted))
+            .Include(o => o.Charges.Where(c => !c.IsDeleted))
             .FirstOrDefaultAsync(o => o.Id == orderId, ct)
             ?? throw new NotFoundException(nameof(Order), orderId);
 
@@ -192,6 +203,34 @@ public class OrderService : IOrderService
             throw new ConflictException("Line items can only be changed while the order is Pending.");
 
         return order;
+    }
+
+    public async Task<OrderDto> AddChargeAsync(int orderId, OrderChargeInput request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Label))
+            throw new ConflictException("A service needs a label.");
+        if (request.Amount <= 0)
+            throw new ConflictException("A service amount must be greater than zero.");
+
+        var order = await LoadEditableOrderAsync(orderId, ct);
+        order.Charges.Add(new OrderCharge { Label = request.Label.Trim(), Amount = request.Amount });
+        RecalculateTotals(order);
+        order.UpdatedAt = DateTime.UtcNow;
+        await SaveWithConcurrencyGuardAsync(ct);
+        return await GetByIdAsync(orderId, ct);
+    }
+
+    public async Task<OrderDto> RemoveChargeAsync(int orderId, int chargeId, CancellationToken ct = default)
+    {
+        var order = await LoadEditableOrderAsync(orderId, ct);
+        var charge = order.Charges.FirstOrDefault(c => c.Id == chargeId && !c.IsDeleted)
+            ?? throw new NotFoundException(nameof(OrderCharge), chargeId);
+        charge.IsDeleted = true;
+        charge.UpdatedAt = DateTime.UtcNow;
+        RecalculateTotals(order);
+        order.UpdatedAt = DateTime.UtcNow;
+        await SaveWithConcurrencyGuardAsync(ct);
+        return await GetByIdAsync(orderId, ct);
     }
 
     /// <summary>Builds a line, snapshotting prices and decrementing the chosen size's stock.</summary>
@@ -280,11 +319,13 @@ public class OrderService : IOrderService
     {
         var live = order.Items.Where(i => !i.IsDeleted).ToList();
         var lineSum = live.Sum(i => i.LineTotal);
-        // The order-level discount can't take the total below zero.
+        var chargesSum = order.Charges.Where(c => !c.IsDeleted).Sum(c => c.Amount);
+        // The order-level discount can't take the product total below zero.
         var orderDiscount = Math.Min(Math.Max(order.OrderDiscount, 0m), lineSum);
         order.SubTotal = live.Sum(i => i.SalePriceAtSale * i.Quantity);
         order.DiscountTotal = live.Sum(i => i.DiscountAmount * i.Quantity) + orderDiscount;
-        order.GrandTotal = lineSum - orderDiscount;
+        // Services are added on top of the discounted product total.
+        order.GrandTotal = lineSum - orderDiscount + chargesSum;
     }
 
     private static bool IsTransitionAllowed(OrderStatus from, OrderStatus to) => from switch
@@ -294,10 +335,10 @@ public class OrderService : IOrderService
         _ => false // Fulfilled and Cancelled are terminal
     };
 
-    private async Task<string> GenerateOrderNumberAsync(CancellationToken ct)
+    private async Task<string> GenerateOrderNumberAsync(DateTime orderDate, CancellationToken ct)
     {
-        var year = DateTime.UtcNow.Year;
-        // Count all orders (incl. soft-deleted) this year so numbers are never reused.
+        var year = orderDate.Year;
+        // Count all orders (incl. soft-deleted) that year so numbers are never reused.
         var count = await _db.Orders.IgnoreQueryFilters()
             .CountAsync(o => o.OrderDate.Year == year, ct);
         return $"LV-{year}-{count + 1:D4}";
@@ -337,5 +378,10 @@ public class OrderService : IOrderService
                 i.ProductVariantId, i.Size,
                 i.Quantity, i.OriginalPriceAtSale, i.SalePriceAtSale, i.FinalPriceAtSale,
                 i.DiscountAmount, i.LineTotal))
-            .ToList());
+            .ToList(),
+        o.Charges.Where(c => !c.IsDeleted)
+            .OrderBy(c => c.Id)
+            .Select(c => new OrderChargeDto(c.Id, c.Label, c.Amount))
+            .ToList(),
+        o.Charges.Where(c => !c.IsDeleted).Sum(c => c.Amount));
 }

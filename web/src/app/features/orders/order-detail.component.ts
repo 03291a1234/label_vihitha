@@ -119,8 +119,37 @@ import { FollowUpAddDialog } from './followup-add.dialog';
           <div class="totals">
             <div><span class="muted">Subtotal (list)</span> <span class="mono">{{ o.subTotal | currency }}</span></div>
             <div><span class="muted">Discount</span> <span class="mono">−{{ o.discountTotal | currency }}</span></div>
+            @if (o.chargesTotal > 0) {
+              <div><span class="muted">Services</span> <span class="mono">+{{ o.chargesTotal | currency }}</span></div>
+            }
             <div class="grand"><span>Grand total</span> <span class="mono">{{ o.grandTotal | currency }}</span></div>
           </div>
+        </div>
+
+        <!-- Additional services -->
+        <div class="card">
+          <div class="page-header" style="margin-bottom:8px;">
+            <h3 style="margin:0;">Additional services</h3>
+            @if (editable(o) && auth.canManageSales()) { <span class="muted">Editable while Pending</span> }
+          </div>
+          @if (o.charges.length === 0) { <div class="muted">No additional services on this order.</div> }
+          @for (c of o.charges; track c.id) {
+            <div class="svc-row">
+              <span class="svc-label">{{ c.label }}</span>
+              <span class="mono svc-amt">{{ c.amount | currency }}</span>
+              @if (editable(o) && auth.canManageSales()) {
+                <button mat-icon-button color="warn" (click)="removeCharge(o, c.id)"><mat-icon>close</mat-icon></button>
+              } @else { <span class="svc-spacer"></span> }
+            </div>
+          }
+          @if (editable(o) && auth.canManageSales()) {
+            <div class="toolbar-row svc-add">
+              <input class="svc-input" [(ngModel)]="newCharge.label" placeholder="Service (e.g. Stitching)" (keydown.enter)="addCharge(o)" />
+              <input class="inline-num" type="number" min="0" step="0.01" [(ngModel)]="newCharge.amount"
+                     placeholder="USD" (keydown.enter)="addCharge(o)" />
+              <button mat-stroked-button (click)="addCharge(o)"><mat-icon>add</mat-icon> Add service</button>
+            </div>
+          }
         </div>
 
         <!-- Follow-ups -->
@@ -167,6 +196,12 @@ import { FollowUpAddDialog } from './followup-add.dialog';
     .followup { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
     .followup.done { opacity: .6; }
     .fu-main { display: flex; flex-direction: column; gap: 2px; }
+    .svc-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid #f5f5f5; }
+    .svc-label { flex: 1; }
+    .svc-amt { min-width: 90px; text-align: right; }
+    .svc-spacer { width: 40px; }
+    .svc-add { margin-top: 12px; align-items: center; }
+    .svc-input { flex: 1; min-width: 200px; border: 1px solid #ddd; border-radius: 6px; padding: 8px; font: inherit; }
   `]
 })
 export class OrderDetailComponent {
@@ -183,6 +218,7 @@ export class OrderDetailComponent {
   followUps = signal<FollowUp[]>([]);
   loading = signal(false);
   edit: Record<number, { quantity: number; finalPrice: number }> = {};
+  newCharge: { label: string; amount: number | null } = { label: '', amount: null };
 
   itemCols = ['product', 'quantity', 'salePriceAtSale', 'finalPriceAtSale', 'discountAmount', 'lineTotal', 'actions'];
 
@@ -237,6 +273,24 @@ export class OrderDetailComponent {
   removeItem(o: Order, itemId: number) {
     this.api.removeItem(o.id, itemId).subscribe({
       next: (u) => { this.order.set(u); this.syncEdit(u); this.notify.success('Line removed'); },
+      error: (err) => this.notify.error(err)
+    });
+  }
+
+  addCharge(o: Order) {
+    const label = this.newCharge.label.trim();
+    const amount = Number(this.newCharge.amount);
+    if (!label) { this.notify.error(null, 'Name the service'); return; }
+    if (!amount || amount <= 0) { this.notify.error(null, 'Enter a service amount'); return; }
+    this.api.addCharge(o.id, { label, amount }).subscribe({
+      next: (u) => { this.order.set(u); this.newCharge = { label: '', amount: null }; this.notify.success('Service added'); },
+      error: (err) => this.notify.error(err)
+    });
+  }
+
+  removeCharge(o: Order, chargeId: number) {
+    this.api.removeCharge(o.id, chargeId).subscribe({
+      next: (u) => { this.order.set(u); this.notify.success('Service removed'); },
       error: (err) => this.notify.error(err)
     });
   }

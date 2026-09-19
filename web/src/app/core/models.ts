@@ -346,6 +346,14 @@ export interface Order {
   hasInvoice: boolean;
   invoiceId?: number | null;
   items: OrderItem[];
+  charges: OrderCharge[];
+  chargesTotal: number;
+}
+
+export interface OrderCharge {
+  id: number;
+  label: string;
+  amount: number;
 }
 
 export interface OrderListItem {

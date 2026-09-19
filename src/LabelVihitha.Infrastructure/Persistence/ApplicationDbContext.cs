@@ -33,6 +33,7 @@ public class ApplicationDbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderCharge> OrderCharges => Set<OrderCharge>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<OrderFollowUp> OrderFollowUps => Set<OrderFollowUp>();
