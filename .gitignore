@@ -24,3 +24,6 @@ dist/
 # Uploaded product photos (keep the folder, not its contents)
 src/LabelVihitha.Api/wwwroot/uploads/products/*
 !src/LabelVihitha.Api/wwwroot/uploads/products/.gitkeep
+
+# local run logs (run.command)
+.run-logs/
