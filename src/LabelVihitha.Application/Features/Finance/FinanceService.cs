@@ -161,6 +161,14 @@ public class FinanceService : IFinanceService
             new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc), DateTime.UtcNow.AddDays(1), ct);
         var allTimeNetProfit = allRev - allCogs - allExpenses;
 
+        // ---- Total investment reconciliation ----
+        // Documented spend from supplier bills attached to inventories.
+        var totalBillsRecorded = await _db.InventoryBills.AsNoTracking()
+            .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
+        // Capital deployed to date: inventory bought (still-on-hand at cost + cost of goods already
+        // sold) plus operating expenses spent. This is the authoritative "total invested".
+        var totalInvested = invCost + allCogs + allExpenses;
+
         var owners = await _db.Owners.AsNoTracking()
             .Where(o => o.IsActive)
             .Select(o => new
@@ -194,6 +202,10 @@ public class FinanceService : IFinanceService
             ownerRows.Sum(o => o.Withdrawals),
             ownerRows.Sum(o => o.Equity),
             fundedByOwner,
-            spendByVendor);
+            spendByVendor,
+            allCogs,
+            allExpenses,
+            totalBillsRecorded,
+            totalInvested);
     }
 }

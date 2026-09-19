@@ -61,4 +61,14 @@ public record ProfitLossReport(
     IReadOnlyList<OwnerInventoryDto> InventoryFundedByOwner,
 
     // ---- Amount spent per vendor (current stock, at cost), broken down by inventory ----
-    IReadOnlyList<VendorSpendDto> SpendByVendor);
+    IReadOnlyList<VendorSpendDto> SpendByVendor,
+
+    // ---- Total investment reconciliation (all-time) ----
+    // Money put into inventory to date = stock still on hand (at cost) + cost of goods already sold.
+    decimal AllTimeCogs,
+    // All operating expenses to date.
+    decimal AllTimeExpenses,
+    // Sum of amounts on supplier bills attached to inventories (documented actual spend).
+    decimal TotalBillsRecorded,
+    // Authoritative total capital deployed to date = stock on hand at cost + all-time COGS + all-time expenses.
+    decimal TotalInvested);

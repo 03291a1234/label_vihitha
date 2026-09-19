@@ -36,9 +36,9 @@ import { ProfitLossReport } from '../../core/models';
         <!-- Headline metrics -->
         <div class="kpi-strip">
           <div class="card k-card">
-            <div class="k-top">Total invested</div>
-            <div class="k-big">{{ r.inventoryValueAtCost + r.expensesTotal | currency }}</div>
-            <div class="k-sub">≈ {{ (r.inventoryValueAtCost + r.expensesTotal) * 95 | currency:'INR':'symbol':'1.0-0' }} · stock + expenses</div>
+            <div class="k-top">Total invested <span class="muted">(to date)</span></div>
+            <div class="k-big">{{ r.totalInvested | currency }}</div>
+            <div class="k-sub">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }} · stock + goods sold + expenses</div>
           </div>
           <div class="card k-card">
             <div class="k-top">Sales</div>
@@ -108,6 +108,44 @@ import { ProfitLossReport } from '../../core/models';
             </div>
           </div>
           <div class="muted foot">Buying stock moves cash into "inventory at cost", so it's deducted here automatically. Assumes sales are collected in full (no receivables tracked).</div>
+        </div>
+
+        <!-- Total investment reconciliation -->
+        <div class="card invest">
+          <h2>Total investment <span class="muted">(all money put in, to date)</span></h2>
+          <div class="cash-grid">
+            <div class="line"><span>Stock on hand <span class="muted">(at cost)</span></span><span class="mono">{{ r.inventoryValueAtCost | currency }}</span></div>
+            <div class="line"><span>Cost of goods already sold <span class="muted">(bought &amp; since sold)</span></span><span class="mono">{{ r.allTimeCogs | currency }}</span></div>
+            <div class="line"><span>Operating expenses <span class="muted">(to date)</span></span><span class="mono">{{ r.allTimeExpenses | currency }}</span></div>
+            <div class="line strong bt"><span>Total invested</span>
+              <span class="mono">{{ r.totalInvested | currency }}
+                <span class="muted inr">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+            </div>
+          </div>
+          <div class="recon">
+            <div class="rline">
+              <span>Owner contributions recorded</span>
+              <span class="mono">{{ r.totalContributions | currency }}</span>
+            </div>
+            <div class="rline">
+              <span>Documented on supplier bills</span>
+              <span class="mono">{{ r.totalBillsRecorded | currency }}
+                <span class="muted">of {{ r.inventoryValueAtCost + r.allTimeCogs | currency }} inventory cost</span></span>
+            </div>
+            @if (fundingGap() > 1) {
+              <div class="rline gap">
+                <span><mat-icon>info</mat-icon> Unrecorded funding gap</span>
+                <span class="mono">{{ fundingGap() | currency }}</span>
+              </div>
+              <div class="muted foot">Contributions are less than what's been invested — either some capital came from
+                retained sales, or owner contributions haven't all been logged. Add them under
+                <a routerLink="/owners" class="link">Owners</a>, or attach bills on the
+                <a routerLink="/inventories" class="link">Inventories</a> tab to document the spend.</div>
+            } @else {
+              <div class="muted foot">Recorded contributions cover the invested capital. Attach supplier bills on the
+                <a routerLink="/inventories" class="link">Inventories</a> tab to document the actual spend per batch.</div>
+            }
+          </div>
         </div>
 
         <!-- Owner equity -->
@@ -230,6 +268,13 @@ import { ProfitLossReport } from '../../core/models';
     .k-val { font-size: 20px; font-weight: 700; color: var(--lv-wine); }
     .cash { margin-bottom: 16px; }
     .cash-grid { max-width: 520px; }
+    .invest { margin-bottom: 16px; }
+    .recon { max-width: 560px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--lv-line); }
+    .rline { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 4px 0; }
+    .rline.gap { color: #b3261e; font-weight: 600; }
+    .rline.gap span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+    .rline.gap mat-icon { font-size: 18px; height: 18px; width: 18px; }
+    .rline .muted { font-weight: 400; margin-left: 6px; }
     .cash-net { font-weight: 800; font-size: 17px; color: var(--lv-wine); }
     .cash-net .inr { font-weight: 400; margin-left: 8px; }
     .funded { margin-bottom: 16px; }
@@ -269,6 +314,13 @@ export class ProfitLossComponent {
   fundedPct(cost: number): number {
     const total = this.report()?.inventoryValueAtCost ?? 0;
     return total > 0 ? (cost / total) * 100 : 0;
+  }
+
+  /** How much of the invested capital isn't covered by recorded owner contributions. */
+  fundingGap(): number {
+    const r = this.report();
+    if (!r) return 0;
+    return Math.max(0, r.totalInvested - r.totalContributions);
   }
 
   label() {

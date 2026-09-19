@@ -179,6 +179,10 @@ export interface ProfitLossReport {
   totalOwnerEquity: number;
   inventoryFundedByOwner: OwnerInventory[];
   spendByVendor: VendorSpend[];
+  allTimeCogs: number;
+  allTimeExpenses: number;
+  totalBillsRecorded: number;
+  totalInvested: number;
 }
 
 export interface OwnerInventory {
