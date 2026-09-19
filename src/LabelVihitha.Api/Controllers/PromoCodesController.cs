@@ -21,6 +21,12 @@ public class PromoCodesController : ControllerBase
     public async Task<ActionResult<PromoCodeDto>> GetById(int id, CancellationToken ct)
         => Ok(await _service.GetByIdAsync(id, ct));
 
+    /// <summary>Validate a code against a subtotal and return the discount it would apply (staff order builder).</summary>
+    [HttpGet("validate")]
+    public async Task<ActionResult<PromoValidationResult>> Validate(
+        [FromQuery] string code, [FromQuery] decimal subtotal, CancellationToken ct)
+        => Ok(await _service.ValidateAsync(code, subtotal, ct));
+
     [HttpPost]
     public async Task<ActionResult<PromoCodeDto>> Create(CreatePromoCodeRequest request, CancellationToken ct)
     {

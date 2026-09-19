@@ -52,7 +52,9 @@ import { sortRows } from '../../shared/sort';
           <ng-container matColumnDef="orderNumber">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Order</th>
             <td mat-cell *matCellDef="let f" class="mono">
-              <a [routerLink]="['/orders', f.orderId]">{{ f.orderNumber }}</a>
+              <a class="order-link" [routerLink]="['/orders', f.orderId]">
+                <mat-icon>receipt_long</mat-icon>{{ f.orderNumber }}
+              </a>
             </td>
           </ng-container>
           <ng-container matColumnDef="followUpDate">
@@ -87,7 +89,13 @@ import { sortRows } from '../../shared/sort';
         @if (!loading() && rows().length === 0) { <div class="empty-state">Nothing outstanding. 🎉</div> }
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    .order-link { display: inline-flex; align-items: center; gap: 4px; color: var(--lv-wine); font-weight: 600;
+      text-decoration: none; padding: 2px 8px; border-radius: 999px; background: var(--lv-rose-soft); transition: background .12s; }
+    .order-link:hover { background: #ecd4de; }
+    .order-link mat-icon { font-size: 16px; height: 16px; width: 16px; }
+  `]
 })
 export class FollowUpDashboardComponent {
   private api = inject(FollowUpApi);

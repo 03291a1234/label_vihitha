@@ -10,7 +10,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FinanceApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
-import { ProfitLossReport } from '../../core/models';
+import { ProfitLossReport, VendorSpend } from '../../core/models';
 
 @Component({
   selector: 'app-profit-loss',
@@ -206,8 +206,15 @@ import { ProfitLossReport } from '../../core/models';
 
         <!-- Spend by vendor (by inventory) -->
         <div class="card funded">
-          <h2>Spend by vendor <span class="muted">(current stock, at cost · by inventory)</span></h2>
-          @for (v of r.spendByVendor; track v.vendorId) {
+          <div class="spend-head">
+            <h2>Spend by vendor <span class="muted">(current stock, at cost · by inventory)</span></h2>
+            <div class="sort-toggle">
+              <span class="muted">Sort:</span>
+              <button [class.on]="spendSort() === 'name'" (click)="spendSort.set('name')">Vendor name</button>
+              <button [class.on]="spendSort() === 'cost'" (click)="spendSort.set('cost')">Spend</button>
+            </div>
+          </div>
+          @for (v of sortedSpend(r.spendByVendor); track v.vendorId) {
             <div class="vendor-block">
               <div class="vendor-row">
                 <strong [class.muted]="!v.vendorId">{{ v.vendorName }}</strong>
@@ -268,6 +275,11 @@ import { ProfitLossReport } from '../../core/models';
     .k-val { font-size: 20px; font-weight: 700; color: var(--lv-wine); }
     .cash { margin-bottom: 16px; }
     .cash-grid { max-width: 520px; }
+    .spend-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .sort-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    .sort-toggle button { border: 1px solid var(--lv-line); background: #fff; border-radius: 999px; padding: 3px 12px;
+      cursor: pointer; font: inherit; font-size: 12px; color: var(--lv-wine); }
+    .sort-toggle button.on { background: var(--lv-wine); color: #fff; border-color: var(--lv-wine); }
     .invest { margin-bottom: 16px; }
     .recon { max-width: 560px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--lv-line); }
     .rline { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 4px 0; }
@@ -314,6 +326,15 @@ export class ProfitLossComponent {
   fundedPct(cost: number): number {
     const total = this.report()?.inventoryValueAtCost ?? 0;
     return total > 0 ? (cost / total) * 100 : 0;
+  }
+
+  /** Spend-by-vendor sort order. */
+  spendSort = signal<'cost' | 'name'>('cost');
+  sortedSpend(rows: VendorSpend[]): VendorSpend[] {
+    const copy = [...rows];
+    return this.spendSort() === 'name'
+      ? copy.sort((a, b) => a.vendorName.localeCompare(b.vendorName))
+      : copy.sort((a, b) => b.totalCost - a.totalCost);
   }
 
   /** How much of the invested capital isn't covered by recorded owner contributions. */

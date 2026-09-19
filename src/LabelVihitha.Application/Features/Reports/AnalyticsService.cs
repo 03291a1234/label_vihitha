@@ -29,8 +29,12 @@ public class AnalyticsService : IAnalyticsService
 
     private async Task<List<SoldLine>> FetchSoldLinesAsync(DateTime from, DateTime to, int? categoryId, CancellationToken ct)
     {
-        var q = _db.OrderItems.AsNoTracking()
-            .Where(i => SoldStatuses.Contains(i.Order.Status)
+        // Ignore soft-delete filters so historical sales still count when a product (or its
+        // category) was later deleted — otherwise analytics revenue drifts below the P&L. We
+        // re-apply the non-deleted filters for the order line and its order explicitly.
+        var q = _db.OrderItems.AsNoTracking().IgnoreQueryFilters()
+            .Where(i => !i.IsDeleted && !i.Order.IsDeleted
+                        && SoldStatuses.Contains(i.Order.Status)
                         && i.Order.OrderDate >= from && i.Order.OrderDate <= to);
         if (categoryId is int cid)
             q = q.Where(i => i.Product.CategoryId == cid);

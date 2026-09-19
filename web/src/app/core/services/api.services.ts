@@ -187,7 +187,11 @@ export interface CreateOrder {
   items: CreateOrderItem[];
   charges?: OrderChargeInput[];
   orderDate?: string | null;
+  orderDiscount?: number;
+  promoCode?: string | null;
 }
+
+export interface PromoValidationResult { valid: boolean; discountAmount: number; message: string; code?: string | null; }
 
 @Injectable({ providedIn: 'root' })
 export class OrderApi {
@@ -343,6 +347,9 @@ export class PromoCodeApi {
   constructor(private http: HttpClient) {}
   list(includeInactive = false): Observable<PromoCode[]> {
     return this.http.get<PromoCode[]>(`${base}/promo-codes`, { params: toParams({ includeInactive }) });
+  }
+  validate(code: string, subtotal: number): Observable<PromoValidationResult> {
+    return this.http.get<PromoValidationResult>(`${base}/promo-codes/validate`, { params: toParams({ code, subtotal }) });
   }
   create(body: Partial<PromoCode>) { return this.http.post<PromoCode>(`${base}/promo-codes`, body); }
   update(id: number, body: Partial<PromoCode>) { return this.http.put<PromoCode>(`${base}/promo-codes/${id}`, body); }
