@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { CategoryApi, ProductApi, SubCategoryApi, InventoryApi, VendorApi, OwnerApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Category, SubCategory, Inventory, Vendor, Owner, Product } from '../../core/models';
@@ -21,7 +22,7 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
   imports: [
     DecimalPipe, ReactiveFormsModule, FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule,
-    MoneyInputComponent, SearchSelectComponent
+    MatButtonToggleModule, MoneyInputComponent, SearchSelectComponent
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Edit product' : 'New product' }}</h2>
@@ -31,14 +32,14 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
           <app-search-select label="Category" [items]="categories()" formControlName="categoryId"
             (selectionChange)="onCategoryChange($event)" />
           <app-search-select label="Subcategory" [items]="subCategories()" formControlName="subCategoryId"
-            nullOption [disabled]="!form.controls.categoryId.value" (selectionChange)="updateSizeOptions()"
+            nullOption [disabled]="!form.controls.categoryId.value" (selectionChange)="updateSizeOptions(); refreshAutoSku()"
             hint="Optional" />
         </div>
         <div class="form-row">
           <app-search-select label="Inventory" [items]="inventories()" formControlName="inventoryId"
             nullOption hint="Collection (optional)" />
           <app-search-select label="Vendor" [items]="vendors()" formControlName="vendorId"
-            nullOption hint="Supplier (optional)" />
+            nullOption hint="Supplier (optional)" (selectionChange)="refreshAutoSku()" />
         </div>
         <div class="form-row">
           <app-search-select label="Paid by" [items]="owners()" formControlName="paidByOwnerId"
@@ -64,10 +65,6 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
           <mat-form-field><mat-label>Color</mat-label><input matInput formControlName="color" /></mat-form-field>
           <mat-form-field><mat-label>Material</mat-label><input matInput formControlName="material" /></mat-form-field>
         </div>
-        <div class="form-row">
-          <app-money-input formControlName="originalPrice" label="Cost price" />
-          <app-money-input formControlName="salePrice" label="Sale price" />
-        </div>
         <div class="cost-breakdown">
           <div class="cb-head">
             <span class="cb-label">Cost breakdown by vendor <span class="muted">(optional)</span></span>
@@ -92,12 +89,12 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
           </div>
           <button mat-stroked-button type="button" (click)="addComponent('')"><mat-icon>add</mat-icon> Add cost line</button>
           @if (costComponents.length) {
-            <div class="muted cb-hint">Per-unit costs. They set the Cost price above and split “Spend by vendor” (e.g. Cloth → one vendor, Stitching → another).</div>
+            <div class="muted cb-hint">Per-unit costs by vendor — they set the product's fallback cost and split “Spend by vendor” (e.g. Cloth → one vendor, Stitching → another). Per-size cost below overrides for valuation.</div>
           }
         </div>
         <div class="variants">
           <div class="variants-head">
-            <span class="v-label">Sizes &amp; stock</span>
+            <span class="v-label">Sizes, stock &amp; pricing</span>
             <span class="muted">Total: <strong>{{ totalQty() }}</strong> units</span>
           </div>
           @if (suggestions().length) {
@@ -109,10 +106,11 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
             </div>
           }
           <div class="perSize">
-            <mat-slide-toggle [(ngModel)]="perSizePricing" [ngModelOptions]="{standalone:true}">
-              Price per size <span class="muted">(bangles 2*8, 2*6…)</span>
-            </mat-slide-toggle>
-            @if (perSizePricing) { <span class="muted ps-hint">Blank = use the product's price above. Amounts in USD.</span> }
+            <span class="muted">Enter cost &amp; sale price for each size, in</span>
+            <mat-button-toggle-group [value]="priceCurrency()" (change)="setPriceCurrency($event.value)" aria-label="Price currency">
+              <mat-button-toggle value="USD">USD</mat-button-toggle>
+              <mat-button-toggle value="INR">INR</mat-button-toggle>
+            </mat-button-toggle-group>
           </div>
           <div formArrayName="variants">
             @for (row of variants.controls; track row; let i = $index) {
@@ -121,26 +119,22 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
                   <input matInput formControlName="size" placeholder="e.g. M or 2*6" /></mat-form-field>
                 <mat-form-field class="v-qty"><mat-label>Qty</mat-label>
                   <input matInput type="number" formControlName="quantityOnHand" /></mat-form-field>
-                @if (perSizePricing) {
-                  <mat-form-field class="v-price"><mat-label>Cost $</mat-label>
-                    <input matInput type="number" min="0" step="0.01" formControlName="costPrice" placeholder="—" /></mat-form-field>
-                  <mat-form-field class="v-price"><mat-label>Sale $</mat-label>
-                    <input matInput type="number" min="0" step="0.01" formControlName="salePrice" placeholder="—" /></mat-form-field>
-                }
+                <mat-form-field class="v-price"><mat-label>Cost {{ sym() }}</mat-label>
+                  <input matInput type="number" min="0" step="0.01" formControlName="costPrice" /></mat-form-field>
+                <mat-form-field class="v-price"><mat-label>Sale {{ sym() }}</mat-label>
+                  <input matInput type="number" min="0" step="0.01" formControlName="salePrice" /></mat-form-field>
                 <button mat-icon-button type="button" color="warn" (click)="removeVariant(i)"
                         [disabled]="variants.length === 1" title="Remove size"><mat-icon>close</mat-icon></button>
               </div>
             }
           </div>
           <button mat-stroked-button type="button" (click)="addVariant('')"><mat-icon>add</mat-icon> Add size</button>
-          @if (perSizePricing) {
-            <div class="ps-totals">
-              <span>Stock value — cost <strong>\${{ variantCostUsd() | number:'1.0-2' }}</strong>
-                <span class="inr">≈ ₹{{ variantCostUsd() * 95 | number:'1.0-0' }}</span></span>
-              <span>sale <strong>\${{ variantSaleUsd() | number:'1.0-2' }}</strong>
-                <span class="inr">≈ ₹{{ variantSaleUsd() * 95 | number:'1.0-0' }}</span></span>
-            </div>
-          }
+          <div class="ps-totals">
+            <span>Stock value — cost <strong>\${{ variantCostUsd() | number:'1.0-2' }}</strong>
+              <span class="inr">≈ ₹{{ variantCostUsd() * 95 | number:'1.0-0' }}</span></span>
+            <span>sale <strong>\${{ variantSaleUsd() | number:'1.0-2' }}</strong>
+              <span class="inr">≈ ₹{{ variantSaleUsd() * 95 | number:'1.0-0' }}</span></span>
+          </div>
         </div>
         <div class="form-row">
           <mat-form-field>
@@ -241,8 +235,12 @@ export class ProductEditDialog {
   saving = signal(false);
   uploading = signal(false);
   previewUrl = signal<string | null>(null);
-  /** When on, each size carries its own cost/sale price (e.g. bangles by diameter). */
-  perSizePricing = false;
+  /** Currency the per-size cost/sale inputs are entered in (stored canonically as USD). */
+  priceCurrency = signal<'USD' | 'INR'>('USD');
+  private readonly inrRate = 95;
+  sym() { return this.priceCurrency() === 'USD' ? '$' : '₹'; }
+  /** True once the user types their own SKU, so auto-fill stops overwriting it. */
+  skuManual = false;
 
   /** Per-size stock rows (each: { size, quantityOnHand }). */
   variants = this.fb.array<FormGroup>([]);
@@ -286,9 +284,10 @@ export class ProductEditDialog {
         reorderThreshold: data.reorderThreshold,
         imageUrl: data.imageUrl ?? '', isActive: data.isActive
       });
-      for (const v of data.variants ?? []) this.variants.push(this.makeVariant(v.size, v.quantityOnHand, v.costPrice ?? null, v.salePrice ?? null));
-      // Reveal per-size pricing if this product already uses it.
-      this.perSizePricing = (data.variants ?? []).some(v => v.costPrice != null || v.salePrice != null);
+      // Pricing lives per-size: pre-fill each size from its own price, falling back to the
+      // product-level price so existing products keep their price when re-saved.
+      for (const v of data.variants ?? []) this.variants.push(
+        this.makeVariant(v.size, v.quantityOnHand, v.costPrice ?? data.originalPrice, v.salePrice ?? data.salePrice));
       for (const c of data.costComponents ?? []) this.costComponents.push(this.makeComponent(c.label, c.vendorId ?? null, c.amount));
       this.previewUrl.set(resolveImageUrl(data.imageUrl));
       this.loadSubCategories(data.categoryId);
@@ -298,6 +297,8 @@ export class ProductEditDialog {
     // Cost lines, when present, are the source of truth for the unit cost.
     this.costComponents.valueChanges.subscribe(() => this.syncCostFromComponents());
     this.syncCostFromComponents();
+    // Any user edit to the SKU stops auto-fill from overwriting it (auto-fill uses emitEvent:false).
+    this.form.controls.sku.valueChanges.subscribe(() => { this.skuManual = true; });
   }
 
   private makeComponent(label: string, vendorId: number | null, amount: number): FormGroup {
@@ -351,23 +352,35 @@ export class ProductEditDialog {
     return this.variants.controls.reduce((s, c) => s + (Number(c.value.quantityOnHand) || 0), 0);
   }
 
-  /** Stock value from the variant rows, valuing each size at its own price when set,
-   * else the product-level price. Shown in USD (with an INR approximation). */
+  /** Convert an entered (displayed-currency) amount to canonical USD. */
+  private toUsd(v: unknown): number {
+    const n = Number(v) || 0;
+    return this.priceCurrency() === 'INR' ? n / this.inrRate : n;
+  }
+
+  /** Switch the price entry currency, converting every size's cost & sale so the numbers keep
+   * their real value (e.g. $10 ↔ ₹950). */
+  setPriceCurrency(c: 'USD' | 'INR') {
+    if (c === this.priceCurrency()) return;
+    const factor = c === 'INR' ? this.inrRate : 1 / this.inrRate;
+    for (const row of this.variants.controls) {
+      for (const field of ['costPrice', 'salePrice']) {
+        const ctrl = row.get(field);
+        const val = ctrl?.value;
+        if (val != null && val !== '') ctrl!.setValue(Number((Number(val) * factor).toFixed(2)), { emitEvent: false });
+      }
+    }
+    this.priceCurrency.set(c);
+  }
+
+  /** Stock value from the size rows, in USD (with an INR approximation shown alongside). */
   variantCostUsd(): number {
-    const base = Number(this.form.controls.originalPrice.value) || 0;
-    return this.variants.controls.reduce((s, c) => {
-      const qty = Number(c.value.quantityOnHand) || 0;
-      const cost = c.value.costPrice != null && c.value.costPrice !== '' ? Number(c.value.costPrice) : base;
-      return s + cost * qty;
-    }, 0);
+    return this.variants.controls.reduce((s, c) =>
+      s + this.toUsd(c.value.costPrice) * (Number(c.value.quantityOnHand) || 0), 0);
   }
   variantSaleUsd(): number {
-    const base = Number(this.form.controls.salePrice.value) || 0;
-    return this.variants.controls.reduce((s, c) => {
-      const qty = Number(c.value.quantityOnHand) || 0;
-      const sale = c.value.salePrice != null && c.value.salePrice !== '' ? Number(c.value.salePrice) : base;
-      return s + sale * qty;
-    }, 0);
+    return this.variants.controls.reduce((s, c) =>
+      s + this.toUsd(c.value.salePrice) * (Number(c.value.quantityOnHand) || 0), 0);
   }
 
   private loadSubCategories(catId: number | null) {
@@ -390,6 +403,19 @@ export class ProductEditDialog {
   onCategoryChange(catId: number) {
     this.form.controls.subCategoryId.setValue(null);
     this.loadSubCategories(catId);
+    this.refreshAutoSku();
+  }
+
+  /** For NEW products, auto-fill the SKU with the next in the vendor/category series — unless the
+   * user has already typed their own SKU. */
+  refreshAutoSku() {
+    if (this.data || this.skuManual) return;
+    const f = this.form.controls;
+    if (!f.categoryId.value) return;
+    this.api.nextSku(f.categoryId.value, f.subCategoryId.value ?? null, f.vendorId.value ?? null).subscribe({
+      next: (r) => { if (!this.skuManual) f.sku.setValue(r.sku, { emitEvent: false }); },
+      error: () => {}
+    });
   }
 
   onFileSelected(event: Event) {
@@ -417,20 +443,28 @@ export class ProductEditDialog {
 
   save() {
     if (this.form.invalid) return;
+    // Prices are entered per size (in the chosen currency); store canonically as USD.
     const variants = this.variants.controls
       .map(c => ({
         size: String(c.value.size ?? '').trim(),
         quantityOnHand: Number(c.value.quantityOnHand) || 0,
-        // Only send per-size prices when that mode is on and a value was entered.
-        costPrice: this.perSizePricing && c.value.costPrice != null && c.value.costPrice !== '' ? Number(c.value.costPrice) : null,
-        salePrice: this.perSizePricing && c.value.salePrice != null && c.value.salePrice !== '' ? Number(c.value.salePrice) : null
+        costPrice: c.value.costPrice != null && c.value.costPrice !== '' ? Number(this.toUsd(c.value.costPrice).toFixed(2)) : null,
+        salePrice: c.value.salePrice != null && c.value.salePrice !== '' ? Number(this.toUsd(c.value.salePrice).toFixed(2)) : null
       }))
       .filter(x => x.size.length > 0);
     if (variants.length === 0) { this.notify.error(null, 'Add at least one size with stock.'); return; }
+    if (!variants.some(v => (v.salePrice ?? 0) > 0)) { this.notify.error(null, 'Enter a sale price for at least one size.'); return; }
 
     const costComponents = this.costComponents.controls
       .map(c => ({ label: String(c.value.label ?? '').trim(), vendorId: c.value.vendorId ?? null, amount: Number(c.value.amount) || 0 }))
       .filter(x => x.label.length > 0);
+
+    // Product-level price is a fallback for display/order defaults — derive it from the first
+    // priced size. Cost stays driven by cost-lines when present (kept in sync separately).
+    const repCost = variants.find(v => v.costPrice != null)?.costPrice ?? 0;
+    const repSale = variants.find(v => v.salePrice != null)?.salePrice ?? 0;
+    this.form.controls.salePrice.setValue(repSale, { emitEvent: false });
+    if (costComponents.length === 0) this.form.controls.originalPrice.setValue(repCost, { emitEvent: false });
 
     this.saving.set(true);
     const { variants: _omit, costComponents: _omit2, ...scalars } = this.form.getRawValue() as Record<string, unknown>;

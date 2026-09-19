@@ -8,6 +8,7 @@ public interface IOrderService
     Task<OrderDto> GetByIdAsync(int id, CancellationToken ct = default);
     Task<OrderDto> CreateAsync(CreateOrderRequest request, CancellationToken ct = default);
     Task<OrderDto> UpdateStatusAsync(int id, UpdateOrderStatusRequest request, CancellationToken ct = default);
+    Task<OrderDto> UpdateOrderDateAsync(int id, UpdateOrderDateRequest request, CancellationToken ct = default);
 
     // Line-item editing is only permitted while the order is Pending.
     Task<OrderDto> AddItemAsync(int orderId, CreateOrderItemRequest request, CancellationToken ct = default);

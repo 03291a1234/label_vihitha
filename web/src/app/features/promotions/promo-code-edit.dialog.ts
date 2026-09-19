@@ -9,11 +9,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { PromoCodeApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { PromoCode } from '../../core/models';
+import { DateInputComponent } from '../../shared/date-input.component';
 
 @Component({
   selector: 'app-promo-code-edit',
   standalone: true,
-  imports: [
+  imports: [DateInputComponent, 
     ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatSlideToggleModule
   ],
@@ -52,8 +53,8 @@ import { PromoCode } from '../../core/models';
           <input matInput formControlName="description" placeholder="e.g. Diwali festival offer" />
         </mat-form-field>
         <div class="form-row">
-          <mat-form-field><mat-label>Valid from (optional)</mat-label><input matInput type="date" formControlName="validFrom" /></mat-form-field>
-          <mat-form-field><mat-label>Valid to (optional)</mat-label><input matInput type="date" formControlName="validTo" /></mat-form-field>
+          <app-date-input label="Valid from (optional)" formControlName="validFrom" />
+          <app-date-input label="Valid to (optional)" formControlName="validTo" />
         </div>
         <div class="form-row">
           <mat-form-field>

@@ -12,6 +12,7 @@ import { CurrencyPipe } from '@angular/common';
 import { ExpenseApi, ExpenseCategoryApi, OwnerApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Expense, ExpenseCategory, Owner } from '../../core/models';
+import { DateInputComponent } from '../../shared/date-input.component';
 import { SearchSelectComponent } from '../../shared/search-select.component';
 
 const INR_RATE = 95;
@@ -19,7 +20,7 @@ const INR_RATE = 95;
 @Component({
   selector: 'app-expense-edit',
   standalone: true,
-  imports: [
+  imports: [DateInputComponent, 
     ReactiveFormsModule, CurrencyPipe, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule,
     SearchSelectComponent
@@ -30,10 +31,7 @@ const INR_RATE = 95;
       <form [formGroup]="form" class="dialog-form">
         <div class="form-row">
           <app-search-select label="Category" [items]="categories()" formControlName="expenseCategoryId" />
-          <mat-form-field>
-            <mat-label>Date</mat-label>
-            <input matInput type="date" formControlName="date" />
-          </mat-form-field>
+          <app-date-input label="Date" formControlName="date" />
         </div>
         <div class="amount-row">
           <mat-button-toggle-group [value]="currency()" (change)="currency.set($event.value)" aria-label="Currency">

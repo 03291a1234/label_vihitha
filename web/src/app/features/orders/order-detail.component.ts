@@ -15,13 +15,14 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Order, OrderStatus, FollowUp } from '../../core/models';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 import { FollowUpAddDialog } from './followup-add.dialog';
+import { DateInputComponent } from '../../shared/date-input.component';
 
 @Component({
   selector: 'app-order-detail',
   standalone: true,
   imports: [
     CurrencyPipe, DatePipe, FormsModule, RouterLink, MatCardModule, MatTableModule,
-    MatButtonModule, MatIconModule, MatProgressBarModule, MatDividerModule
+    MatButtonModule, MatIconModule, MatProgressBarModule, MatDividerModule, DateInputComponent
   ],
   template: `
     <div class="page">
@@ -56,7 +57,22 @@ import { FollowUpAddDialog } from './followup-add.dialog';
 
         <div class="meta card">
           <div><span class="muted">Customer</span><div>{{ o.customerName }}</div></div>
-          <div><span class="muted">Order date</span><div>{{ o.orderDate | date:'medium' }}</div></div>
+          <div>
+            <span class="muted">Order date</span>
+            @if (editingDate()) {
+              <div class="date-edit">
+                <app-date-input label="Order date" [max]="today" [(ngModel)]="dateDraft" />
+                <button mat-icon-button color="primary" title="Save date" (click)="saveDate(o)"><mat-icon>check</mat-icon></button>
+                <button mat-icon-button title="Cancel" (click)="editingDate.set(false)"><mat-icon>close</mat-icon></button>
+              </div>
+            } @else {
+              <div>{{ o.orderDate | date:'medium' }}
+                @if (auth.canManageSales()) {
+                  <button mat-icon-button class="edit-date" title="Edit order date" (click)="startEditDate(o)"><mat-icon>edit_calendar</mat-icon></button>
+                }
+              </div>
+            }
+          </div>
           <div><span class="muted">Created by</span><div>{{ o.createdBy || '—' }}</div></div>
           <div><span class="muted">Grand total</span><div class="mono strong">{{ o.grandTotal | currency }}</div></div>
         </div>
@@ -186,6 +202,10 @@ import { FollowUpAddDialog } from './followup-add.dialog';
   styles: [`
     .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 16px; }
     .meta .muted { font-size: 12px; }
+    .edit-date { --mdc-icon-button-state-layer-size: 28px; width: 28px; height: 28px; padding: 2px; vertical-align: middle; }
+    .edit-date mat-icon { font-size: 17px; height: 17px; width: 17px; color: var(--lv-wine); }
+    .date-edit { display: flex; align-items: center; gap: 2px; }
+    .date-edit app-date-input { width: 150px; }
     .strong { font-weight: 600; }
     .notes { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; background: #fffde7; }
     .card { margin-bottom: 16px; }
@@ -219,6 +239,9 @@ export class OrderDetailComponent {
   loading = signal(false);
   edit: Record<number, { quantity: number; finalPrice: number }> = {};
   newCharge: { label: string; amount: number | null } = { label: '', amount: null };
+  editingDate = signal(false);
+  today = new Date().toISOString().slice(0, 10);
+  dateDraft = '';
 
   itemCols = ['product', 'quantity', 'salePriceAtSale', 'finalPriceAtSale', 'discountAmount', 'lineTotal', 'actions'];
 
@@ -274,6 +297,16 @@ export class OrderDetailComponent {
     this.api.removeItem(o.id, itemId).subscribe({
       next: (u) => { this.order.set(u); this.syncEdit(u); this.notify.success('Line removed'); },
       error: (err) => this.notify.error(err)
+    });
+  }
+
+  startEditDate(o: Order) { this.dateDraft = o.orderDate.slice(0, 10); this.editingDate.set(true); }
+  saveDate(o: Order) {
+    if (!this.dateDraft) { this.editingDate.set(false); return; }
+    const iso = new Date(this.dateDraft + 'T00:00:00Z').toISOString();
+    this.api.setDate(o.id, iso).subscribe({
+      next: (u) => { this.order.set(u); this.editingDate.set(false); this.notify.success('Order date updated'); },
+      error: (e) => this.notify.error(e)
     });
   }
 

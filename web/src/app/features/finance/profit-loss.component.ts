@@ -11,23 +11,20 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FinanceApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { ProfitLossReport, VendorSpend } from '../../core/models';
+import { DateRangeComponent, DateRange } from '../../shared/date-range.component';
 
 @Component({
   selector: 'app-profit-loss',
   standalone: true,
   imports: [
     CurrencyPipe, DecimalPipe, RouterLink, FormsModule, MatFormFieldModule, MatInputModule,
-    MatButtonModule, MatIconModule, MatTableModule, MatProgressBarModule
+    MatButtonModule, MatIconModule, MatTableModule, MatProgressBarModule, DateRangeComponent
   ],
   template: `
     <div class="page">
       <div class="page-header">
         <h1>Profit &amp; Loss</h1>
-        <div class="toolbar-row">
-          <mat-form-field><mat-label>From</mat-label><input matInput type="date" [(ngModel)]="fromDate" (change)="load()" /></mat-form-field>
-          <mat-form-field><mat-label>To</mat-label><input matInput type="date" [(ngModel)]="toDate" (change)="load()" /></mat-form-field>
-          <button mat-stroked-button (click)="clearRange()"><mat-icon>all_inclusive</mat-icon> All time</button>
-        </div>
+        <app-date-range (rangeChange)="onRange($event)" />
       </div>
 
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
@@ -349,13 +346,13 @@ export class ProfitLossComponent {
     return `${this.fromDate || '…'} → ${this.toDate || 'now'}`;
   }
 
-  clearRange() { this.fromDate = ''; this.toDate = ''; this.load(); }
+  onRange(r: DateRange) { this.fromDate = r.from ?? ''; this.toDate = r.to ?? ''; this.load(); }
 
   load() {
     this.loading.set(true);
     this.api.profitLoss(
-      this.fromDate ? new Date(this.fromDate).toISOString() : null,
-      this.toDate ? new Date(this.toDate).toISOString() : null
+      this.fromDate ? new Date(this.fromDate + 'T00:00:00').toISOString() : null,
+      this.toDate ? new Date(this.toDate + 'T23:59:59').toISOString() : null
     ).subscribe({
       next: (r) => { this.report.set(r); this.loading.set(false); },
       error: (e) => { this.loading.set(false); this.notify.error(e); }

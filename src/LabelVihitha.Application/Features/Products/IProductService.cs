@@ -9,6 +9,7 @@ public interface IProductService
     Task<ProductFilterOptionsDto> GetFilterOptionsAsync(ProductQuery query, CancellationToken ct = default);
     Task<InventorySummary> GetInventorySummaryAsync(ProductQuery? query = null, CancellationToken ct = default);
     Task<ProductDto> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<string> NextSkuAsync(int? categoryId, int? subCategoryId, int? vendorId, CancellationToken ct = default);
     Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken ct = default);
     Task<ProductDto> UpdateAsync(int id, UpdateProductRequest request, CancellationToken ct = default);
     Task<BulkSetPaidByResult> BulkSetPaidByOwnerAsync(BulkSetPaidByRequest request, CancellationToken ct = default);

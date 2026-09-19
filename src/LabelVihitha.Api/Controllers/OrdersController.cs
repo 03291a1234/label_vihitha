@@ -37,6 +37,11 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<OrderDto>> UpdateStatus(int id, UpdateOrderStatusRequest request, CancellationToken ct)
         => Ok(await _service.UpdateStatusAsync(id, request, ct));
 
+    [HttpPut("{id:int}/date")]
+    [Authorize(Roles = ManageRoles)]
+    public async Task<ActionResult<OrderDto>> UpdateDate(int id, UpdateOrderDateRequest request, CancellationToken ct)
+        => Ok(await _service.UpdateOrderDateAsync(id, request, ct));
+
     // ---- line items (only while Pending) ----
 
     [HttpPost("{id:int}/items")]

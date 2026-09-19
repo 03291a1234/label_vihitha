@@ -14,6 +14,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ExpenseApi, ExpenseCategoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Expense, ExpenseCategory } from '../../core/models';
+import { DateInputComponent } from '../../shared/date-input.component';
 import { ExpenseEditDialog } from './expense-edit.dialog';
 import { ExpenseCategoryManageDialog } from './expense-category-manage.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
@@ -22,7 +23,7 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
 @Component({
   selector: 'app-expense-list',
   standalone: true,
-  imports: [
+  imports: [DateInputComponent, 
     CurrencyPipe, DatePipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatProgressBarModule, MatPaginatorModule, MatSortModule,
     SearchSelectComponent
@@ -42,14 +43,8 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
           <app-search-select label="Category" [items]="categories()" [(ngModel)]="categoryId"
             nullOption nullLabel="All" (selectionChange)="reload()" />
         </div>
-        <mat-form-field>
-          <mat-label>From</mat-label>
-          <input matInput type="date" [(ngModel)]="fromDate" (change)="reload()" autocomplete="off" />
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>To</mat-label>
-          <input matInput type="date" [(ngModel)]="toDate" (change)="reload()" autocomplete="off" />
-        </mat-form-field>
+        <div style="width:170px;"><app-date-input label="From" [(ngModel)]="fromDate" (ngModelChange)="reload()" /></div>
+        <div style="width:170px;"><app-date-input label="To" [(ngModel)]="toDate" (ngModelChange)="reload()" /></div>
         <button mat-stroked-button (click)="clearDates()" [disabled]="!fromDate && !toDate">
           <mat-icon>all_inclusive</mat-icon> All dates
         </button>

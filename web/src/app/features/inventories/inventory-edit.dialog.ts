@@ -14,13 +14,14 @@ import { switchMap } from 'rxjs/operators';
 import { InventoryApi, OwnerApi, apiOrigin } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Inventory, InventoryBill, Owner } from '../../core/models';
+import { DateInputComponent } from '../../shared/date-input.component';
 
 interface StagedBill { fileUrl: string; fileName: string; amount: number | null; billDate: string; note: string; }
 
 @Component({
   selector: 'app-inventory-edit',
   standalone: true,
-  imports: [
+  imports: [DateInputComponent, 
     CurrencyPipe, FormsModule, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatSlideToggleModule, MatProgressBarModule
   ],
@@ -78,10 +79,7 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
               <mat-label>Amount (USD)</mat-label>
               <input matInput type="number" min="0" step="0.01" [(ngModel)]="billAmount" [ngModelOptions]="{standalone:true}" />
             </mat-form-field>
-            <mat-form-field appearance="outline" class="fdate">
-              <mat-label>Bill date</mat-label>
-              <input matInput type="date" [(ngModel)]="billDate" [ngModelOptions]="{standalone:true}" />
-            </mat-form-field>
+            <app-date-input class="fdate" label="Bill date" [(ngModel)]="billDate" [ngModelOptions]="{standalone:true}" />
           </div>
           <mat-form-field appearance="outline" class="fnote">
             <mat-label>Note (vendor, what it covers…)</mat-label>

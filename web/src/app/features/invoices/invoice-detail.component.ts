@@ -39,7 +39,7 @@ import { RecordPaymentDialog } from './record-payment.dialog';
         </div>
 
         <div class="meta card">
-          <div><span class="muted">Order</span><div><a [routerLink]="['/orders', inv.orderId]">{{ inv.orderNumber }}</a></div></div>
+          <div><span class="muted">Order</span><div><a class="order-link" [routerLink]="['/orders', inv.orderId]"><mat-icon>receipt_long</mat-icon>{{ inv.orderNumber }}</a></div></div>
           <div><span class="muted">Customer</span><div>{{ inv.customerName }}</div></div>
           <div><span class="muted">Invoice date</span><div>{{ inv.invoiceDate | date:'medium' }}</div></div>
           <div><span class="muted">Method</span><div>{{ inv.paymentMethod }}@if (inv.paymentReference) { · {{ inv.paymentReference }} }</div></div>
@@ -86,6 +86,10 @@ import { RecordPaymentDialog } from './record-payment.dialog';
     .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 16px; }
     .meta .muted { font-size: 12px; }
     .strong { font-weight: 600; }
+    .order-link { display: inline-flex; align-items: center; gap: 4px; color: var(--lv-wine); font-weight: 600;
+      text-decoration: none; padding: 2px 8px; border-radius: 999px; background: var(--lv-rose-soft); transition: background .12s; }
+    .order-link:hover { background: #ecd4de; }
+    .order-link mat-icon { font-size: 16px; height: 16px; width: 16px; }
     .notes { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; background: #fffde7; }
     .card { margin-bottom: 16px; }
     h3 { margin: 4px 0 12px; }

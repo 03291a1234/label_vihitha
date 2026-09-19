@@ -131,6 +131,9 @@ export class ProductApi {
   filterOptions(filters: ProductFilters = {}): Observable<ProductFilterOptions> {
     return this.http.get<ProductFilterOptions>(`${base}/products/filter-options`, { params: toParams(filters as Record<string, unknown>) });
   }
+  nextSku(categoryId: number | null, subCategoryId: number | null, vendorId: number | null) {
+    return this.http.get<{ sku: string }>(`${base}/products/next-sku`, { params: toParams({ categoryId, subCategoryId, vendorId }) });
+  }
   create(body: unknown) { return this.http.post<Product>(`${base}/products`, body); }
   update(id: number, body: unknown) { return this.http.put<Product>(`${base}/products/${id}`, body); }
   remove(id: number) { return this.http.delete<void>(`${base}/products/${id}`); }
@@ -202,6 +205,7 @@ export class OrderApi {
   get(id: number) { return this.http.get<Order>(`${base}/orders/${id}`); }
   create(body: CreateOrder) { return this.http.post<Order>(`${base}/orders`, body); }
   setStatus(id: number, status: OrderStatus) { return this.http.put<Order>(`${base}/orders/${id}/status`, { status }); }
+  setDate(id: number, orderDate: string) { return this.http.put<Order>(`${base}/orders/${id}/date`, { orderDate }); }
   addItem(id: number, item: CreateOrderItem) { return this.http.post<Order>(`${base}/orders/${id}/items`, item); }
   updateItem(id: number, itemId: number, body: { quantity: number; finalPrice?: number | null }) {
     return this.http.put<Order>(`${base}/orders/${id}/items/${itemId}`, body);

@@ -10,12 +10,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { InventoryApi, apiOrigin } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Inventory, InventoryBill } from '../../core/models';
+import { DateInputComponent } from '../../shared/date-input.component';
 import { BillProductsDialog } from './bill-products.dialog';
 
 @Component({
   selector: 'app-inventory-bills',
   standalone: true,
-  imports: [
+  imports: [DateInputComponent, 
     CurrencyPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule,
     MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule
   ],
@@ -64,10 +65,7 @@ import { BillProductsDialog } from './bill-products.dialog';
             <mat-label>Amount (USD)</mat-label>
             <input matInput type="number" min="0" step="0.01" [(ngModel)]="amount" />
           </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Bill date</mat-label>
-            <input matInput type="date" [(ngModel)]="billDate" />
-          </mat-form-field>
+          <app-date-input class="fdate" label="Bill date" [(ngModel)]="billDate" [ngModelOptions]="{standalone:true}" />
         </div>
         <mat-form-field appearance="outline" class="full">
           <mat-label>Note (vendor, what it covers…)</mat-label>
@@ -101,7 +99,7 @@ import { BillProductsDialog } from './bill-products.dialog';
     .add h3 { margin: 0 0 10px; color: var(--lv-wine); font-size: 15px; }
     .add-row { margin-bottom: 10px; }
     .fields { display: flex; gap: 12px; }
-    .fields mat-form-field { flex: 1; }
+    .fields mat-form-field, .fields app-date-input { flex: 1; }
     .full { width: 100%; }
     .muted { color: rgba(58,37,48,.6); }
   `]

@@ -10,12 +10,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { OwnerApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Owner, OwnerTransaction, OwnerTransactionType } from '../../core/models';
+import { DateInputComponent } from '../../shared/date-input.component';
 import { MoneyInputComponent } from '../../shared/money-input.component';
 
 @Component({
   selector: 'app-owner-transactions',
   standalone: true,
-  imports: [
+  imports: [DateInputComponent, 
     CurrencyPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule,
     MatInputModule, MatSelectModule, MatButtonModule, MatIconModule, MoneyInputComponent
   ],
@@ -31,10 +32,7 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
               <mat-option value="Withdrawal">Withdrawal</mat-option>
             </mat-select>
           </mat-form-field>
-          <mat-form-field class="grow">
-            <mat-label>Date</mat-label>
-            <input matInput type="date" [(ngModel)]="date" />
-          </mat-form-field>
+          <app-date-input class="grow" label="Date" [(ngModel)]="date" [ngModelOptions]="{standalone:true}" />
         </div>
         <app-money-input [(ngModel)]="amount" label="Amount" />
         <button mat-raised-button color="primary" class="add-btn" (click)="add()" [disabled]="!amount || busy()">

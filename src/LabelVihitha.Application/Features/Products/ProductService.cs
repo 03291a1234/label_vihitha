@@ -169,6 +169,52 @@ public class ProductService : IProductService
         return MapToDto(entity, sold.GetValueOrDefault(id));
     }
 
+    /// <summary>Suggest the next SKU: continue the dominant "PREFIX-####" series already used for the
+    /// chosen vendor (or category), else start one from a 3-letter code of its name. Includes
+    /// soft-deleted rows so numbers are never reused.</summary>
+    public async Task<string> NextSkuAsync(int? categoryId, int? subCategoryId, int? vendorId, CancellationToken ct = default)
+    {
+        // Non-deleted only: the SKU unique index is filtered to live rows, so continuing the live
+        // series (not counting deleted numbers) is safe and gives a clean sequential suggestion.
+        var q = _db.Products.AsNoTracking();
+        List<string> matches;
+        string name;
+        if (vendorId is int vid)
+        {
+            matches = await q.Where(p => p.VendorId == vid).Select(p => p.SKU).ToListAsync(ct);
+            name = await _db.Vendors.IgnoreQueryFilters().Where(v => v.Id == vid).Select(v => v.Name).FirstOrDefaultAsync(ct) ?? "PRD";
+        }
+        else if (categoryId is int cid)
+        {
+            matches = await q.Where(p => p.CategoryId == cid).Select(p => p.SKU).ToListAsync(ct);
+            name = await _db.Categories.IgnoreQueryFilters().Where(c => c.Id == cid).Select(c => c.Name).FirstOrDefaultAsync(ct) ?? "PRD";
+        }
+        else { matches = new(); name = "PRD"; }
+
+        var rx = new System.Text.RegularExpressions.Regex(@"^(.*?)-(\d+)$");
+        var prefix = matches
+            .Select(s => rx.Match(s ?? string.Empty))
+            .Where(m => m.Success)
+            .GroupBy(m => m.Groups[1].Value.ToUpperInvariant())
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key)
+            .Select(g => g.Key)
+            .FirstOrDefault() ?? CodeFrom(name);
+
+        var withPrefix = await q.Where(p => p.SKU.StartsWith(prefix + "-")).Select(p => p.SKU).ToListAsync(ct);
+        var max = withPrefix
+            .Select(s => System.Text.RegularExpressions.Regex.Match(s, @"-(\d+)$"))
+            .Where(m => m.Success)
+            .Select(m => int.TryParse(m.Groups[1].Value, out var n) ? n : 0)
+            .DefaultIfEmpty(0).Max();
+        return $"{prefix}-{max + 1:D4}";
+    }
+
+    private static string CodeFrom(string name)
+    {
+        var letters = new string((name ?? string.Empty).Where(char.IsLetter).ToArray()).ToUpperInvariant();
+        return letters.Length >= 3 ? letters[..3] : letters.PadRight(3, 'X');
+    }
+
     public async Task<ProductDto> CreateAsync(CreateProductRequest request, CancellationToken ct = default)
     {
         var category = await _db.Categories.FirstOrDefaultAsync(c => c.Id == request.CategoryId && !c.IsDeleted, ct)

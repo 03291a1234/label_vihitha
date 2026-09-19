@@ -69,6 +69,8 @@ public record UpdateOrderItemRequest(
 
 public record UpdateOrderStatusRequest(OrderStatus Status);
 
+public record UpdateOrderDateRequest(DateTime OrderDate);
+
 public record OrderQuery(
     int? CustomerId = null,
     OrderStatus? Status = null,

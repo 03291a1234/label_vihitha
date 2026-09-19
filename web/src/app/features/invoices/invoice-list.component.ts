@@ -53,7 +53,11 @@ import { InvoiceListItem, PaymentMethod, PaymentStatus } from '../../core/models
           </ng-container>
           <ng-container matColumnDef="orderNumber">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Order</th>
-            <td mat-cell *matCellDef="let i" class="mono">{{ i.orderNumber }}</td>
+            <td mat-cell *matCellDef="let i" class="mono">
+              <a class="order-link" [routerLink]="['/orders', i.orderId]" (click)="$event.stopPropagation()">
+                <mat-icon>receipt_long</mat-icon>{{ i.orderNumber }}
+              </a>
+            </td>
           </ng-container>
           <ng-container matColumnDef="customerName">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Customer</th>
@@ -88,7 +92,13 @@ import { InvoiceListItem, PaymentMethod, PaymentStatus } from '../../core/models
       </div>
     </div>
   `,
-  styles: [`.clickable { cursor: pointer; } .clickable:hover { background: #fafafa; }`]
+  styles: [`
+    .clickable { cursor: pointer; } .clickable:hover { background: #fafafa; }
+    .order-link { display: inline-flex; align-items: center; gap: 4px; color: var(--lv-wine); font-weight: 600;
+      text-decoration: none; padding: 2px 8px; border-radius: 999px; background: var(--lv-rose-soft); transition: background .12s; }
+    .order-link:hover { background: #ecd4de; }
+    .order-link mat-icon { font-size: 16px; height: 16px; width: 16px; }
+  `]
 })
 export class InvoiceListComponent {
   private api = inject(InvoiceApi);

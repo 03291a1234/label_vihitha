@@ -123,6 +123,17 @@ public class OrderService : IOrderService
         return await GetByIdAsync(id, ct);
     }
 
+    public async Task<OrderDto> UpdateOrderDateAsync(int id, UpdateOrderDateRequest request, CancellationToken ct = default)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Order), id);
+        // Date is informational (for reporting/back-dating); it doesn't touch stock, so any status is fine.
+        order.OrderDate = DateTime.SpecifyKind(request.OrderDate, DateTimeKind.Utc);
+        order.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return await GetByIdAsync(id, ct);
+    }
+
     public async Task<OrderDto> AddItemAsync(int orderId, CreateOrderItemRequest request, CancellationToken ct = default)
     {
         var order = await LoadEditableOrderAsync(orderId, ct);

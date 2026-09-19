@@ -39,6 +39,12 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<ProductDto>> GetById(int id, CancellationToken ct)
         => Ok(await _service.GetByIdAsync(id, ct));
 
+    [HttpGet("next-sku")]
+    [Authorize(Roles = ManageRoles)]
+    public async Task<ActionResult<object>> NextSku(
+        [FromQuery] int? categoryId, [FromQuery] int? subCategoryId, [FromQuery] int? vendorId, CancellationToken ct)
+        => Ok(new { sku = await _service.NextSkuAsync(categoryId, subCategoryId, vendorId, ct) });
+
     [HttpPost]
     [Authorize(Roles = ManageRoles)]
     public async Task<ActionResult<ProductDto>> Create(CreateProductRequest request, CancellationToken ct)
