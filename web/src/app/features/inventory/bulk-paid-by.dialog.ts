@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { OwnerApi } from '../../core/services/api.services';
 import { Owner, BulkSetPaidByRequest } from '../../core/models';
+import { SearchSelectComponent } from '../../shared/search-select.component';
 
 export interface BulkPaidByData {
   filter: Omit<BulkSetPaidByRequest, 'paidByOwnerId' | 'recordOwnerContribution'>;
@@ -22,7 +23,7 @@ export interface BulkPaidByData {
   standalone: true,
   imports: [
     FormsModule, MatDialogModule, MatFormFieldModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatSlideToggleModule
+    MatButtonModule, MatIconModule, MatSlideToggleModule, SearchSelectComponent
   ],
   template: `
     <h2 mat-dialog-title>Set “Paid by” in bulk</h2>
@@ -33,14 +34,9 @@ export interface BulkPaidByData {
         @else { <span class="warn">— the whole catalog (no filters applied)</span> }
       </p>
 
-      <mat-form-field class="full">
-        <mat-label>Paid by</mat-label>
-        <mat-select [(ngModel)]="ownerId">
-          <mat-option [value]="null">— None (clear / jointly funded) —</mat-option>
-          @for (o of owners(); track o.id) { <mat-option [value]="o.id">{{ o.name }}</mat-option> }
-        </mat-select>
-        <mat-hint>Funder recorded on each of these products (overrides the inventory’s owner)</mat-hint>
-      </mat-form-field>
+      <app-search-select class="full" label="Paid by" [items]="owners()" [(ngModel)]="ownerId"
+        nullOption nullLabel="— None (clear / jointly funded) —"
+        hint="Funder recorded on each of these products (overrides the inventory’s owner)" />
 
       @if (ownerId) {
         <div class="contrib">

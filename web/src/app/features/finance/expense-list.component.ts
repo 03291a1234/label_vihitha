@@ -17,13 +17,15 @@ import { Expense, ExpenseCategory } from '../../core/models';
 import { ExpenseEditDialog } from './expense-edit.dialog';
 import { ExpenseCategoryManageDialog } from './expense-category-manage.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
+import { SearchSelectComponent } from '../../shared/search-select.component';
 
 @Component({
   selector: 'app-expense-list',
   standalone: true,
   imports: [
     CurrencyPipe, DatePipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatSelectModule, MatProgressBarModule, MatPaginatorModule, MatSortModule
+    MatFormFieldModule, MatInputModule, MatSelectModule, MatProgressBarModule, MatPaginatorModule, MatSortModule,
+    SearchSelectComponent
   ],
   template: `
     <div class="page">
@@ -36,13 +38,10 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
       </div>
 
       <div class="toolbar-row">
-        <mat-form-field>
-          <mat-label>Category</mat-label>
-          <mat-select [(ngModel)]="categoryId" (selectionChange)="reload()">
-            <mat-option [value]="null">All</mat-option>
-            @for (c of categories(); track c.id) { <mat-option [value]="c.id">{{ c.name }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
+        <div style="width:200px;">
+          <app-search-select label="Category" [items]="categories()" [(ngModel)]="categoryId"
+            nullOption nullLabel="All" (selectionChange)="reload()" />
+        </div>
         <mat-form-field>
           <mat-label>From</mat-label>
           <input matInput type="date" [(ngModel)]="fromDate" (change)="reload()" autocomplete="off" />

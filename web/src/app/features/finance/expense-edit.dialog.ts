@@ -12,6 +12,7 @@ import { CurrencyPipe } from '@angular/common';
 import { ExpenseApi, ExpenseCategoryApi, OwnerApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Expense, ExpenseCategory, Owner } from '../../core/models';
+import { SearchSelectComponent } from '../../shared/search-select.component';
 
 const INR_RATE = 95;
 
@@ -20,19 +21,15 @@ const INR_RATE = 95;
   standalone: true,
   imports: [
     ReactiveFormsModule, CurrencyPipe, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule
+    MatSelectModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule,
+    SearchSelectComponent
   ],
   template: `
     <h2 mat-dialog-title>{{ data ? 'Edit expense' : 'New expense' }}</h2>
     <mat-dialog-content>
       <form [formGroup]="form" class="dialog-form">
         <div class="form-row">
-          <mat-form-field>
-            <mat-label>Category</mat-label>
-            <mat-select formControlName="expenseCategoryId">
-              @for (c of categories(); track c.id) { <mat-option [value]="c.id">{{ c.name }}</mat-option> }
-            </mat-select>
-          </mat-form-field>
+          <app-search-select label="Category" [items]="categories()" formControlName="expenseCategoryId" />
           <mat-form-field>
             <mat-label>Date</mat-label>
             <input matInput type="date" formControlName="date" />
@@ -57,14 +54,9 @@ const INR_RATE = 95;
           <mat-label>Description</mat-label>
           <input matInput formControlName="description" placeholder="e.g. Courier to US - Aug batch" />
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Paid by</mat-label>
-          <mat-select formControlName="paidByOwnerId">
-            <mat-option [value]="null">— Company / unspecified —</mat-option>
-            @for (o of owners(); track o.id) { <mat-option [value]="o.id">{{ o.name }}</mat-option> }
-          </mat-select>
-          @if (owners().length === 0) { <mat-hint>Add owners on the Owners page to attribute who paid</mat-hint> }
-        </mat-form-field>
+        <app-search-select label="Paid by" [items]="owners()" formControlName="paidByOwnerId"
+          nullOption nullLabel="— Company / unspecified —"
+          [hint]="owners().length === 0 ? 'Add owners on the Owners page to attribute who paid' : ''" />
         <mat-form-field>
           <mat-label>Notes</mat-label>
           <textarea matInput rows="2" formControlName="notes"></textarea>

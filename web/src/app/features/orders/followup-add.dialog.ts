@@ -8,13 +8,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { FollowUpApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { OrderItem } from '../../core/models';
+import { SearchSelectComponent } from '../../shared/search-select.component';
 
 export interface FollowUpAddData { orderId: number; items: OrderItem[]; }
 
 @Component({
   selector: 'app-followup-add',
   standalone: true,
-  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule],
+  imports: [ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule, SearchSelectComponent],
   template: `
     <h2 mat-dialog-title>Add follow-up</h2>
     <mat-dialog-content>
@@ -23,15 +24,8 @@ export interface FollowUpAddData { orderId: number; items: OrderItem[]; }
           <mat-label>What needs to happen?</mat-label>
           <textarea matInput rows="3" formControlName="note" placeholder="e.g. Alter blouse hem"></textarea>
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Related item (optional)</mat-label>
-          <mat-select formControlName="orderItemId">
-            <mat-option [value]="null">— Whole order —</mat-option>
-            @for (i of data.items; track i.id) {
-              <mat-option [value]="i.id">{{ i.sku }} — {{ i.productName }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+        <app-search-select label="Related item (optional)" [items]="itemOptions" labelField="label"
+          formControlName="orderItemId" nullOption nullLabel="— Whole order —" searchPlaceholder="Search items…" />
         <mat-form-field>
           <mat-label>Follow-up / due date (optional)</mat-label>
           <input matInput type="date" formControlName="followUpDate" />
@@ -57,7 +51,10 @@ export class FollowUpAddDialog {
     followUpDate: ['']
   });
 
-  constructor(@Inject(MAT_DIALOG_DATA) public data: FollowUpAddData) {}
+  itemOptions: { id: number; label: string }[] = [];
+  constructor(@Inject(MAT_DIALOG_DATA) public data: FollowUpAddData) {
+    this.itemOptions = (data.items ?? []).map(i => ({ id: i.id, label: `${i.sku} — ${i.productName}` }));
+  }
 
   save() {
     if (this.form.invalid) return;
