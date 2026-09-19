@@ -30,6 +30,7 @@ public class InventoryGroupService : IInventoryGroupService
         var breakdown = await BuildBreakdownAsync(ids, ct);
         var bills = await BuildBillsAsync(ids, ct);
         var sold = await BuildSoldAsync(ids, ct);
+        var (expenses, totalInvRev) = await AllocationBasisAsync(ct);
 
         return inventories.Select(i =>
         {
@@ -37,9 +38,10 @@ public class InventoryGroupService : IInventoryGroupService
             var count = cats.Sum(c => c.ProductCount);
             var bl = bills.TryGetValue(i.Id, out var lst) ? lst : new List<InventoryBillDto>();
             var (rev, cogs) = sold.TryGetValue(i.Id, out var s) ? s : (0m, 0m);
+            var alloc = totalInvRev > 0 ? Math.Round(expenses * (rev / totalInvRev), 2) : 0m;
             return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
                 count, units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m),
-                rev, cogs, cost + cogs, rev - cogs);
+                rev, cogs, cost + cogs, rev - cogs, alloc, rev - cogs - alloc);
         }).ToList();
     }
 
@@ -58,9 +60,24 @@ public class InventoryGroupService : IInventoryGroupService
         var bl = bills.TryGetValue(id, out var lst) ? lst : new List<InventoryBillDto>();
         var sold = await BuildSoldAsync(new List<int> { id }, ct);
         var (rev, cogs) = sold.TryGetValue(id, out var s) ? s : (0m, 0m);
+        var (expenses, totalInvRev) = await AllocationBasisAsync(ct);
+        var alloc = totalInvRev > 0 ? Math.Round(expenses * (rev / totalInvRev), 2) : 0m;
         return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
             cats.Sum(c => c.ProductCount), units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m),
-            rev, cogs, cost + cogs, rev - cogs);
+            rev, cogs, cost + cogs, rev - cogs, alloc, rev - cogs - alloc);
+    }
+
+    /// <summary>Basis for spreading operating expenses across inventories: total all-time expenses,
+    /// and the total committed sales revenue attributable to inventoried products (the denominator
+    /// for each inventory's revenue share).</summary>
+    private async Task<(decimal Expenses, decimal InvRevenue)> AllocationBasisAsync(CancellationToken ct)
+    {
+        var expenses = await _db.Expenses.AsNoTracking().SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
+        var invRev = await _db.OrderItems.AsNoTracking().IgnoreQueryFilters()
+            .Where(oi => !oi.IsDeleted && !oi.Order.IsDeleted && SoldStatuses.Contains(oi.Order.Status)
+                         && oi.Product.InventoryId != null)
+            .SumAsync(oi => (decimal?)(oi.FinalPriceAtSale * oi.Quantity), ct) ?? 0m;
+        return (expenses, invRev);
     }
 
     /// <summary>Revenue and cost of goods sold to date, per inventory, from committed sales.

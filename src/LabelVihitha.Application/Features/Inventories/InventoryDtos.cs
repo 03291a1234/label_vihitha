@@ -19,7 +19,9 @@ public record InventoryDto(
     decimal SoldRevenueUsd,               // revenue from this inventory's items already sold
     decimal SoldCostUsd,                  // cost of goods sold from this inventory
     decimal InitialCostUsd,               // TotalCostUsd + SoldCostUsd (everything ever stocked here, at cost)
-    decimal ProfitUsd);                   // SoldRevenueUsd − SoldCostUsd (gross P&L to date)
+    decimal ProfitUsd,                    // SoldRevenueUsd − SoldCostUsd (gross P&L to date)
+    decimal AllocatedExpenseUsd,          // share of operating expenses, by this inventory's sales share
+    decimal NetProfitUsd);                // ProfitUsd − AllocatedExpenseUsd (net P&L to date)
 
 public record CreateInventoryRequest(string Name, string? Description, int? PaidByOwnerId);
 

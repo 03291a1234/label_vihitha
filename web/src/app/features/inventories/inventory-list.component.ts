@@ -97,11 +97,19 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
               <span class="pinr">≈ {{ i.soldRevenueUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
             <div class="pcell">
-              <span class="pl">Current P&amp;L</span>
-              <span class="pv" [class.pos]="i.profitUsd >= 0" [class.neg]="i.profitUsd < 0">
-                {{ i.profitUsd >= 0 ? '' : '−' }}{{ (i.profitUsd < 0 ? -i.profitUsd : i.profitUsd) | currency:'USD':'symbol':'1.0-0' }}
-              </span>
-              <span class="pinr">{{ i.profitUsd >= 0 ? '≈ ' : '≈ −' }}{{ (i.profitUsd < 0 ? -i.profitUsd : i.profitUsd) * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+              <span class="pl">Gross P&amp;L</span>
+              <span class="pv" [class.pos]="i.profitUsd >= 0" [class.neg]="i.profitUsd < 0">{{ signed(i.profitUsd) }}</span>
+              <span class="pinr">sale − cost of goods</span>
+            </div>
+            <div class="pcell">
+              <span class="pl">Expenses (allocated)</span>
+              <span class="pv neg">−{{ i.allocatedExpenseUsd | currency:'USD':'symbol':'1.0-0' }}</span>
+              <span class="pinr">by share of sales</span>
+            </div>
+            <div class="pcell">
+              <span class="pl">Net P&amp;L</span>
+              <span class="pv" [class.pos]="i.netProfitUsd >= 0" [class.neg]="i.netProfitUsd < 0">{{ signed(i.netProfitUsd) }}</span>
+              <span class="pinr">{{ i.netProfitUsd >= 0 ? '≈ ' : '≈ −' }}{{ (i.netProfitUsd < 0 ? -i.netProfitUsd : i.netProfitUsd) * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
           </div>
 
@@ -186,6 +194,12 @@ export class InventoryListComponent {
   includeInactive = false;
 
   constructor() { this.load(); }
+
+  /** Format a signed USD amount (e.g. "$459" or "−$120"). */
+  signed(v: number): string {
+    const s = Math.abs(v).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    return v < 0 ? '−' + s : s;
+  }
 
   /** Only real subcategories — the "Unassigned" (null) bucket is not shown as a chip. */
   namedSubs(subs: SubCategoryCount[]): SubCategoryCount[] {

@@ -56,6 +56,8 @@ export interface Inventory {
   soldCostUsd: number;
   initialCostUsd: number;
   profitUsd: number;
+  allocatedExpenseUsd: number;
+  netProfitUsd: number;
 }
 
 export interface InventoryBill {
