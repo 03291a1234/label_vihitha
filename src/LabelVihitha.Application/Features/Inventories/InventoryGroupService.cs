@@ -10,6 +10,10 @@ public class InventoryGroupService : IInventoryGroupService
 {
     private readonly IApplicationDbContext _db;
 
+    // A committed sale = order Confirmed or Fulfilled.
+    private static readonly Domain.Enums.OrderStatus[] SoldStatuses =
+        { Domain.Enums.OrderStatus.Confirmed, Domain.Enums.OrderStatus.Fulfilled };
+
     public InventoryGroupService(IApplicationDbContext db) => _db = db;
 
     public async Task<IReadOnlyList<InventoryDto>> GetAllAsync(bool includeInactive, CancellationToken ct = default)
@@ -25,14 +29,17 @@ public class InventoryGroupService : IInventoryGroupService
 
         var breakdown = await BuildBreakdownAsync(ids, ct);
         var bills = await BuildBillsAsync(ids, ct);
+        var sold = await BuildSoldAsync(ids, ct);
 
         return inventories.Select(i =>
         {
             var (units, cost, cats) = breakdown.TryGetValue(i.Id, out var b) ? b : (0, 0m, new List<CategoryCount>());
             var count = cats.Sum(c => c.ProductCount);
             var bl = bills.TryGetValue(i.Id, out var lst) ? lst : new List<InventoryBillDto>();
+            var (rev, cogs) = sold.TryGetValue(i.Id, out var s) ? s : (0m, 0m);
             return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
-                count, units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m));
+                count, units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m),
+                rev, cogs, cost + cogs, rev - cogs);
         }).ToList();
     }
 
@@ -49,8 +56,31 @@ public class InventoryGroupService : IInventoryGroupService
         var (units, cost, cats) = breakdown.TryGetValue(id, out var b) ? b : (0, 0m, new List<CategoryCount>());
         var bills = await BuildBillsAsync(new List<int> { id }, ct);
         var bl = bills.TryGetValue(id, out var lst) ? lst : new List<InventoryBillDto>();
+        var sold = await BuildSoldAsync(new List<int> { id }, ct);
+        var (rev, cogs) = sold.TryGetValue(id, out var s) ? s : (0m, 0m);
         return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
-            cats.Sum(c => c.ProductCount), units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m));
+            cats.Sum(c => c.ProductCount), units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m),
+            rev, cogs, cost + cogs, rev - cogs);
+    }
+
+    /// <summary>Revenue and cost of goods sold to date, per inventory, from committed sales.
+    /// Prices are the snapshots taken at sale time; a sold line is attributed to its product's
+    /// current inventory. Ignores query filters so sales of later-deleted products still count.</summary>
+    private async Task<Dictionary<int, (decimal Revenue, decimal Cogs)>> BuildSoldAsync(List<int> inventoryIds, CancellationToken ct)
+    {
+        if (inventoryIds.Count == 0) return new();
+        var rows = await _db.OrderItems.AsNoTracking().IgnoreQueryFilters()
+            .Where(oi => !oi.IsDeleted && !oi.Order.IsDeleted && SoldStatuses.Contains(oi.Order.Status)
+                         && oi.Product.InventoryId != null && inventoryIds.Contains(oi.Product.InventoryId.Value))
+            .GroupBy(oi => oi.Product.InventoryId!.Value)
+            .Select(g => new
+            {
+                InventoryId = g.Key,
+                Revenue = g.Sum(x => x.FinalPriceAtSale * x.Quantity),
+                Cogs = g.Sum(x => x.OriginalPriceAtSale * x.Quantity)
+            })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.InventoryId, r => (r.Revenue, r.Cogs));
     }
 
     /// <summary>Bills attached to each inventory, newest first.</summary>

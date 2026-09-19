@@ -80,6 +80,31 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             </div>
           </div>
 
+          <div class="perf">
+            <div class="pcell">
+              <span class="pl">Initial total cost</span>
+              <span class="pv">{{ i.initialCostUsd | currency:'USD':'symbol':'1.0-0' }}</span>
+              <span class="pinr">≈ {{ i.initialCostUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="pcell">
+              <span class="pl">Current inventory cost</span>
+              <span class="pv">{{ i.totalCostUsd | currency:'USD':'symbol':'1.0-0' }}</span>
+              <span class="pinr">≈ {{ i.totalCostUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="pcell">
+              <span class="pl">Sale amount</span>
+              <span class="pv">{{ i.soldRevenueUsd | currency:'USD':'symbol':'1.0-0' }}</span>
+              <span class="pinr">≈ {{ i.soldRevenueUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="pcell">
+              <span class="pl">Current P&amp;L</span>
+              <span class="pv" [class.pos]="i.profitUsd >= 0" [class.neg]="i.profitUsd < 0">
+                {{ i.profitUsd >= 0 ? '' : '−' }}{{ (i.profitUsd < 0 ? -i.profitUsd : i.profitUsd) | currency:'USD':'symbol':'1.0-0' }}
+              </span>
+              <span class="pinr">{{ i.profitUsd >= 0 ? '≈ ' : '≈ −' }}{{ (i.profitUsd < 0 ? -i.profitUsd : i.profitUsd) * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+            </div>
+          </div>
+
           @if (i.categories.length > 0) {
             <div class="breakdown">
               @for (c of i.categories; track c.categoryId) {
@@ -137,6 +162,14 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
     .sub-chip:hover { background: #ecd4de; box-shadow: 0 1px 4px rgba(110,31,62,.15); }
     .sub-chip .u { font-weight: 400; opacity: .75; }
     .no-stock { margin-top: 12px; }
+    .perf { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;
+      margin-top: 14px; padding: 12px 14px; border: 1px solid var(--lv-line); border-radius: 10px; background: #fffdfb; }
+    .pcell { display: flex; flex-direction: column; gap: 1px; }
+    .pcell .pl { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: rgba(58,37,48,.55); }
+    .pcell .pv { font-size: 19px; font-weight: 700; color: var(--lv-wine); line-height: 1.15; }
+    .pcell .pv.pos { color: #2e7d32; }
+    .pcell .pv.neg { color: #b3261e; }
+    .pcell .pinr { font-size: 11px; color: rgba(58,37,48,.55); }
     .bills-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
       padding: 0 5px; margin-left: 6px; border-radius: 999px; background: var(--lv-wine); color: #fff; font-size: 11px; font-weight: 700; }
     .has-bills { border-color: var(--lv-wine); }

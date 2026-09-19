@@ -52,6 +52,10 @@ export interface Inventory {
   categories: CategoryCount[];
   bills: InventoryBill[];
   totalBillsUsd: number;
+  soldRevenueUsd: number;
+  soldCostUsd: number;
+  initialCostUsd: number;
+  profitUsd: number;
 }
 
 export interface InventoryBill {
