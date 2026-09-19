@@ -179,9 +179,12 @@ public class AnalyticsService : IAnalyticsService
             {
                 p.CategoryId,
                 CategoryName = p.Category.Name,
-                p.OriginalPrice,
-                p.SalePrice,
-                p.QuantityOnHand
+                p.QuantityOnHand,
+                // Variant-aware valuation: sizes with an override at their own price, the rest at the product's.
+                Cost = p.Variants.Where(v => !v.IsDeleted && v.CostPrice != null).Sum(v => (v.CostPrice ?? 0m) * v.QuantityOnHand)
+                     + p.OriginalPrice * p.Variants.Where(v => !v.IsDeleted && v.CostPrice == null).Sum(v => v.QuantityOnHand),
+                Sale = p.Variants.Where(v => !v.IsDeleted && v.SalePrice != null).Sum(v => (v.SalePrice ?? 0m) * v.QuantityOnHand)
+                     + p.SalePrice * p.Variants.Where(v => !v.IsDeleted && v.SalePrice == null).Sum(v => v.QuantityOnHand)
             })
             .ToListAsync(ct);
 
@@ -190,8 +193,8 @@ public class AnalyticsService : IAnalyticsService
             .Select(g => new InventoryValuationRow(
                 g.Key.CategoryId, g.Key.CategoryName,
                 g.Count(), g.Sum(p => p.QuantityOnHand),
-                g.Sum(p => p.OriginalPrice * p.QuantityOnHand),
-                g.Sum(p => p.SalePrice * p.QuantityOnHand)))
+                g.Sum(p => p.Cost),
+                g.Sum(p => p.Sale)))
             .OrderByDescending(r => r.ValueAtSale)
             .ToList();
 

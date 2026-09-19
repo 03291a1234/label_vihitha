@@ -251,17 +251,20 @@ public class OrderService : IOrderService
         variant.QuantityOnHand -= line.Quantity;
         product.QuantityOnHand -= line.Quantity;
 
-        var finalPrice = line.FinalPrice ?? product.SalePrice;
+        // Prices snapshot the size variant's own cost/sale when set, else the product's.
+        var costBasis = variant.CostPrice ?? product.OriginalPrice;
+        var listPrice = variant.SalePrice ?? product.SalePrice;
+        var finalPrice = line.FinalPrice ?? listPrice;
         return new OrderItem
         {
             ProductId = product.Id,
             ProductVariantId = variant.Id,
             Size = variant.Size,
             Quantity = line.Quantity,
-            OriginalPriceAtSale = product.OriginalPrice,
-            SalePriceAtSale = product.SalePrice,
+            OriginalPriceAtSale = costBasis,
+            SalePriceAtSale = listPrice,
             FinalPriceAtSale = finalPrice,
-            DiscountAmount = product.SalePrice - finalPrice,
+            DiscountAmount = listPrice - finalPrice,
             LineTotal = finalPrice * line.Quantity
         };
     }

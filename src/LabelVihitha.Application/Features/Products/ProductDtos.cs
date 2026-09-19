@@ -1,7 +1,7 @@
 namespace LabelVihitha.Application.Features.Products;
 
-public record ProductVariantDto(int Id, string Size, int QuantityOnHand);
-public record ProductVariantInput(string Size, int QuantityOnHand);
+public record ProductVariantDto(int Id, string Size, int QuantityOnHand, decimal? CostPrice, decimal? SalePrice);
+public record ProductVariantInput(string Size, int QuantityOnHand, decimal? CostPrice = null, decimal? SalePrice = null);
 
 public record ProductCostComponentDto(int Id, string Label, int? VendorId, string? VendorName, decimal Amount);
 public record ProductCostComponentInput(string Label, int? VendorId, decimal Amount);

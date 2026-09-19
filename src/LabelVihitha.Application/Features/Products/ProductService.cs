@@ -41,13 +41,23 @@ public class ProductService : IProductService
     public async Task<ProductTotalsDto> GetTotalsAsync(ProductQuery query, CancellationToken ct = default)
     {
         var rows = await FilteredQuery(query)
-            .Select(p => new { p.OriginalPrice, p.SalePrice, p.QuantityOnHand })
+            .Select(p => new
+            {
+                p.QuantityOnHand,
+                // Variant-aware valuation: sizes with an override at their own price, the rest at the
+                // product price. Split this way so each SUM references only inner columns (SQL Server
+                // rejects an aggregate that mixes an outer reference with other columns).
+                Cost = p.Variants.Where(v => !v.IsDeleted && v.CostPrice != null).Sum(v => (v.CostPrice ?? 0m) * v.QuantityOnHand)
+                     + p.OriginalPrice * p.Variants.Where(v => !v.IsDeleted && v.CostPrice == null).Sum(v => v.QuantityOnHand),
+                Sale = p.Variants.Where(v => !v.IsDeleted && v.SalePrice != null).Sum(v => (v.SalePrice ?? 0m) * v.QuantityOnHand)
+                     + p.SalePrice * p.Variants.Where(v => !v.IsDeleted && v.SalePrice == null).Sum(v => v.QuantityOnHand)
+            })
             .ToListAsync(ct);
         return new ProductTotalsDto(
             rows.Count,
             rows.Sum(r => r.QuantityOnHand),
-            rows.Sum(r => r.OriginalPrice * r.QuantityOnHand),
-            rows.Sum(r => r.SalePrice * r.QuantityOnHand));
+            rows.Sum(r => r.Cost),
+            rows.Sum(r => r.Sale));
     }
 
     /// <summary>Faceted filter options: for each dimension, the values still present among products
@@ -196,7 +206,7 @@ public class ProductService : IProductService
             .Select(c => new ProductCostComponent { Label = c.Label, VendorId = c.VendorId, Amount = c.Amount }).ToList();
 
         var variants = NormalizeVariants(request.Variants, request.Size, request.QuantityOnHand);
-        entity.Variants = variants.Select(v => new ProductVariant { Size = v.Size, QuantityOnHand = v.Qty }).ToList();
+        entity.Variants = variants.Select(v => new ProductVariant { Size = v.Size, QuantityOnHand = v.Qty, CostPrice = v.Cost, SalePrice = v.Sale }).ToList();
         entity.QuantityOnHand = variants.Sum(v => v.Qty);
         entity.Size = JoinSizes(variants);
 
@@ -205,7 +215,7 @@ public class ProductService : IProductService
         // Optionally record the funding owner's out-of-pocket purchase as a capital contribution.
         if (request.RecordOwnerContribution && request.PaidByOwnerId is int ownerId)
         {
-            var totalCost = Math.Round(entity.OriginalPrice * entity.QuantityOnHand, 2);
+            var totalCost = Math.Round(EffectiveCost(entity), 2);
             if (totalCost > 0)
                 _db.OwnerTransactions.Add(new OwnerTransaction
                 {
@@ -306,14 +316,14 @@ public class ProductService : IProductService
             q = q.Where(p => p.Name.Contains(term) || p.SKU.Contains(term));
         }
 
-        var products = await q.ToListAsync(ct);
+        var products = await q.Include(p => p.Variants).ToListAsync(ct);
         foreach (var p in products)
         {
             p.PaidByOwnerId = request.PaidByOwnerId;
             p.UpdatedAt = DateTime.UtcNow;
         }
 
-        var totalCost = Math.Round(products.Sum(p => p.OriginalPrice * p.QuantityOnHand), 2);
+        var totalCost = Math.Round(products.Sum(EffectiveCost), 2);
         var posted = false;
         if (request.RecordOwnerContribution && request.PaidByOwnerId is int ownerId && totalCost > 0)
         {
@@ -461,7 +471,7 @@ public class ProductService : IProductService
         (p.Variants ?? new List<ProductVariant>())
             .Where(v => !v.IsDeleted)
             .OrderBy(v => v.Id)
-            .Select(v => new ProductVariantDto(v.Id, v.Size, v.QuantityOnHand))
+            .Select(v => new ProductVariantDto(v.Id, v.Size, v.QuantityOnHand, v.CostPrice, v.SalePrice))
             .ToList(),
         (p.CostComponents ?? new List<ProductCostComponent>())
             .Where(c => !c.IsDeleted)
@@ -472,9 +482,19 @@ public class ProductService : IProductService
 
     // ---- Variant helpers ----
 
+    /// <summary>Total cost value of a product's stock, valuing each size at its own cost when set,
+    /// else the product's OriginalPrice. Falls back to product-level when variants aren't loaded.</summary>
+    private static decimal EffectiveCost(Product p)
+    {
+        var vs = p.Variants?.Where(v => !v.IsDeleted).ToList();
+        return vs is { Count: > 0 }
+            ? vs.Sum(v => (v.CostPrice ?? p.OriginalPrice) * v.QuantityOnHand)
+            : p.OriginalPrice * p.QuantityOnHand;
+    }
+
     /// <summary>Normalize variant input (trim, drop blanks, merge duplicate sizes). Falls back
     /// to a single variant from the legacy Size+Quantity fields when no variants are supplied.</summary>
-    private static List<(string Size, int Qty)> NormalizeVariants(
+    private static List<(string Size, int Qty, decimal? Cost, decimal? Sale)> NormalizeVariants(
         IReadOnlyList<ProductVariantInput>? inputs, string? legacySize, int legacyQty)
     {
         var source = (inputs != null && inputs.Count > 0)
@@ -483,22 +503,27 @@ public class ProductService : IProductService
 
         return source
             .Select(v => (Size: string.IsNullOrWhiteSpace(v.Size) ? "One Size" : v.Size.Trim(),
-                          Qty: v.QuantityOnHand < 0 ? 0 : v.QuantityOnHand))
+                          Qty: v.QuantityOnHand < 0 ? 0 : v.QuantityOnHand,
+                          Cost: v.CostPrice is > 0 ? v.CostPrice : null,
+                          Sale: v.SalePrice is > 0 ? v.SalePrice : null))
+            // Merge duplicate sizes: sum qty, keep the first non-null price.
             .GroupBy(v => v.Size, StringComparer.OrdinalIgnoreCase)
-            .Select(g => (Size: g.First().Size, Qty: g.Sum(x => x.Qty)))
+            .Select(g => (Size: g.First().Size, Qty: g.Sum(x => x.Qty),
+                          Cost: g.Select(x => x.Cost).FirstOrDefault(c => c != null),
+                          Sale: g.Select(x => x.Sale).FirstOrDefault(s => s != null)))
             .ToList();
     }
 
     /// <summary>Reconcile a product's variant rows with the desired set (add/update/soft-delete),
     /// then refresh the denormalized total and size summary.</summary>
-    private static void SyncVariants(Product product, List<(string Size, int Qty)> desired)
+    private static void SyncVariants(Product product, List<(string Size, int Qty, decimal? Cost, decimal? Sale)> desired)
     {
         var existing = product.Variants.Where(v => !v.IsDeleted).ToList();
         foreach (var d in desired)
         {
             var match = existing.FirstOrDefault(e => string.Equals(e.Size, d.Size, StringComparison.OrdinalIgnoreCase));
-            if (match != null) match.QuantityOnHand = d.Qty;
-            else product.Variants.Add(new ProductVariant { Size = d.Size, QuantityOnHand = d.Qty });
+            if (match != null) { match.QuantityOnHand = d.Qty; match.CostPrice = d.Cost; match.SalePrice = d.Sale; }
+            else product.Variants.Add(new ProductVariant { Size = d.Size, QuantityOnHand = d.Qty, CostPrice = d.Cost, SalePrice = d.Sale });
         }
         foreach (var e in existing)
             if (!desired.Any(d => string.Equals(d.Size, e.Size, StringComparison.OrdinalIgnoreCase)))
@@ -509,7 +534,7 @@ public class ProductService : IProductService
     }
 
     /// <summary>A comma summary of sizes for display; null when the product is effectively unsized.</summary>
-    private static string? JoinSizes(List<(string Size, int Qty)> variants)
+    private static string? JoinSizes(List<(string Size, int Qty, decimal? Cost, decimal? Sale)> variants)
     {
         var sizes = variants.Select(v => v.Size).Where(s => !string.Equals(s, "One Size", StringComparison.OrdinalIgnoreCase)).ToList();
         return sizes.Count == 0 ? null : string.Join(", ", sizes);

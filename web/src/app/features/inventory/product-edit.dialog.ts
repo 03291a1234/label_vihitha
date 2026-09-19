@@ -1,6 +1,6 @@
 import { Component, Inject, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -19,7 +19,7 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
   selector: 'app-product-edit',
   standalone: true,
   imports: [
-    DecimalPipe, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
+    DecimalPipe, ReactiveFormsModule, FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule,
     MoneyInputComponent, SearchSelectComponent
   ],
@@ -108,6 +108,12 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
               }
             </div>
           }
+          <div class="perSize">
+            <mat-slide-toggle [(ngModel)]="perSizePricing" [ngModelOptions]="{standalone:true}">
+              Price per size <span class="muted">(bangles 2*8, 2*6…)</span>
+            </mat-slide-toggle>
+            @if (perSizePricing) { <span class="muted ps-hint">Blank = use the product's price above. Amounts in USD.</span> }
+          </div>
           <div formArrayName="variants">
             @for (row of variants.controls; track row; let i = $index) {
               <div class="vrow" [formGroupName]="i">
@@ -115,12 +121,26 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
                   <input matInput formControlName="size" placeholder="e.g. M or 2*6" /></mat-form-field>
                 <mat-form-field class="v-qty"><mat-label>Qty</mat-label>
                   <input matInput type="number" formControlName="quantityOnHand" /></mat-form-field>
+                @if (perSizePricing) {
+                  <mat-form-field class="v-price"><mat-label>Cost $</mat-label>
+                    <input matInput type="number" min="0" step="0.01" formControlName="costPrice" placeholder="—" /></mat-form-field>
+                  <mat-form-field class="v-price"><mat-label>Sale $</mat-label>
+                    <input matInput type="number" min="0" step="0.01" formControlName="salePrice" placeholder="—" /></mat-form-field>
+                }
                 <button mat-icon-button type="button" color="warn" (click)="removeVariant(i)"
                         [disabled]="variants.length === 1" title="Remove size"><mat-icon>close</mat-icon></button>
               </div>
             }
           </div>
           <button mat-stroked-button type="button" (click)="addVariant('')"><mat-icon>add</mat-icon> Add size</button>
+          @if (perSizePricing) {
+            <div class="ps-totals">
+              <span>Stock value — cost <strong>\${{ variantCostUsd() | number:'1.0-2' }}</strong>
+                <span class="inr">≈ ₹{{ variantCostUsd() * 95 | number:'1.0-0' }}</span></span>
+              <span>sale <strong>\${{ variantSaleUsd() | number:'1.0-2' }}</strong>
+                <span class="inr">≈ ₹{{ variantSaleUsd() * 95 | number:'1.0-0' }}</span></span>
+            </div>
+          }
         </div>
         <div class="form-row">
           <mat-form-field>
@@ -181,7 +201,12 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
     .chip-btn:disabled { opacity: .4; cursor: default; }
     .vrow { display: flex; align-items: center; gap: 8px; }
     .vrow .v-size { flex: 1; }
-    .vrow .v-qty { width: 110px; }
+    .vrow .v-qty { width: 90px; }
+    .vrow .v-price { width: 100px; }
+    .perSize { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; }
+    .ps-hint { font-size: 11px; }
+    .ps-totals { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--lv-line); font-size: 13px; }
+    .ps-totals .inr { color: rgba(58,37,48,.55); margin-left: 4px; font-size: 12px; }
     .contrib { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
     .contrib-hint { font-size: 11px; line-height: 1.3; }
     .cost-breakdown { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; }
@@ -216,6 +241,8 @@ export class ProductEditDialog {
   saving = signal(false);
   uploading = signal(false);
   previewUrl = signal<string | null>(null);
+  /** When on, each size carries its own cost/sale price (e.g. bangles by diameter). */
+  perSizePricing = false;
 
   /** Per-size stock rows (each: { size, quantityOnHand }). */
   variants = this.fb.array<FormGroup>([]);
@@ -259,7 +286,9 @@ export class ProductEditDialog {
         reorderThreshold: data.reorderThreshold,
         imageUrl: data.imageUrl ?? '', isActive: data.isActive
       });
-      for (const v of data.variants ?? []) this.variants.push(this.makeVariant(v.size, v.quantityOnHand));
+      for (const v of data.variants ?? []) this.variants.push(this.makeVariant(v.size, v.quantityOnHand, v.costPrice ?? null, v.salePrice ?? null));
+      // Reveal per-size pricing if this product already uses it.
+      this.perSizePricing = (data.variants ?? []).some(v => v.costPrice != null || v.salePrice != null);
       for (const c of data.costComponents ?? []) this.costComponents.push(this.makeComponent(c.label, c.vendorId ?? null, c.amount));
       this.previewUrl.set(resolveImageUrl(data.imageUrl));
       this.loadSubCategories(data.categoryId);
@@ -297,10 +326,12 @@ export class ProductEditDialog {
     }
   }
 
-  private makeVariant(size: string, qty: number): FormGroup {
+  private makeVariant(size: string, qty: number, cost: number | null = null, sale: number | null = null): FormGroup {
     return this.fb.group({
       size: this.fb.nonNullable.control(size, Validators.required),
-      quantityOnHand: this.fb.nonNullable.control(qty, [Validators.min(0)])
+      quantityOnHand: this.fb.nonNullable.control(qty, [Validators.min(0)]),
+      costPrice: this.fb.control<number | null>(cost, [Validators.min(0)]),
+      salePrice: this.fb.control<number | null>(sale, [Validators.min(0)])
     });
   }
 
@@ -318,6 +349,25 @@ export class ProductEditDialog {
 
   totalQty(): number {
     return this.variants.controls.reduce((s, c) => s + (Number(c.value.quantityOnHand) || 0), 0);
+  }
+
+  /** Stock value from the variant rows, valuing each size at its own price when set,
+   * else the product-level price. Shown in USD (with an INR approximation). */
+  variantCostUsd(): number {
+    const base = Number(this.form.controls.originalPrice.value) || 0;
+    return this.variants.controls.reduce((s, c) => {
+      const qty = Number(c.value.quantityOnHand) || 0;
+      const cost = c.value.costPrice != null && c.value.costPrice !== '' ? Number(c.value.costPrice) : base;
+      return s + cost * qty;
+    }, 0);
+  }
+  variantSaleUsd(): number {
+    const base = Number(this.form.controls.salePrice.value) || 0;
+    return this.variants.controls.reduce((s, c) => {
+      const qty = Number(c.value.quantityOnHand) || 0;
+      const sale = c.value.salePrice != null && c.value.salePrice !== '' ? Number(c.value.salePrice) : base;
+      return s + sale * qty;
+    }, 0);
   }
 
   private loadSubCategories(catId: number | null) {
@@ -368,7 +418,13 @@ export class ProductEditDialog {
   save() {
     if (this.form.invalid) return;
     const variants = this.variants.controls
-      .map(c => ({ size: String(c.value.size ?? '').trim(), quantityOnHand: Number(c.value.quantityOnHand) || 0 }))
+      .map(c => ({
+        size: String(c.value.size ?? '').trim(),
+        quantityOnHand: Number(c.value.quantityOnHand) || 0,
+        // Only send per-size prices when that mode is on and a value was entered.
+        costPrice: this.perSizePricing && c.value.costPrice != null && c.value.costPrice !== '' ? Number(c.value.costPrice) : null,
+        salePrice: this.perSizePricing && c.value.salePrice != null && c.value.salePrice !== '' ? Number(c.value.salePrice) : null
+      }))
       .filter(x => x.size.length > 0);
     if (variants.length === 0) { this.notify.error(null, 'Add at least one size with stock.'); return; }
 

@@ -16,4 +16,13 @@ public class ProductVariant : BaseEntity
     public string Size { get; set; } = string.Empty;
 
     public int QuantityOnHand { get; set; }
+
+    /// <summary>
+    /// Per-size cost price (USD). Null → inherit the product's OriginalPrice.
+    /// Lets accessories like bangles carry a different cost per size (2*8, 2*6, 2*4).
+    /// </summary>
+    public decimal? CostPrice { get; set; }
+
+    /// <summary>Per-size sale price (USD). Null → inherit the product's SalePrice.</summary>
+    public decimal? SalePrice { get; set; }
 }

@@ -69,6 +69,11 @@ public class FinanceService : IFinanceService
         // ---- Inventory on hand (current snapshot) ----
         var inv = await _db.Products.AsNoTracking().Where(p => p.IsActive)
             .Select(p => new { p.OriginalPrice, p.SalePrice, p.QuantityOnHand,
+                // Variant-aware valuation: sizes with an override at their own price, the rest at the product's.
+                EffCost = p.Variants.Where(v => !v.IsDeleted && v.CostPrice != null).Sum(v => (v.CostPrice ?? 0m) * v.QuantityOnHand)
+                        + p.OriginalPrice * p.Variants.Where(v => !v.IsDeleted && v.CostPrice == null).Sum(v => v.QuantityOnHand),
+                EffSale = p.Variants.Where(v => !v.IsDeleted && v.SalePrice != null).Sum(v => (v.SalePrice ?? 0m) * v.QuantityOnHand)
+                        + p.SalePrice * p.Variants.Where(v => !v.IsDeleted && v.SalePrice == null).Sum(v => v.QuantityOnHand),
                 ProductOwnerId = p.PaidByOwnerId,
                 ProductOwnerName = p.PaidByOwner != null ? p.PaidByOwner.Name : null,
                 InvOwnerId = p.Inventory != null ? p.Inventory.PaidByOwnerId : null,
@@ -81,8 +86,8 @@ public class FinanceService : IFinanceService
                     .Select(c => new { c.VendorId, VendorName = c.Vendor != null ? c.Vendor.Name : null, c.Amount })
                     .ToList() })
             .ToListAsync(ct);
-        var invCost = inv.Sum(p => p.OriginalPrice * p.QuantityOnHand);
-        var invSale = inv.Sum(p => p.SalePrice * p.QuantityOnHand);
+        var invCost = inv.Sum(p => p.EffCost);
+        var invSale = inv.Sum(p => p.EffSale);
         var invUnits = inv.Sum(p => p.QuantityOnHand);
 
         // Split current stock (at cost) by the owner who funded it. The funder is set on the
@@ -92,7 +97,7 @@ public class FinanceService : IFinanceService
             {
                 OwnerId = p.ProductOwnerId ?? p.InvOwnerId,
                 OwnerName = p.ProductOwnerName ?? p.InvOwnerName,
-                Cost = p.OriginalPrice * p.QuantityOnHand,
+                Cost = p.EffCost,
                 Units = p.QuantityOnHand
             })
             .GroupBy(x => new { x.OwnerId, x.OwnerName })
@@ -125,7 +130,7 @@ public class FinanceService : IFinanceService
                     {
                         p.VendorId, VendorName = p.VendorName,
                         p.InventoryId, p.InventoryName,
-                        Cost = p.OriginalPrice * p.QuantityOnHand,
+                        Cost = p.EffCost,
                         Units = p.QuantityOnHand
                     }
                 })

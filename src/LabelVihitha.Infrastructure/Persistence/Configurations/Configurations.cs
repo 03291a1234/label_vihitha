@@ -67,6 +67,8 @@ public class ProductVariantConfiguration : IEntityTypeConfiguration<ProductVaria
     public void Configure(EntityTypeBuilder<ProductVariant> b)
     {
         b.Property(x => x.Size).IsRequired().HasMaxLength(50);
+        b.Property(x => x.CostPrice).HasPrecision(18, 2);
+        b.Property(x => x.SalePrice).HasPrecision(18, 2);
         b.HasIndex(x => new { x.ProductId, x.Size }).IsUnique().HasFilter("[IsDeleted] = 0");
 
         b.HasOne(x => x.Product)

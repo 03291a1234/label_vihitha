@@ -112,7 +112,9 @@ public class InventoryGroupService : IInventoryGroupService
                 p.SubCategoryId,
                 SubCategoryName = p.SubCategory != null ? p.SubCategory.Name : null,
                 p.QuantityOnHand,
-                p.OriginalPrice
+                // Variant-aware cost: sizes with an override at their own cost, the rest at the product's.
+                Cost = p.Variants.Where(v => !v.IsDeleted && v.CostPrice != null).Sum(v => (v.CostPrice ?? 0m) * v.QuantityOnHand)
+                     + p.OriginalPrice * p.Variants.Where(v => !v.IsDeleted && v.CostPrice == null).Sum(v => v.QuantityOnHand)
             })
             .ToListAsync(ct);
 
@@ -122,7 +124,7 @@ public class InventoryGroupService : IInventoryGroupService
                 g => g.Key,
                 g => (
                     g.Sum(x => x.QuantityOnHand),
-                    g.Sum(x => x.OriginalPrice * x.QuantityOnHand),
+                    g.Sum(x => x.Cost),
                     g.GroupBy(x => new { x.CategoryId, x.CategoryName })
                         .Select(cg => new CategoryCount(
                             cg.Key.CategoryId, cg.Key.CategoryName, cg.Count(), cg.Sum(x => x.QuantityOnHand),

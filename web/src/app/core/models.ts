@@ -207,6 +207,8 @@ export interface ProductVariant {
   id: number;
   size: string;
   quantityOnHand: number;
+  costPrice?: number | null;
+  salePrice?: number | null;
 }
 
 export interface ProductCostComponent {
