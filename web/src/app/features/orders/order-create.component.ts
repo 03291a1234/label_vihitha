@@ -152,27 +152,27 @@ type SortCol = 'product' | 'size' | 'quantity' | 'salePrice' | 'finalPrice' | 'l
               <button mat-icon-button color="warn" (click)="removeService($index)"><mat-icon>close</mat-icon></button>
             </div>
           }
-          <div class="toolbar-row svc-add">
-            <mat-form-field style="flex:1;min-width:200px;">
+          <div class="entry-row">
+            <mat-form-field class="grow">
               <mat-label>Service</mat-label>
               <input matInput [(ngModel)]="svcLabel" placeholder="e.g. Stitching" />
             </mat-form-field>
-            <app-money-input [(ngModel)]="svcAmount" label="Amount" style="width:230px;" />
-            <button mat-stroked-button (click)="addService()"><mat-icon>add</mat-icon> Add service</button>
+            <app-money-input class="money-col" [(ngModel)]="svcAmount" label="Amount" />
+            <button mat-stroked-button class="row-btn" (click)="addService()"><mat-icon>add</mat-icon> Add service</button>
           </div>
         </div>
 
         <!-- Discount / promo -->
         <div class="discount">
           <h3>Discount</h3>
-          <div class="toolbar-row">
-            <mat-form-field style="width:200px;">
+          <div class="entry-row">
+            <mat-form-field class="promo-field">
               <mat-label>Promo code</mat-label>
               <input matInput [(ngModel)]="promoInput" (ngModelChange)="promoMsg.set('')"
                      placeholder="e.g. DIWALI10" style="text-transform:uppercase;" />
             </mat-form-field>
-            <button mat-stroked-button (click)="applyPromo()" [disabled]="!promoInput || checkingPromo()">Apply</button>
-            <app-money-input [(ngModel)]="manualDiscount" label="Manual discount" (ngModelChange)="touch()" style="width:230px;" />
+            <button mat-stroked-button class="row-btn" (click)="applyPromo()" [disabled]="!promoInput || checkingPromo()">Apply</button>
+            <app-money-input class="money-col" [(ngModel)]="manualDiscount" label="Manual discount" (ngModelChange)="touch()" />
           </div>
           @if (promoMsg()) { <div class="promo-msg" [class.ok]="promoOk()">{{ promoMsg() }}</div> }
         </div>
@@ -208,10 +208,15 @@ type SortCol = 'product' | 'size' | 'quantity' | 'salePrice' | 'finalPrice' | 'l
     .totals .grand { font-size: 18px; font-weight: 600; border-top: 1px solid #eee; padding-top: 8px; margin-top: 4px; }
     .services, .discount { margin-top: 20px; padding-top: 12px; border-top: 1px solid #eee; }
     .services h3, .discount h3 { margin: 0 0 10px; }
-    .svc-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+    .svc-row { display: flex; align-items: center; gap: 12px; padding: 4px 0; max-width: 620px; }
     .svc-label { flex: 1; }
     .svc-amt { min-width: 90px; text-align: right; }
-    .svc-add { margin-top: 6px; align-items: center; }
+    /* Aligned entry rows for services + discount */
+    .entry-row { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin-top: 6px; }
+    .entry-row .grow { flex: 1; min-width: 220px; }
+    .entry-row .promo-field { width: 200px; }
+    .entry-row .money-col { width: 300px; }
+    .entry-row .row-btn { margin-top: 9px; white-space: nowrap; }
     .promo-msg { margin-top: 4px; font-size: 13px; color: #b3261e; }
     .promo-msg.ok { color: #2e7d32; }
   `]

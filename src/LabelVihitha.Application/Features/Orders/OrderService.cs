@@ -139,6 +139,7 @@ public class OrderService : IOrderService
         var order = await LoadEditableOrderAsync(orderId, ct);
         order.Items.Add(await BuildLineAsync(request, ct));
         RecalculateTotals(order);
+        SyncInvoice(order);
         order.UpdatedAt = DateTime.UtcNow;
         await SaveWithConcurrencyGuardAsync(ct);
         return await GetByIdAsync(orderId, ct);
@@ -173,6 +174,7 @@ public class OrderService : IOrderService
         item.UpdatedAt = DateTime.UtcNow;
 
         RecalculateTotals(order);
+        SyncInvoice(order);
         order.UpdatedAt = DateTime.UtcNow;
         await SaveWithConcurrencyGuardAsync(ct);
         return await GetByIdAsync(orderId, ct);
@@ -195,6 +197,7 @@ public class OrderService : IOrderService
         item.UpdatedAt = DateTime.UtcNow;
 
         RecalculateTotals(order);
+        SyncInvoice(order);
         order.UpdatedAt = DateTime.UtcNow;
         await SaveWithConcurrencyGuardAsync(ct);
         return await GetByIdAsync(orderId, ct);
@@ -207,11 +210,13 @@ public class OrderService : IOrderService
         var order = await _db.Orders
             .Include(o => o.Items.Where(i => !i.IsDeleted))
             .Include(o => o.Charges.Where(c => !c.IsDeleted))
+            .Include(o => o.Invoice)
             .FirstOrDefaultAsync(o => o.Id == orderId, ct)
             ?? throw new NotFoundException(nameof(Order), orderId);
 
-        if (order.Status != OrderStatus.Pending)
-            throw new ConflictException("Line items can only be changed while the order is Pending.");
+        // Corrections are allowed on live orders; a cancelled order is closed (stock returned).
+        if (order.Status == OrderStatus.Cancelled)
+            throw new ConflictException("A cancelled order can't be edited.");
 
         return order;
     }
@@ -226,6 +231,7 @@ public class OrderService : IOrderService
         var order = await LoadEditableOrderAsync(orderId, ct);
         order.Charges.Add(new OrderCharge { Label = request.Label.Trim(), Amount = request.Amount });
         RecalculateTotals(order);
+        SyncInvoice(order);
         order.UpdatedAt = DateTime.UtcNow;
         await SaveWithConcurrencyGuardAsync(ct);
         return await GetByIdAsync(orderId, ct);
@@ -239,6 +245,7 @@ public class OrderService : IOrderService
         charge.IsDeleted = true;
         charge.UpdatedAt = DateTime.UtcNow;
         RecalculateTotals(order);
+        SyncInvoice(order);
         order.UpdatedAt = DateTime.UtcNow;
         await SaveWithConcurrencyGuardAsync(ct);
         return await GetByIdAsync(orderId, ct);
@@ -340,6 +347,21 @@ public class OrderService : IOrderService
         order.DiscountTotal = live.Sum(i => i.DiscountAmount * i.Quantity) + orderDiscount;
         // Services are added on top of the discounted product total.
         order.GrandTotal = lineSum - orderDiscount + chargesSum;
+    }
+
+    /// <summary>Keep a linked invoice in step when an order is corrected. A refunded invoice is left
+    /// alone. Overpayment (new total below what was already paid) is preserved so the remaining goes
+    /// negative — flagging that a refund is due — rather than silently discarding recorded payments.</summary>
+    private static void SyncInvoice(Order order)
+    {
+        var inv = order.Invoice;
+        if (inv is null || inv.IsDeleted || inv.PaymentStatus == PaymentStatus.Refunded) return;
+        inv.AmountDue = order.GrandTotal;
+        inv.PaymentStatus = inv.AmountPaid <= 0m ? PaymentStatus.Unpaid
+            : inv.AmountPaid < inv.AmountDue ? PaymentStatus.PartiallyPaid
+            : PaymentStatus.Paid;
+        if (inv.PaymentStatus == PaymentStatus.Paid && inv.PaidDate is null) inv.PaidDate = DateTime.UtcNow;
+        inv.UpdatedAt = DateTime.UtcNow;
     }
 
     private static bool IsTransitionAllowed(OrderStatus from, OrderStatus to) => from switch

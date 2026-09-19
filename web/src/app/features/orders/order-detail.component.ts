@@ -83,7 +83,7 @@ import { DateInputComponent } from '../../shared/date-input.component';
           <div class="page-header" style="margin-bottom:8px;">
             <h3 style="margin:0;">Line items</h3>
             @if (editable(o) && auth.canManageSales()) {
-              <span class="muted">Editable while Pending</span>
+              <span class="muted">Editable — corrections update stock &amp; the invoice</span>
             }
           </div>
           <table mat-table [dataSource]="o.items" class="full">
@@ -146,7 +146,7 @@ import { DateInputComponent } from '../../shared/date-input.component';
         <div class="card">
           <div class="page-header" style="margin-bottom:8px;">
             <h3 style="margin:0;">Additional services</h3>
-            @if (editable(o) && auth.canManageSales()) { <span class="muted">Editable while Pending</span> }
+            @if (editable(o) && auth.canManageSales()) { <span class="muted">Editable — corrections update stock &amp; the invoice</span> }
           </div>
           @if (o.charges.length === 0) { <div class="muted">No additional services on this order.</div> }
           @for (c of o.charges; track c.id) {
@@ -250,7 +250,9 @@ export class OrderDetailComponent {
     this.load(id);
   }
 
-  editable(o: Order) { return o.status === 'Pending'; }
+  // Corrections are allowed on any live order (not once cancelled); edits adjust stock and, if an
+  // invoice exists, its amount due.
+  editable(o: Order) { return o.status !== 'Cancelled'; }
 
   load(id: number) {
     this.loading.set(true);
