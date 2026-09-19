@@ -1,7 +1,7 @@
 import { Component, Inject, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,6 +10,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { InventoryApi, apiOrigin } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Inventory, InventoryBill } from '../../core/models';
+import { BillProductsDialog } from './bill-products.dialog';
 
 @Component({
   selector: 'app-inventory-bills',
@@ -36,6 +37,9 @@ import { Inventory, InventoryBill } from '../../core/models';
                 } @else { <span class="muted">—</span> }
               </span>
               <span class="bdate muted">{{ b.billDate ? (b.billDate | date:'mediumDate') : '' }}</span>
+              <button mat-stroked-button class="extract-btn" (click)="addProducts(b)" title="Create products from this bill">
+                <mat-icon>playlist_add</mat-icon> Products
+              </button>
               <button mat-icon-button color="warn" (click)="remove(b)" title="Delete bill"><mat-icon>delete</mat-icon></button>
               @if (b.note) { <div class="note muted">{{ b.note }}</div> }
             </div>
@@ -81,8 +85,9 @@ import { Inventory, InventoryBill } from '../../core/models';
   styles: [`
     mat-dialog-content { min-width: 480px; }
     .bills { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
-    .bill { display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: 10px;
+    .bill { display: grid; grid-template-columns: auto 1fr auto auto auto auto; align-items: center; gap: 10px;
       padding: 8px 10px; border: 1px solid var(--lv-line); border-radius: 8px; background: #fffdfb; }
+    .extract-btn { white-space: nowrap; }
     .bill .file-ic { color: var(--lv-wine); }
     .fname { color: var(--lv-wine); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .fname:hover { text-decoration: underline; }
@@ -120,9 +125,18 @@ export class InventoryBillsDialog {
     this.bills.set([...(data.bills ?? [])]);
   }
 
+  private dialog = inject(MatDialog);
+
   total() { return this.bills().reduce((s, b) => s + (b.amount ?? 0), 0); }
   isPdf(url: string) { return url.toLowerCase().endsWith('.pdf'); }
   fileUrl(url: string) { return url.startsWith('http') ? url : apiOrigin + url; }
+
+  addProducts(bill: InventoryBill) {
+    this.dialog.open(BillProductsDialog, {
+      data: { inventoryId: this.data.id, inventoryName: this.data.name, bill },
+      width: '860px', maxWidth: '95vw'
+    }).afterClosed().subscribe(created => { if (created) this.changed = true; });
+  }
 
   onFile(ev: Event) {
     const input = ev.target as HTMLInputElement;
