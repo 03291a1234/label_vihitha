@@ -27,3 +27,7 @@ src/LabelVihitha.Api/wwwroot/uploads/products/*
 
 # local run logs (run.command)
 .run-logs/
+
+# Azure deploy artifacts
+.deploy-publish/
+.deploy-publish.zip

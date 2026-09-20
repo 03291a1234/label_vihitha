@@ -1,3 +1,4 @@
+using LabelVihitha.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,8 +21,8 @@ public class BillUploadsController : ControllerBase
         ["application/pdf"] = ".pdf"
     };
 
-    private readonly IWebHostEnvironment _env;
-    public BillUploadsController(IWebHostEnvironment env) => _env = env;
+    private readonly IFileStorage _storage;
+    public BillUploadsController(IFileStorage storage) => _storage = storage;
 
     public record UploadResult(string Url, string FileName);
 
@@ -36,16 +37,8 @@ public class BillUploadsController : ControllerBase
         if (!Allowed.TryGetValue(file.ContentType, out var ext))
             return BadRequest(new { status = 400, title = "Only JPEG, PNG, WebP, GIF or PDF files are allowed." });
 
-        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-        var absoluteDir = Path.Combine(webRoot, "uploads", "bills");
-        Directory.CreateDirectory(absoluteDir);
-
-        var fileName = $"{Guid.NewGuid():N}{ext}";
-        var absolutePath = Path.Combine(absoluteDir, fileName);
-        await using (var stream = System.IO.File.Create(absolutePath))
-            await file.CopyToAsync(stream, ct);
-
-        // Return both the stored URL and the original (display) filename.
-        return Ok(new UploadResult($"/uploads/bills/{fileName}", Path.GetFileName(file.FileName)));
+        await using var stream = file.OpenReadStream();
+        var stored = await _storage.SaveAsync(stream, "uploads/bills", ext, file.FileName, file.ContentType, ct);
+        return Ok(new UploadResult(stored.Url, stored.FileName));
     }
 }

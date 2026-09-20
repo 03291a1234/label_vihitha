@@ -2,12 +2,14 @@ using LabelVihitha.Application.Features.Promotions;
 using LabelVihitha.Application.Features.Store;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LabelVihitha.Api.Controllers;
 
-/// <summary>Public storefront — anonymous browsing and guest checkout.</summary>
+/// <summary>Public storefront — anonymous browsing and guest checkout. Rate-limited to curb abuse.</summary>
 [ApiController]
 [AllowAnonymous]
+[EnableRateLimiting("public")]
 [Route("api/store")]
 public class StoreController : ControllerBase
 {

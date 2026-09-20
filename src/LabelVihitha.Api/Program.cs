@@ -1,4 +1,6 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using LabelVihitha.Api.Infrastructure;
 using LabelVihitha.Application;
 using LabelVihitha.Application.Common.Interfaces;
@@ -29,6 +31,15 @@ builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 // --- Authentication (JWT) ---
 var jwt = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>() ?? new JwtSettings();
+// Fail fast rather than boot with an insecure signing key outside local dev. Supply a strong
+// secret via the environment variable Jwt__Key (or a secrets store) in staging/production.
+if (!builder.Environment.IsDevelopment() &&
+    (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Contains("CHANGE_ME") || Encoding.UTF8.GetByteCount(jwt.Key) < 32))
+{
+    throw new InvalidOperationException(
+        "Jwt:Key must be a strong secret of at least 32 bytes outside Development. " +
+        "Set it via the Jwt__Key environment variable or a secrets store — never the shipped default.");
+}
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -44,6 +55,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
+
+// --- Rate limiting: protect the public (anonymous) storefront endpoints from abuse ---
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddFixedWindowLimiter("public", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 20;
+        opt.QueueLimit = 0;
+    });
+});
 
 builder.Services.AddCors(options => options.AddPolicy(CorsPolicy, policy =>
 {
@@ -85,9 +108,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseStaticFiles(); // serves wwwroot (uploaded product photos under /uploads)
 app.UseCors(CorsPolicy);
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+// Serve the built Angular SPA for any non-API route (single App Service hosts API + web,
+// same-origin). Harmless in dev where wwwroot has no index.html (returns 404, web runs separately).
+app.MapFallbackToFile("index.html");
 
 // Apply migrations + seed on startup (skippable for pure design-time / test scenarios).
 if (builder.Configuration.GetValue("Seed:OnStartup", true))

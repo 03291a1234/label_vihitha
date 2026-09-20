@@ -36,6 +36,14 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IIdentityService, IdentityService>();
 
+        // --- File storage: local disk in dev, durable Azure Blob in the cloud (by config) ---
+        services.Configure<Storage.StorageOptions>(config.GetSection(Storage.StorageOptions.SectionName));
+        var provider = config.GetValue<string>($"{Storage.StorageOptions.SectionName}:Provider") ?? "Local";
+        if (provider.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase))
+            services.AddScoped<IFileStorage, Storage.AzureBlobFileStorage>();
+        else
+            services.AddScoped<IFileStorage, Storage.LocalFileStorage>();
+
         return services;
     }
 }
