@@ -37,18 +37,25 @@ public class ImportsController : ControllerBase
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Products");
         var headers = new[] { "Vendor", "Inventory", "Category", "Subcategory", "SKU", "Product Name",
-            "Size", "Qty", "Cost per unit (INR)", "Sale price (USD)", "Reorder Threshold", "Color", "Material", "Description", "Paid By (owner)" };
+            "Size", "Qty", "Rate per unit (INR)", "GST %", "Discount %", "Markup %", "Round (INR)",
+            "Cost per unit (INR)", "Sale price (USD)", "Reorder Threshold", "Color", "Material", "Description", "Paid By (owner)" };
         for (int c = 0; c < headers.Length; c++)
         {
             var cell = ws.Cell(1, c + 1);
             cell.Value = headers[c];
             cell.Style.Font.Bold = true;
         }
+        // Columns: Vendor, Inventory, Category, Subcat, SKU, Name, Size, Qty,
+        //          Rate, GST%, Disc%, Markup%, Round, Cost(INR), Sale(USD), Reorder, Color, Material, Desc, PaidBy
         var examples = new object?[][]
         {
-            new object?[]{ "Shanthi NX","Inventory 2","Kurtis","","SNX-301","Anarkali Kurti 13001","M",2,2000,45,1,"Maroon","Cotton","Same SKU repeats per size","" },
-            new object?[]{ "Shanthi NX","Inventory 2","Kurtis","","SNX-301","Anarkali Kurti 13001","L",1,2000,45,1,"Maroon","Cotton","","" },
-            new object?[]{ "Anaga","Inventory 2","Frocks","","ANG-301","Patola Frock","One Size",3,4100,100,1,"","","","" },
+            // Rate-based pricing: leave Cost & Sale blank — they're computed from Rate + GST/Discount/Markup/Round.
+            new object?[]{ "Shanthi NX","Inventory 2","Kurtis","","SNX-301","Anarkali Kurti 13001","M",2, 2000,5,0,50,100, "","", 1,"Maroon","Cotton","Same SKU repeats per size","" },
+            new object?[]{ "Shanthi NX","Inventory 2","Kurtis","","SNX-301","Anarkali Kurti 13001","L",1, 2000,5,0,50,100, "","", 1,"Maroon","Cotton","","" },
+            // Blank SKU → auto-generated from the vendor name (e.g. ANA-0001).
+            new object?[]{ "Anaga","Inventory 2","Frocks","","","Patola Frock","One Size",3, 4100,5,0,50,100, "","", 1,"","","Leave SKU blank to auto-number","" },
+            // Or set Cost/Sale directly (overrides the Rate math); pricing columns can be left blank.
+            new object?[]{ "Anaga","Inventory 2","Sarees","","ANG-401","Kanjeevaram Silk","Free Size",1, "","","","","", 3200,60, 1,"","","","" },
         };
         for (int r = 0; r < examples.Length; r++)
             for (int c = 0; c < examples[r].Length; c++)
@@ -65,10 +72,21 @@ public class ImportsController : ControllerBase
             "2. No real size? Put 'One Size' in Size and the total in Qty.",
             "3. Vendor / Inventory / Category / Subcategory: use names from the 'Reference' tab. Missing ones",
             "   are created automatically on import. Subcategory is optional.",
-            "4. Cost per unit (INR) is what you paid per piece in rupees (converted to USD at 95 on import).",
-            "5. Sale price (USD) is the retail/tag price per piece.",
-            "6. SKU must be unique per product; existing SKUs are skipped and reported.",
-            "7. Paid By (owner): which partner's money funded this stock. Use an exact name from the",
+            "",
+            "PRICING — two ways, pick either per row:",
+            "4a. Easiest: enter 'Rate per unit (INR)' (the price on the supplier bill) plus GST %, Discount %,",
+            "    Markup % and Round (INR). Cost and Sale are then computed for you:",
+            "      Cost = Rate x (1 + GST%) x (1 - Discount%)",
+            "      Sale = Cost x (1 + Markup%), rounded to the nearest 'Round (INR)' (e.g. 100).",
+            "    Leave 'Cost per unit (INR)' and 'Sale price (USD)' BLANK to use this.",
+            "4b. Or set 'Cost per unit (INR)' and 'Sale price (USD)' directly — these OVERRIDE the Rate math,",
+            "    and you can leave the Rate/GST/Discount/Markup/Round columns blank.",
+            "   (All INR values are converted to USD at 95 on import; Sale price is entered in USD.)",
+            "",
+            "5. SKU: unique per product. LEAVE IT BLANK to auto-generate one from the vendor name",
+            "   (e.g. 'Anaga' -> ANA-0001, ANA-0002 ...); each blank-SKU row becomes its own product.",
+            "   A SKU that already exists is skipped and reported.",
+            "6. Paid By (owner): which partner's money funded this stock. Use an exact name from the",
             "   'Reference' tab. Owners are NOT auto-created — an unknown name imports the product",
             "   without an owner and is reported. Leave blank for jointly-funded stock.",
         };
@@ -140,7 +158,9 @@ public class ImportsController : ControllerBase
             cSku = Col("SKU"), cName = Col("Product Name", "Name"), cSize = Col("Size"), cQty = Col("Qty", "Quantity"),
             cCost = Col("Cost per unit (INR)", "Cost (INR)", "Cost"), cSale = Col("Sale price (USD)", "Sale (USD)", "Sale"),
             cReorder = Col("Reorder Threshold", "Reorder"), cColor = Col("Color"), cMaterial = Col("Material"),
-            cDesc = Col("Description"), cPaidBy = Col("Paid By (owner)", "Paid By", "Paid By Owner");
+            cDesc = Col("Description"), cPaidBy = Col("Paid By (owner)", "Paid By", "Paid By Owner"),
+            cRate = Col("Rate per unit (INR)", "Rate (INR)", "Rate"), cGst = Col("GST %", "GST"),
+            cDisc = Col("Discount %", "Discount"), cMarkup = Col("Markup %", "Markup"), cRound = Col("Round (INR)", "Round");
 
         var rows = new List<ProductImportRow>();
         foreach (var row in ws.RowsUsed().Skip(1)) // skip header
@@ -157,7 +177,8 @@ public class ImportsController : ControllerBase
             var r = new ProductImportRow(
                 row.RowNumber(), S(cVendor), S(cInv), S(cCat), S(cSub), S(cSku), S(cName), S(cSize),
                 I(cQty), D(cCost), D(cSale), cReorder == 0 ? null : (int?)I(cReorder),
-                S(cColor), S(cMaterial), S(cDesc), S(cPaidBy));
+                S(cColor), S(cMaterial), S(cDesc), S(cPaidBy),
+                D(cRate), D(cGst), D(cDisc), D(cMarkup), D(cRound));
 
             // Skip fully-empty rows.
             if (r.Sku is null && r.Name is null && r.Category is null) continue;

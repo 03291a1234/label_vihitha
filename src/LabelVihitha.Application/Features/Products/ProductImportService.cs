@@ -73,11 +73,37 @@ public class ProductImportService : IProductImportService
         var newSkus = new HashSet<string>();
         int productsCreated = 0, variantsCreated = 0, rowsProcessed = 0;
 
-        foreach (var r in rows.Where(r => string.IsNullOrWhiteSpace(r.Sku) &&
-                    (!string.IsNullOrWhiteSpace(r.Name) || !string.IsNullOrWhiteSpace(r.Category))))
-            errors.Add($"Row {r.RowNumber}: missing SKU — skipped.");
+        // Auto-generate a SKU for any row that has a Product Name but no SKU (each becomes its own product).
+        // Seed a per-prefix counter from existing SKUs so the series continues cleanly.
+        var rx = new System.Text.RegularExpressions.Regex(@"-(\d+)$");
+        var seq = new Dictionary<string, int>();
+        // Reserve SKUs the user typed so an auto-generated one never collides with them.
+        var reservedSkus = rows.Where(r => !string.IsNullOrWhiteSpace(r.Sku)).Select(r => Key(r.Sku!)).ToHashSet();
+        string GenSku(string? vendorName)
+        {
+            var prefix = CodeFrom(vendorName);
+            if (!seq.TryGetValue(prefix, out var n))
+                n = existingSkus
+                    .Where(s => s.StartsWith(prefix.ToLowerInvariant() + "-"))
+                    .Select(s => rx.Match(s)).Where(m => m.Success)
+                    .Select(m => int.TryParse(m.Groups[1].Value, out var x) ? x : 0)
+                    .DefaultIfEmpty(0).Max();
+            string sku;
+            do { n++; sku = $"{prefix}-{n:D4}"; } while (existingSkus.Contains(Key(sku)) || reservedSkus.Contains(Key(sku)));
+            seq[prefix] = n;
+            reservedSkus.Add(Key(sku));
+            return sku;
+        }
 
-        var groups = rows.Where(r => !string.IsNullOrWhiteSpace(r.Sku))
+        var effectiveRows = rows.Select(r =>
+            string.IsNullOrWhiteSpace(r.Sku) && !string.IsNullOrWhiteSpace(r.Name)
+                ? r with { Sku = GenSku(r.Vendor) }
+                : r).ToList();
+
+        foreach (var r in effectiveRows.Where(r => string.IsNullOrWhiteSpace(r.Sku) && !string.IsNullOrWhiteSpace(r.Category)))
+            errors.Add($"Row {r.RowNumber}: has a Category but no Product Name to auto-name it — skipped.");
+
+        var groups = effectiveRows.Where(r => !string.IsNullOrWhiteSpace(r.Sku))
             .GroupBy(r => r.Sku!.Trim(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var g in groups)
@@ -117,6 +143,8 @@ public class ProductImportService : IProductImportService
             var sizeSummary = variants.Where(x => !x.Size.Equals("One Size", StringComparison.OrdinalIgnoreCase))
                 .Select(x => x.Size).ToList();
 
+            var (costUsd, saleUsd) = ResolvePrice(head);
+
             var product = new Product
             {
                 Category = category,
@@ -129,13 +157,14 @@ public class ProductImportService : IProductImportService
                 Description = Trim(head.Description),
                 Color = Trim(head.Color),
                 Material = Trim(head.Material),
-                OriginalPrice = head.CostInr is decimal costInr ? Math.Round(costInr / InrPerUsd, 2) : 0m,
-                SalePrice = head.SaleUsd ?? 0m,
+                OriginalPrice = costUsd,
+                SalePrice = saleUsd,
                 ReorderThreshold = head.ReorderThreshold ?? 0,
                 QuantityOnHand = total,
                 Size = sizeSummary.Count == 0 ? null : string.Join(", ", sizeSummary),
                 IsActive = true,
-                Variants = variants.Select(x => new ProductVariant { Size = x.Size, QuantityOnHand = x.Qty }).ToList()
+                Variants = variants.Select(x => new ProductVariant
+                    { Size = x.Size, QuantityOnHand = x.Qty, CostPrice = costUsd, SalePrice = saleUsd }).ToList()
             };
             _db.Products.Add(product);
             productsCreated++;
@@ -153,4 +182,35 @@ public class ProductImportService : IProductImportService
              .GroupBy(n => n.ToLowerInvariant()).Select(g => g.First());
 
     private static string? Trim(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <summary>Effective per-unit cost &amp; sale in USD. Uses explicit Cost/Sale when present; otherwise
+    /// derives them from Rate + GST − discount (cost) and cost × markup, rounded (sale).</summary>
+    private static (decimal cost, decimal sale) ResolvePrice(ProductImportRow h)
+    {
+        decimal? costInr = h.CostInr;
+        if (costInr is null && h.RateInr is decimal rate)
+        {
+            var gst = 1 + (h.GstPct ?? 0) / 100m;
+            var disc = 1 - (h.DiscountPct ?? 0) / 100m;
+            costInr = Math.Round(rate * gst * disc, 2);
+        }
+        var costUsd = costInr is decimal ci ? Math.Round(ci / InrPerUsd, 2) : 0m;
+
+        decimal? saleUsd = h.SaleUsd;
+        if (saleUsd is null && costInr is decimal cin)
+        {
+            var saleInr = cin * (1 + (h.MarkupPct ?? 0) / 100m);
+            var round = h.RoundInr ?? 0m;
+            if (round > 0) saleInr = Math.Round(saleInr / round, 0, MidpointRounding.AwayFromZero) * round;
+            saleUsd = Math.Round(saleInr / InrPerUsd, 2);
+        }
+        return (costUsd, saleUsd ?? costUsd);
+    }
+
+    /// <summary>A 3-letter uppercase SKU prefix from a vendor/product name.</summary>
+    private static string CodeFrom(string? name)
+    {
+        var letters = new string((name ?? string.Empty).Where(char.IsLetter).ToArray()).ToUpperInvariant();
+        return letters.Length >= 3 ? letters[..3] : letters.PadRight(3, 'X');
+    }
 }

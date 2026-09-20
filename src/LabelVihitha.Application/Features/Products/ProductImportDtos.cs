@@ -17,7 +17,13 @@ public record ProductImportRow(
     string? Color,
     string? Material,
     string? Description,
-    string? PaidByOwner = null);
+    string? PaidByOwner = null,
+    // Optional pricing helpers: when Cost/Sale are blank, they are derived from these.
+    decimal? RateInr = null,
+    decimal? GstPct = null,
+    decimal? DiscountPct = null,
+    decimal? MarkupPct = null,
+    decimal? RoundInr = null);
 
 public record ProductImportResult(
     int ProductsCreated,
