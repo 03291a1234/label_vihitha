@@ -1,0 +1,1 @@
+import{a as n}from"./chunk-AVHV6YVI.js";import{ga as t,na as i}from"./chunk-MLCNF6GD.js";var s=class e{settings=t(n);transform(r){return(r??0)*this.settings.inrPerUsd()}static \u0275fac=function(m){return new(m||e)};static \u0275pipe=i({name:"inrAmount",type:e,pure:!0,standalone:!0})};export{s as a};

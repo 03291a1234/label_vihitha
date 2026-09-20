@@ -39,7 +39,7 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
           <div class="card k-card">
             <div class="k-top">Total invested <span class="muted">(to date)</span></div>
             <div class="k-big">{{ r.totalInvested | currency }}</div>
-            <div class="k-sub">≈ {{ r.totalInvested | inrAmount | currency:'INR':'symbol':'1.0-0' }} · stock + goods sold{{ r.totalBillsRecorded > 0 ? ' + bills' : '' }} + expenses</div>
+            <div class="k-sub">≈ {{ r.totalInvested | inrAmount | currency:'INR':'symbol':'1.0-0' }} · owner capital in (contributions − withdrawals)</div>
           </div>
           <div class="card k-card">
             <div class="k-top">Sales</div>
@@ -123,9 +123,9 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
             (inventory at cost + supplier bills + operating expenses + withdrawals). This is what's available to buy new inventory. Assumes sales are collected in full.</div>
         </div>
 
-        <!-- Total investment (capital deployed) -->
+        <!-- Capital deployed (where the money went) + how it was funded -->
         <div class="card invest">
-          <h2>Total investment <span class="muted">(capital deployed, to date)</span></h2>
+          <h2>Capital deployed <span class="muted">(where the money went, to date)</span></h2>
           <div class="cash-grid">
             <div class="line"><span>Stock on hand <span class="muted">(at cost)</span></span><span class="mono">{{ r.inventoryValueAtCost | currency }}</span></div>
             <div class="line"><span>Cost of goods already sold <span class="muted">(bought &amp; since sold)</span></span><span class="mono">{{ r.allTimeCogs | currency }}</span></div>
@@ -133,29 +133,29 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
               <div class="line"><span>Supplier bills <span class="muted">(stitching, cloth… from Inventories)</span></span><span class="mono">{{ r.totalBillsRecorded | currency }}</span></div>
             }
             <div class="line"><span>Operating expenses <span class="muted">(to date)</span></span><span class="mono">{{ r.allTimeExpenses | currency }}</span></div>
-            <div class="line strong bt"><span>Total invested</span>
-              <span class="mono">{{ r.totalInvested | currency }}
-                <span class="muted inr">≈ {{ r.totalInvested | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></span>
+            <div class="line strong bt"><span>Capital deployed</span>
+              <span class="mono">{{ r.capitalDeployed | currency }}
+                <span class="muted inr">≈ {{ r.capitalDeployed | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></span>
             </div>
           </div>
           <div class="recon">
-            <div class="sec">From contributions</div>
-            <div class="rline"><span>Total owner contributions</span><span class="mono pos">+{{ r.totalContributions | currency }}</span></div>
-            @if (r.totalWithdrawals > 0) {
-              <div class="rline"><span>Owner withdrawals</span><span class="mono neg">−{{ r.totalWithdrawals | currency }}</span></div>
-            }
-            <div class="rline"><span>Total invested (deployed)</span><span class="mono neg">−{{ r.totalInvested | currency }}</span></div>
-            <div class="rline strong bt2"><span>Contributions left after investment</span>
-              <span class="mono" [class.neg]="contributionsLeft() < 0">{{ contributionsLeft() | currency }}
-                <span class="muted inr">≈ {{ contributionsLeft() | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></span>
-            </div>
-            @if (contributionsLeft() >= 0) {
-              <div class="muted foot">Of the {{ r.totalContributions | currency }} contributed, {{ r.totalInvested | currency }}
-                has been deployed into stock and costs — leaving <strong>{{ contributionsLeft() | currency }}</strong> of contribution
-                money not yet spent. (Total cash on hand is more — {{ cashRemaining() | currency }} — because sales collected add to it too.)</div>
+            <div class="sec">How it was funded</div>
+            <div class="rline"><span>Total invested <span class="muted">(owner contributions, net)</span></span><span class="mono pos">+{{ r.totalInvested | currency }}</span></div>
+            @if (reinvestedProfit() >= 0) {
+              <div class="rline"><span>Reinvested sales profit</span><span class="mono pos">+{{ reinvestedProfit() | currency }}</span></div>
+              <div class="rline strong bt2"><span>Capital deployed</span>
+                <span class="mono">{{ r.capitalDeployed | currency }}
+                  <span class="muted inr">≈ {{ r.capitalDeployed | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></span>
+              </div>
+              <div class="muted foot"><strong>Total invested</strong> is the owners' own money in
+                ({{ r.totalInvested | currency }}). The remaining <strong>{{ reinvestedProfit() | currency }}</strong>
+                of stock/costs was funded by reinvested sales — not new investment.</div>
             } @else {
-              <div class="muted foot">More has been deployed than owners contributed — the extra
-                <strong>{{ -contributionsLeft() | currency }}</strong> was funded by reinvested sales profit.</div>
+              <div class="rline strong bt2"><span>Contributions not yet deployed</span>
+                <span class="mono">{{ -reinvestedProfit() | currency }}</span></div>
+              <div class="muted foot">Of the {{ r.totalInvested | currency }} invested by owners,
+                {{ r.capitalDeployed | currency }} is deployed into stock and costs — leaving
+                <strong>{{ -reinvestedProfit() | currency }}</strong> not yet spent.</div>
             }
           </div>
         </div>
@@ -368,12 +368,12 @@ export class ProfitLossComponent {
       - (r.inventoryValueAtCost + r.allTimeCogs) - r.totalBillsRecorded - r.allTimeExpenses - r.totalWithdrawals;
   }
 
-  /** How much of the owners' contributions is still available after what's been deployed
-   * (contributions − withdrawals − capital deployed). Negative means sales profit funded the rest. */
-  contributionsLeft(): number {
+  /** Capital deployed beyond the owners' invested capital — i.e. the part funded by reinvested
+   * sales profit. Negative means not all invested capital has been deployed yet (some sits as cash). */
+  reinvestedProfit(): number {
     const r = this.report();
     if (!r) return 0;
-    return r.totalContributions - r.totalWithdrawals - r.totalInvested;
+    return r.capitalDeployed - r.totalInvested;
   }
 
   recordContribution() {

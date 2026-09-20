@@ -5,7 +5,7 @@
 set -euo pipefail
 
 RG="rg-labelvihitha-demo"
-APP="labelvihitha-api-bqfs7gmrjf67k"
+APP="labelvihitha-web"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 if [ ! -d "$ROOT/web/dist/labelvihitha-web/browser" ]; then

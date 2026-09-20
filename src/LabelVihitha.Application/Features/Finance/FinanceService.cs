@@ -138,9 +138,9 @@ public class FinanceService : IFinanceService
         var totalBillsRecorded = await _db.InventoryBills.AsNoTracking()
             .Where(x => !x.Inventory.IsDeleted)
             .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
-        // Capital deployed to date: inventory bought (still-on-hand at cost + cost of goods already
-        // sold) + supplier bills + operating expenses spent. This is the authoritative "total invested".
-        var totalInvested = invCost + allCogs + totalBillsRecorded + allExpenses;
+        // Capital deployed to date = everything bought/spent: stock still on hand (at cost) + cost of
+        // goods already sold + supplier bills + operating expenses. This is where the money went.
+        var capitalDeployed = invCost + allCogs + totalBillsRecorded + allExpenses;
 
         var owners = await _db.Owners.AsNoTracking()
             .Where(o => o.IsActive)
@@ -151,6 +151,10 @@ public class FinanceService : IFinanceService
                 Withdrawals = o.Transactions.Where(x => !x.IsDeleted && x.Type == OwnerTransactionType.Withdrawal).Sum(x => (decimal?)x.Amount) ?? 0m
             })
             .ToListAsync(ct);
+
+        // Total invested = the owners' own capital put in (contributions net of withdrawals). Inventory
+        // bought with sales revenue (e.g. a new batch funded from earnings) is NOT counted as investment.
+        var totalInvested = owners.Sum(o => o.Contributions) - owners.Sum(o => o.Withdrawals);
 
         var ownerRows = owners
             .Select(o =>
@@ -180,6 +184,7 @@ public class FinanceService : IFinanceService
             allExpenses,
             totalBillsRecorded,
             totalInvested,
+            capitalDeployed,
             allRev);
     }
 }

@@ -1,0 +1,1 @@
+function a(i,n){let e=[...i];if(!n.active||n.direction==="")return e;let o=n.direction==="desc"?-1:1;return e.sort((u,c)=>{let r=u[n.active],t=c[n.active];return r==null&&t==null?0:r==null?1:t==null?-1:typeof r=="number"&&typeof t=="number"?(r-t)*o:String(r).localeCompare(String(t))*o})}export{a};

@@ -38,7 +38,7 @@ type View = 'shop' | 'checkout' | 'done';
         <div class="top-actions">
           @if (view() === 'shop') {
             <button mat-button routerLink="/login"><mat-icon>lock</mat-icon> Staff</button>
-            <button mat-raised-button color="primary" (click)="goCheckout()" [disabled]="cart.count() === 0">
+            <button mat-raised-button color="primary" (click)="openCart()">
               <mat-icon>shopping_bag</mat-icon> Cart ({{ cart.count() }}) · {{ cart.total() | currency }}
             </button>
           }
@@ -92,8 +92,12 @@ type View = 'shop' | 'checkout' | 'done';
             @if (!loading() && products().length === 0) { <div class="empty">No products found.</div> }
           </div>
 
-          <aside class="cart">
-            <h3>Your cart</h3>
+          <div class="cart-backdrop" [class.show]="cartOpen()" (click)="closeCart()"></div>
+          <aside class="cart" [class.open]="cartOpen()">
+            <div class="cart-head">
+              <h3>Your cart</h3>
+              <button mat-icon-button class="cart-close" (click)="closeCart()" aria-label="Close cart"><mat-icon>close</mat-icon></button>
+            </div>
             @if (cart.lines().length === 0) {
               <p class="muted">Your cart is empty. Add a few sarees to get started.</p>
             } @else {
@@ -203,12 +207,16 @@ type View = 'shop' | 'checkout' | 'done';
     </div>
   `,
   styles: [`
-    .store { min-height: 100vh; background: var(--lv-cream); }
+    .store { min-height: 100vh; background: var(--lv-cream); overflow-x: hidden; }
     .topbar {
       position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between;
       gap: 16px; padding: 12px 24px; background: linear-gradient(160deg, #6e1f3e, #3f1228); color: #fff;
+      flex-wrap: wrap;
     }
-    .brand { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .brand { display: flex; align-items: center; gap: 12px; cursor: pointer; min-width: 0; }
+    .brand > div { min-width: 0; }
+    /* Never let the tagline wrap word-by-word — truncate instead. */
+    .brand .tag { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; }
     .emblem { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
       background: #fbf5ea; border: 2px solid #c39a3e; flex: 0 0 auto; }
     .emblem img { width: 122%; height: 122%; object-fit: cover; }
@@ -218,8 +226,9 @@ type View = 'shop' | 'checkout' | 'done';
     .top-actions .mat-mdc-button { color: #f3e4ec; }
 
     .shop-body { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding: 24px; max-width: 1200px; margin: 0 auto; align-items: start; }
+    .products { min-width: 0; }
     .search-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-    .search { width: 320px; max-width: 100%; }
+    .search { flex: 1 1 auto; min-width: 0; max-width: 340px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; }
     .pcard { background: #fff; border: 1px solid var(--lv-line); border-radius: 14px; overflow: hidden; box-shadow: 0 6px 20px rgba(110,31,62,.06); display: flex; flex-direction: column; }
     .pcard.out { opacity: .7; }
@@ -239,7 +248,10 @@ type View = 'shop' | 'checkout' | 'done';
     .price { font-family: "Cormorant Garamond", Georgia, serif; font-size: 22px; font-weight: 700; color: var(--lv-wine); }
 
     .cart { position: sticky; top: 88px; background: #fff; border: 1px solid var(--lv-line); border-radius: 14px; padding: 16px; box-shadow: 0 6px 20px rgba(110,31,62,.06); }
+    .cart-head { display: flex; align-items: center; justify-content: space-between; }
     .cart h3 { margin: 0 0 10px; font-family: "Cormorant Garamond", Georgia, serif; color: var(--lv-wine); }
+    .cart-close { display: none; }
+    .cart-backdrop { display: none; }
     .cline { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0e6ea; }
     .cname { font-size: 14px; font-weight: 500; }
     .cqty { display: flex; align-items: center; gap: 2px; }
@@ -274,7 +286,26 @@ type View = 'shop' | 'checkout' | 'done';
     @media (max-width: 820px) {
       .shop-body { grid-template-columns: 1fr; }
       .cols { grid-template-columns: 1fr; }
-      .cart { position: static; }
+      /* Cart becomes a slide-up drawer opened from the header Cart button. */
+      .cart {
+        position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 60;
+        margin: 0; max-height: 82vh; overflow-y: auto; border-radius: 18px 18px 0 0;
+        transform: translateY(105%); transition: transform .28s ease; box-shadow: 0 -8px 30px rgba(0,0,0,.28);
+      }
+      .cart.open { transform: translateY(0); }
+      .cart-close { display: inline-flex; }
+      .cart-backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 55; }
+    }
+    /* Phones (incl. narrow foldables like the Flip): stack cleanly, no horizontal overflow. */
+    @media (max-width: 560px) {
+      .topbar { padding: 10px 14px; gap: 8px; }
+      .brand .name { font-size: 20px; }
+      .brand .tag { display: none; }
+      .top-actions { gap: 4px; }
+      .shop-body { padding: 16px; gap: 16px; }
+      .grid { grid-template-columns: 1fr; }
+      .checkout, .done { padding: 16px; }
+      .form-row { flex-wrap: wrap; }
     }
   `]
 })
@@ -350,8 +381,13 @@ export class ShopComponent {
   inc(id: number, qty: number, available: number) { if (qty < available) this.cart.setQty(id, qty + 1); }
   dec(id: number, qty: number) { if (qty > 1) this.cart.setQty(id, qty - 1); else this.cart.remove(id); }
 
-  goHome() { this.view.set('shop'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* ignore */ } }
-  goCheckout() { if (this.cart.count() > 0) this.view.set('checkout'); }
+  goHome() { this.view.set('shop'); this.closeCart(); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* ignore */ } }
+  goCheckout() { if (this.cart.count() > 0) { this.closeCart(); this.view.set('checkout'); } }
+
+  /** Mobile cart drawer (on desktop the sidebar is always visible, so this is a no-op there). */
+  cartOpen = signal(false);
+  openCart() { this.cartOpen.set(true); }
+  closeCart() { this.cartOpen.set(false); }
 
   private cartItems() {
     return this.cart.lines().map(l => ({ productId: l.product.id, quantity: l.quantity, productVariantId: l.variant.id }));

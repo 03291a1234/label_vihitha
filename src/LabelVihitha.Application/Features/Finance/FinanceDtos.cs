@@ -70,7 +70,11 @@ public record ProfitLossReport(
     decimal AllTimeExpenses,
     // Sum of amounts on supplier bills attached to inventories (documented actual spend).
     decimal TotalBillsRecorded,
-    // Authoritative total capital deployed to date = stock on hand at cost + all-time COGS + all-time expenses.
+    // Total invested = the owners' own capital put in (contributions − withdrawals). Purchases funded
+    // by sales revenue are NOT new investment, so they don't count here.
     decimal TotalInvested,
+    // Capital deployed to date = stock on hand at cost + all-time COGS + supplier bills + expenses.
+    // Where the money went; the part above TotalInvested was funded by reinvested sales profit.
+    decimal CapitalDeployed,
     // All-time committed sales revenue (money collected), for the joint-account cash view.
     decimal AllTimeRevenue);

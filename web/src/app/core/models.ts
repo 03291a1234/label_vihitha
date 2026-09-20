@@ -193,6 +193,7 @@ export interface ProfitLossReport {
   allTimeExpenses: number;
   totalBillsRecorded: number;
   totalInvested: number;
+  capitalDeployed: number;
   allTimeRevenue: number;
 }
 

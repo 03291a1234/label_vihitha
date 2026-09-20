@@ -40,11 +40,6 @@ import { Notify } from '../../core/services/notify.service';
               Sign in
             </button>
           </form>
-          <p class="hint muted">
-            Admin <code>owner</code>/<code>Owner#12345</code> ·
-            Owner <code>manager</code>/<code>Manager#12345</code> ·
-            Inventory <code>stock</code>/<code>Stock#12345</code>
-          </p>
           <div class="shop-link">
             <a routerLink="/shop"><mat-icon>storefront</mat-icon> Shop as a customer</a>
           </div>
@@ -93,8 +88,8 @@ export class LoginComponent {
 
   loading = signal(false);
   form = this.fb.nonNullable.group({
-    userName: ['owner', Validators.required],
-    password: ['Owner#12345', Validators.required]
+    userName: ['', Validators.required],
+    password: ['', Validators.required]
   });
 
   submit() {
