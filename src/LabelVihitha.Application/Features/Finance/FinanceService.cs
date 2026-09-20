@@ -7,10 +7,12 @@ namespace LabelVihitha.Application.Features.Finance;
 public class FinanceService : IFinanceService
 {
     private readonly IApplicationDbContext _db;
-    public FinanceService(IApplicationDbContext db) => _db = db;
-
-    // A committed sale = order Confirmed or Fulfilled (Pending excluded, Cancelled restocked).
-    private static readonly OrderStatus[] SoldStatuses = { OrderStatus.Confirmed, OrderStatus.Fulfilled };
+    private readonly ISalesCostingService _costing;
+    public FinanceService(IApplicationDbContext db, ISalesCostingService costing)
+    {
+        _db = db;
+        _costing = costing;
+    }
 
     private static (DateTime from, DateTime to) Range(DateTime? from, DateTime? to)
     {
@@ -21,30 +23,6 @@ public class FinanceService : IFinanceService
 
     private static decimal Pct(decimal numerator, decimal denominator) =>
         denominator == 0 ? 0 : Math.Round(numerator / denominator * 100, 2);
-
-    /// <summary>Committed sales revenue and cost of goods sold in a date range.</summary>
-    private async Task<(decimal Revenue, decimal Cogs, int Orders, int Units)> SalesAsync(DateTime f, DateTime t, CancellationToken ct)
-    {
-        var lines = await _db.OrderItems.AsNoTracking()
-            .Where(i => SoldStatuses.Contains(i.Order.Status) && i.Order.OrderDate >= f && i.Order.OrderDate <= t)
-            .Select(i => new { i.OrderId, Revenue = i.FinalPriceAtSale * i.Quantity, Cost = i.OriginalPriceAtSale * i.Quantity, i.Quantity })
-            .ToListAsync(ct);
-
-        // Order-level discounts (promo / manual) reduce what the customer actually paid, so they
-        // reduce revenue — the per-line FinalPriceAtSale doesn't include them.
-        var orderDiscounts = await _db.Orders.AsNoTracking()
-            .Where(o => SoldStatuses.Contains(o.Status) && o.OrderDate >= f && o.OrderDate <= t)
-            .SumAsync(o => (decimal?)o.OrderDiscount, ct) ?? 0m;
-
-        // Additional service charges (stitching, shipping…) are revenue the customer paid, with no
-        // cost of goods — add them on top of the product line revenue.
-        var charges = await _db.OrderCharges.AsNoTracking()
-            .Where(c => SoldStatuses.Contains(c.Order.Status) && c.Order.OrderDate >= f && c.Order.OrderDate <= t)
-            .SumAsync(c => (decimal?)c.Amount, ct) ?? 0m;
-
-        return (lines.Sum(l => l.Revenue) - orderDiscounts + charges, lines.Sum(l => l.Cost),
-                lines.Select(l => l.OrderId).Distinct().Count(), lines.Sum(l => l.Quantity));
-    }
 
     /// <summary>Operating expenses in a range (Expenses tab only). Supplier bills are NOT expenses —
     /// they're capitalised into Total Investment.</summary>
@@ -57,8 +35,9 @@ public class FinanceService : IFinanceService
         var (f, t) = Range(from, to);
 
         // ---- P&L for the selected period ----
-        var (revenue, cogs, orders, units) = await SalesAsync(f, t, ct);
-        var grossProfit = revenue - cogs;
+        var sales = await _costing.GetSalesTotalsAsync(f, t, ct);
+        var (revenue, cogs, orders, units) = (sales.Revenue, sales.Cogs, sales.Orders, sales.Units);
+        var grossProfit = sales.GrossProfit;
 
         var expenseRows = await _db.Expenses.AsNoTracking()
             .Where(e => e.Date >= f && e.Date <= t)
@@ -74,26 +53,8 @@ public class FinanceService : IFinanceService
 
         var netProfit = grossProfit - expensesTotal;
 
-        // ---- Inventory on hand (current snapshot) ----
-        var inv = await _db.Products.AsNoTracking().Where(p => p.IsActive)
-            .Select(p => new { p.OriginalPrice, p.SalePrice, p.QuantityOnHand,
-                // Variant-aware valuation: sizes with an override at their own price, the rest at the product's.
-                EffCost = p.Variants.Where(v => !v.IsDeleted && v.CostPrice != null).Sum(v => (v.CostPrice ?? 0m) * v.QuantityOnHand)
-                        + p.OriginalPrice * p.Variants.Where(v => !v.IsDeleted && v.CostPrice == null).Sum(v => v.QuantityOnHand),
-                EffSale = p.Variants.Where(v => !v.IsDeleted && v.SalePrice != null).Sum(v => (v.SalePrice ?? 0m) * v.QuantityOnHand)
-                        + p.SalePrice * p.Variants.Where(v => !v.IsDeleted && v.SalePrice == null).Sum(v => v.QuantityOnHand),
-                ProductOwnerId = p.PaidByOwnerId,
-                ProductOwnerName = p.PaidByOwner != null ? p.PaidByOwner.Name : null,
-                InvOwnerId = p.Inventory != null ? p.Inventory.PaidByOwnerId : null,
-                InvOwnerName = p.Inventory != null && p.Inventory.PaidByOwner != null ? p.Inventory.PaidByOwner.Name : null,
-                p.VendorId,
-                VendorName = p.Vendor != null ? p.Vendor.Name : null,
-                p.InventoryId,
-                InventoryName = p.Inventory != null ? p.Inventory.Name : null,
-                Components = p.CostComponents.Where(c => !c.IsDeleted)
-                    .Select(c => new { c.VendorId, VendorName = c.Vendor != null ? c.Vendor.Name : null, c.Amount })
-                    .ToList() })
-            .ToListAsync(ct);
+        // ---- Inventory on hand (current snapshot) — shared valuation (same basis as Analytics) ----
+        var inv = await _costing.GetValuationRowsAsync(ct);
         var invCost = inv.Sum(p => p.EffCost);
         var invSale = inv.Sum(p => p.EffSale);
         var invUnits = inv.Sum(p => p.QuantityOnHand);
@@ -163,8 +124,9 @@ public class FinanceService : IFinanceService
             .ToList();
 
         // ---- Owner equity (to date): allocate all-time retained profit by share ----
-        var (allRev, allCogs, _, _) = await SalesAsync(
+        var allSales = await _costing.GetSalesTotalsAsync(
             new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc), DateTime.UtcNow.AddDays(1), ct);
+        var (allRev, allCogs) = (allSales.Revenue, allSales.Cogs);
         var allExpenses = await ExpensesTotalAsync(
             new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc), DateTime.UtcNow.AddDays(1), ct);
         var allTimeNetProfit = allRev - allCogs - allExpenses;

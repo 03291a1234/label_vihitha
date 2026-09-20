@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IExpenseCategoryService, ExpenseCategoryService>();
         services.AddScoped<IExpenseService, ExpenseService>();
         services.AddScoped<IOwnerService, OwnerService>();
+        services.AddScoped<Features.Finance.ISalesCostingService, Features.Finance.SalesCostingService>();
         services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<Features.Promotions.IPromoCodeService, Features.Promotions.PromoCodeService>();
 

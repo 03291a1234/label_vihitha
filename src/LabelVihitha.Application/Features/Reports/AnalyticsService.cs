@@ -1,5 +1,6 @@
 using System.Globalization;
 using LabelVihitha.Application.Common.Interfaces;
+using LabelVihitha.Application.Features.Finance;
 using LabelVihitha.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,17 +9,15 @@ namespace LabelVihitha.Application.Features.Reports;
 public class AnalyticsService : IAnalyticsService
 {
     private readonly IApplicationDbContext _db;
-    public AnalyticsService(IApplicationDbContext db) => _db = db;
+    private readonly ISalesCostingService _costing;
+    public AnalyticsService(IApplicationDbContext db, ISalesCostingService costing)
+    {
+        _db = db;
+        _costing = costing;
+    }
 
-    // A committed sale = order not Pending/Cancelled (Cancelled items are restocked).
-    private static readonly OrderStatus[] SoldStatuses = { OrderStatus.Confirmed, OrderStatus.Fulfilled };
-
-    /// <summary>One flattened sold line — the shared basis for margin/sales/discount/movers.</summary>
-    private sealed record SoldLine(
-        int OrderId, DateTime OrderDate,
-        int CategoryId, string CategoryName,
-        int ProductId, string SKU, string ProductName,
-        int Quantity, decimal OriginalCost, decimal SaleValue, decimal FinalRevenue, decimal Discount);
+    // A committed sale = order Confirmed or Fulfilled — shared with the costing service.
+    private static readonly OrderStatus[] SoldStatuses = SalesCostingService.SoldStatuses;
 
     private static (DateTime from, DateTime to) Range(DateTime? from, DateTime? to)
     {
@@ -27,29 +26,9 @@ public class AnalyticsService : IAnalyticsService
         return (f, t);
     }
 
-    private async Task<List<SoldLine>> FetchSoldLinesAsync(DateTime from, DateTime to, int? categoryId, CancellationToken ct)
-    {
-        // Ignore soft-delete filters so historical sales still count when a product (or its
-        // category) was later deleted — otherwise analytics revenue drifts below the P&L. We
-        // re-apply the non-deleted filters for the order line and its order explicitly.
-        var q = _db.OrderItems.AsNoTracking().IgnoreQueryFilters()
-            .Where(i => !i.IsDeleted && !i.Order.IsDeleted
-                        && SoldStatuses.Contains(i.Order.Status)
-                        && i.Order.OrderDate >= from && i.Order.OrderDate <= to);
-        if (categoryId is int cid)
-            q = q.Where(i => i.Product.CategoryId == cid);
-
-        return await q.Select(i => new SoldLine(
-            i.OrderId, i.Order.OrderDate,
-            i.Product.CategoryId, i.Product.Category.Name,
-            i.ProductId, i.Product.SKU, i.Product.Name,
-            i.Quantity,
-            i.OriginalPriceAtSale * i.Quantity,
-            i.SalePriceAtSale * i.Quantity,
-            i.FinalPriceAtSale * i.Quantity,
-            i.DiscountAmount * i.Quantity))
-            .ToListAsync(ct);
-    }
+    /// <summary>Canonical sold lines (single source of truth shared with P&amp;L).</summary>
+    private async Task<IReadOnlyList<SoldLine>> FetchSoldLinesAsync(DateTime from, DateTime to, int? categoryId, CancellationToken ct)
+        => await _costing.GetSoldLinesAsync(from, to, categoryId, ct);
 
     private static decimal Pct(decimal numerator, decimal denominator) =>
         denominator == 0 ? 0 : Math.Round(numerator / denominator * 100, 2);
@@ -57,21 +36,8 @@ public class AnalyticsService : IAnalyticsService
     public async Task<DashboardSummary> GetDashboardSummaryAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
     {
         var (f, t) = Range(from, to);
-        var lines = await FetchSoldLinesAsync(f, t, null, ct);
-
-        // Order-level discounts (promo / manual) reduce actual revenue but aren't on the line items.
-        var orderDiscounts = await _db.Orders.AsNoTracking()
-            .Where(o => SoldStatuses.Contains(o.Status) && o.OrderDate >= f && o.OrderDate <= t)
-            .SumAsync(o => (decimal?)o.OrderDiscount, ct) ?? 0m;
-
-        // Additional service charges (stitching, shipping…) are revenue with no cost of goods.
-        var charges = await _db.OrderCharges.AsNoTracking()
-            .Where(c => SoldStatuses.Contains(c.Order.Status) && c.Order.OrderDate >= f && c.Order.OrderDate <= t)
-            .SumAsync(c => (decimal?)c.Amount, ct) ?? 0m;
-
-        var revenue = lines.Sum(l => l.FinalRevenue) - orderDiscounts + charges;
-        var cost = lines.Sum(l => l.OriginalCost);
-        var margin = revenue - cost;
+        var sales = await _costing.GetSalesTotalsAsync(f, t, ct);
+        var (revenue, cost, margin) = (sales.Revenue, sales.Cogs, sales.GrossProfit);
 
         var outstanding = await _db.Invoices.AsNoTracking()
             .Where(i => i.PaymentStatus != PaymentStatus.Paid && i.PaymentStatus != PaymentStatus.Refunded)
@@ -87,8 +53,7 @@ public class AnalyticsService : IAnalyticsService
 
         return new DashboardSummary(
             f, t, revenue, cost, margin, Pct(margin, revenue),
-            lines.Select(l => l.OrderId).Distinct().Count(),
-            lines.Sum(l => l.Quantity),
+            sales.Orders, sales.Units,
             outstanding, open, overdue, lowStock);
     }
 
@@ -180,30 +145,16 @@ public class AnalyticsService : IAnalyticsService
 
     public async Task<InventoryValuationReport> GetInventoryValuationAsync(CancellationToken ct = default)
     {
-        // Project to flat rows (a join EF can translate), then group in memory —
-        // grouping by a navigation property (Category.Name) is not SQL-translatable.
-        var products = await _db.Products.AsNoTracking()
-            .Where(p => p.IsActive)
-            .Select(p => new
-            {
-                p.CategoryId,
-                CategoryName = p.Category.Name,
-                p.QuantityOnHand,
-                // Variant-aware valuation: sizes with an override at their own price, the rest at the product's.
-                Cost = p.Variants.Where(v => !v.IsDeleted && v.CostPrice != null).Sum(v => (v.CostPrice ?? 0m) * v.QuantityOnHand)
-                     + p.OriginalPrice * p.Variants.Where(v => !v.IsDeleted && v.CostPrice == null).Sum(v => v.QuantityOnHand),
-                Sale = p.Variants.Where(v => !v.IsDeleted && v.SalePrice != null).Sum(v => (v.SalePrice ?? 0m) * v.QuantityOnHand)
-                     + p.SalePrice * p.Variants.Where(v => !v.IsDeleted && v.SalePrice == null).Sum(v => v.QuantityOnHand)
-            })
-            .ToListAsync(ct);
+        // Shared valuation basis (identical to the P&L snapshot), grouped by category in memory.
+        var products = await _costing.GetValuationRowsAsync(ct);
 
         var rows = products
             .GroupBy(p => new { p.CategoryId, p.CategoryName })
             .Select(g => new InventoryValuationRow(
                 g.Key.CategoryId, g.Key.CategoryName,
                 g.Count(), g.Sum(p => p.QuantityOnHand),
-                g.Sum(p => p.Cost),
-                g.Sum(p => p.Sale)))
+                g.Sum(p => p.EffCost),
+                g.Sum(p => p.EffSale)))
             .OrderByDescending(r => r.ValueAtSale)
             .ToList();
 
