@@ -282,7 +282,7 @@ type View = 'shop' | 'checkout' | 'done';
     .top-actions { display: flex; align-items: center; gap: 8px; }
     .top-actions .mat-mdc-button { color: #f3e4ec; }
 
-    .shop-body { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding: 24px; max-width: 1200px; margin: 0 auto; align-items: start; }
+    .shop-body { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding: 24px; max-width: 1680px; margin: 0 auto; align-items: start; }
     /* Collections landing spans the full width — no cart sidebar to shop yet. */
     .shop-body.landing { grid-template-columns: 1fr; }
     @media (min-width: 821px) { .shop-body.landing .cart, .shop-body.landing .cart-backdrop { display: none; } }
