@@ -275,6 +275,10 @@ public class InventoryGroupService : IInventoryGroupService
         var products = await _db.Products.Where(p => p.InventoryId == id).ToListAsync(ct);
         foreach (var p in products) p.InventoryId = null;
 
+        // Soft-delete the inventory's supplier bills too, so they stop counting as capital.
+        var bills = await _db.InventoryBills.Where(b => b.InventoryId == id && !b.IsDeleted).ToListAsync(ct);
+        foreach (var b in bills) { b.IsDeleted = true; b.UpdatedAt = DateTime.UtcNow; }
+
         entity.IsDeleted = true;
         entity.IsActive = false;
         entity.UpdatedAt = DateTime.UtcNow;

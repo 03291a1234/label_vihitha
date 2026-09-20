@@ -172,7 +172,9 @@ public class FinanceService : IFinanceService
         // ---- Total investment ----
         // Supplier bills attached to inventories — capitalised acquisition costs (stitching, cloth…),
         // NOT operating expenses. They count toward Total Investment.
+        // Only bills on live inventories count — a soft-deleted inventory's bills leave with it.
         var totalBillsRecorded = await _db.InventoryBills.AsNoTracking()
+            .Where(x => !x.Inventory.IsDeleted)
             .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
         // Capital deployed to date: inventory bought (still-on-hand at cost + cost of goods already
         // sold) + supplier bills + operating expenses spent. This is the authoritative "total invested".
