@@ -11,17 +11,18 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { forkJoin, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
-import { InventoryApi, OwnerApi, apiOrigin } from '../../core/services/api.services';
+import { InventoryApi, OwnerApi, VendorApi, apiOrigin } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
-import { Inventory, InventoryBill, Owner } from '../../core/models';
+import { Inventory, InventoryBill, Owner, Vendor } from '../../core/models';
+import { SearchSelectComponent } from '../../shared/search-select.component';
 import { DateInputComponent } from '../../shared/date-input.component';
 
-interface StagedBill { fileUrl: string; fileName: string; amount: number | null; billDate: string; note: string; }
+interface StagedBill { fileUrl: string; fileName: string; amount: number | null; billDate: string; note: string; vendorId: number | null; vendorName: string | null; }
 
 @Component({
   selector: 'app-inventory-edit',
   standalone: true,
-  imports: [DateInputComponent, 
+  imports: [DateInputComponent, SearchSelectComponent, 
     CurrencyPipe, FormsModule, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatSlideToggleModule, MatProgressBarModule
   ],
@@ -55,7 +56,8 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
         @for (b of savedBills(); track b.id) {
           <div class="bill">
             <mat-icon class="fic">{{ isPdf(b.fileUrl) ? 'picture_as_pdf' : 'image' }}</mat-icon>
-            <a class="fname" [href]="fileUrl(b.fileUrl)" target="_blank" rel="noopener">{{ b.fileName }}</a>
+            <a class="fname" [href]="fileUrl(b.fileUrl)" target="_blank" rel="noopener">{{ b.fileName }}
+              @if (b.vendorName) { <span class="vtag">{{ b.vendorName }}</span> }</a>
             <span class="amt">{{ b.amount ? (b.amount | currency) : '—' }}</span>
             <button mat-icon-button color="warn" (click)="removeSaved(b)"><mat-icon>delete</mat-icon></button>
           </div>
@@ -63,7 +65,8 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
         @for (b of staged(); track $index) {
           <div class="bill staged">
             <mat-icon class="fic">{{ isPdf(b.fileUrl) ? 'picture_as_pdf' : 'image' }}</mat-icon>
-            <span class="fname">{{ b.fileName }} <span class="muted">(pending)</span></span>
+            <span class="fname">{{ b.fileName }} <span class="muted">(pending)</span>
+              @if (b.vendorName) { <span class="vtag">{{ b.vendorName }}</span> }</span>
             <span class="amt">{{ b.amount ? (b.amount | currency) : '—' }}</span>
             <button mat-icon-button color="warn" (click)="removeStaged($index)"><mat-icon>close</mat-icon></button>
           </div>
@@ -74,6 +77,8 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
             <mat-icon>upload_file</mat-icon> {{ pendingName() || 'Choose file (image / PDF)' }}
           </button>
           <input #fileInput type="file" hidden accept="image/*,application/pdf" (change)="onFile($event)" />
+          <app-search-select label="Vendor" [items]="vendors()" [(ngModel)]="billVendorId" [ngModelOptions]="{standalone:true}"
+            nullOption nullLabel="— No vendor —" searchPlaceholder="Search vendors…" />
           <div class="bfields">
             <mat-form-field appearance="outline" class="famt">
               <mat-label>Amount (USD)</mat-label>
@@ -105,6 +110,7 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     .bill.staged { border-style: dashed; }
     .bill .fic { color: var(--lv-wine); }
     .fname { color: var(--lv-wine); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vtag { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; margin-left: 6px; }
     a.fname:hover { text-decoration: underline; }
     .amt { font-weight: 700; white-space: nowrap; }
     .add-bill { margin-top: 8px; }
@@ -118,10 +124,12 @@ export class InventoryEditDialog {
   private fb = inject(FormBuilder);
   private api = inject(InventoryApi);
   private ownerApi = inject(OwnerApi);
+  private vendorApi = inject(VendorApi);
   private notify = inject(Notify);
   ref = inject(MatDialogRef<InventoryEditDialog>);
   busy = signal(false);
   owners = signal<Owner[]>([]);
+  vendors = signal<Vendor[]>([]);
 
   savedBills = signal<InventoryBill[]>([]);
   staged = signal<StagedBill[]>([]);
@@ -130,6 +138,7 @@ export class InventoryEditDialog {
   billAmount: number | null = null;
   billDate = '';
   billNote = '';
+  billVendorId: number | null = null;
 
   form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
@@ -140,6 +149,7 @@ export class InventoryEditDialog {
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: Inventory | null) {
     this.ownerApi.list(false).subscribe(os => this.owners.set(os));
+    this.vendorApi.list(false).subscribe(vs => this.vendors.set(vs));
     if (data) {
       this.form.patchValue({ name: data.name, description: data.description ?? '',
         paidByOwnerId: data.paidByOwnerId ?? null, isActive: data.isActive });
@@ -168,12 +178,14 @@ export class InventoryEditDialog {
     const bill: StagedBill = {
       fileUrl: url, fileName: this.pendingName() ?? 'bill',
       amount: this.billAmount != null && this.billAmount > 0 ? this.billAmount : null,
-      billDate: this.billDate || '', note: this.billNote.trim()
+      billDate: this.billDate || '', note: this.billNote.trim(),
+      vendorId: this.billVendorId ?? null,
+      vendorName: this.vendors().find(v => v.id === this.billVendorId)?.name ?? null
     };
     if (this.data) {
       // Existing inventory — attach immediately.
       this.busy.set(true);
-      this.api.addBill(this.data.id, { fileUrl: bill.fileUrl, fileName: bill.fileName, amount: bill.amount, billDate: bill.billDate || null, note: bill.note || null })
+      this.api.addBill(this.data.id, { fileUrl: bill.fileUrl, fileName: bill.fileName, amount: bill.amount, billDate: bill.billDate || null, note: bill.note || null, vendorId: bill.vendorId })
         .subscribe({
           next: (b) => { this.savedBills.update(l => [b, ...l]); this.clearPending(); this.busy.set(false); this.notify.success('Bill attached'); },
           error: (e) => { this.busy.set(false); this.notify.error(e); }
@@ -187,7 +199,7 @@ export class InventoryEditDialog {
 
   private clearPending() {
     this.pendingUrl.set(null); this.pendingName.set(null);
-    this.billAmount = null; this.billDate = ''; this.billNote = '';
+    this.billAmount = null; this.billDate = ''; this.billNote = ''; this.billVendorId = null;
   }
 
   removeSaved(b: InventoryBill) {
@@ -216,7 +228,7 @@ export class InventoryEditDialog {
           const pend = this.staged();
           if (pend.length === 0) return of(inv);
           return forkJoin(pend.map(b => this.api.addBill(inv.id, {
-            fileUrl: b.fileUrl, fileName: b.fileName, amount: b.amount, billDate: b.billDate || null, note: b.note || null
+            fileUrl: b.fileUrl, fileName: b.fileName, amount: b.amount, billDate: b.billDate || null, note: b.note || null, vendorId: b.vendorId
           })));
         })
       ).subscribe({

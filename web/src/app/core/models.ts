@@ -67,6 +67,8 @@ export interface InventoryBill {
   amount?: number | null;
   billDate?: string | null;
   note?: string | null;
+  vendorId?: number | null;
+  vendorName?: string | null;
 }
 
 export interface Vendor {

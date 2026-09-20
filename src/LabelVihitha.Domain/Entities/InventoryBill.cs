@@ -13,6 +13,11 @@ public class InventoryBill : BaseEntity
     public int InventoryId { get; set; }
     public Inventory Inventory { get; set; } = null!;
 
+    /// <summary>The vendor this bill is from (optional). An inventory can hold several bills,
+    /// one per vendor that supplied part of the batch.</summary>
+    public int? VendorId { get; set; }
+    public Vendor? Vendor { get; set; }
+
     /// <summary>Root-relative URL of the uploaded file, e.g. /uploads/bills/ab12.pdf.</summary>
     public string FileUrl { get; set; } = string.Empty;
 

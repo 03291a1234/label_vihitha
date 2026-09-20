@@ -27,7 +27,9 @@ public record CreateInventoryRequest(string Name, string? Description, int? Paid
 
 public record UpdateInventoryRequest(string Name, string? Description, bool IsActive, int? PaidByOwnerId);
 
-// ---- Supplier bills attached to an inventory batch ----
-public record InventoryBillDto(int Id, string FileUrl, string FileName, decimal? Amount, DateTime? BillDate, string? Note);
+// ---- Supplier bills attached to an inventory batch (one or more per vendor) ----
+public record InventoryBillDto(int Id, string FileUrl, string FileName, decimal? Amount, DateTime? BillDate, string? Note,
+    int? VendorId, string? VendorName);
 
-public record AddInventoryBillRequest(string FileUrl, string FileName, decimal? Amount, DateTime? BillDate, string? Note);
+public record AddInventoryBillRequest(string FileUrl, string FileName, decimal? Amount, DateTime? BillDate, string? Note,
+    int? VendorId = null);

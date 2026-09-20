@@ -146,6 +146,11 @@ public class InventoryBillConfiguration : IEntityTypeConfiguration<InventoryBill
             .HasForeignKey(x => x.InventoryId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        b.HasOne(x => x.Vendor)
+            .WithMany()
+            .HasForeignKey(x => x.VendorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

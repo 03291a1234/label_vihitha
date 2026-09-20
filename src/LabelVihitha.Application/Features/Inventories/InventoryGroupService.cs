@@ -149,8 +149,9 @@ public class InventoryGroupService : IInventoryGroupService
         if (inventoryIds.Count == 0) return new();
         var rows = await _db.InventoryBills.AsNoTracking()
             .Where(x => inventoryIds.Contains(x.InventoryId))
-            .OrderByDescending(x => x.BillDate ?? x.CreatedAt)
-            .Select(x => new { x.InventoryId, Dto = new InventoryBillDto(x.Id, x.FileUrl, x.FileName, x.Amount, x.BillDate, x.Note) })
+            .OrderBy(x => x.Vendor != null ? x.Vendor.Name : "~").ThenByDescending(x => x.BillDate ?? x.CreatedAt)
+            .Select(x => new { x.InventoryId, Dto = new InventoryBillDto(x.Id, x.FileUrl, x.FileName, x.Amount, x.BillDate, x.Note,
+                x.VendorId, x.Vendor != null ? x.Vendor.Name : null) })
             .ToListAsync(ct);
         return rows.GroupBy(r => r.InventoryId).ToDictionary(g => g.Key, g => g.Select(r => r.Dto).ToList());
     }
@@ -161,10 +162,13 @@ public class InventoryGroupService : IInventoryGroupService
             throw new NotFoundException(nameof(Inventory), inventoryId);
         if (string.IsNullOrWhiteSpace(request.FileUrl))
             throw new FluentValidation.ValidationException("A bill file is required.");
+        if (request.VendorId is int vid && !await _db.Vendors.AnyAsync(v => v.Id == vid && !v.IsDeleted, ct))
+            throw new NotFoundException(nameof(Vendor), vid);
 
         var entity = new InventoryBill
         {
             InventoryId = inventoryId,
+            VendorId = request.VendorId,
             FileUrl = request.FileUrl.Trim(),
             FileName = string.IsNullOrWhiteSpace(request.FileName) ? "bill" : request.FileName.Trim(),
             Amount = request.Amount is > 0 ? request.Amount : null,
@@ -173,7 +177,10 @@ public class InventoryGroupService : IInventoryGroupService
         };
         _db.InventoryBills.Add(entity);
         await _db.SaveChangesAsync(ct);
-        return new InventoryBillDto(entity.Id, entity.FileUrl, entity.FileName, entity.Amount, entity.BillDate, entity.Note);
+        var vendorName = entity.VendorId is int id
+            ? await _db.Vendors.Where(v => v.Id == id).Select(v => v.Name).FirstOrDefaultAsync(ct) : null;
+        return new InventoryBillDto(entity.Id, entity.FileUrl, entity.FileName, entity.Amount, entity.BillDate, entity.Note,
+            entity.VendorId, vendorName);
     }
 
     public async Task DeleteBillAsync(int inventoryId, int billId, CancellationToken ct = default)

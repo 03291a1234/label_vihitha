@@ -88,7 +88,7 @@ export class InventoryApi {
   remove(id: number) { return this.http.delete<void>(`${base}/inventories/${id}`); }
 
   // ---- Bills ----
-  addBill(inventoryId: number, body: { fileUrl: string; fileName: string; amount?: number | null; billDate?: string | null; note?: string | null }) {
+  addBill(inventoryId: number, body: { fileUrl: string; fileName: string; amount?: number | null; billDate?: string | null; note?: string | null; vendorId?: number | null }) {
     return this.http.post<InventoryBill>(`${base}/inventories/${inventoryId}/bills`, body);
   }
   removeBill(inventoryId: number, billId: number) {
