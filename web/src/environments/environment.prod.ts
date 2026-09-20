@@ -1,5 +1,1 @@
-export const environment = {
-  production: true,
-  // Same-origin: the static server / tunnel proxies /api to the API.
-  apiUrl: '/api'
-};
+export const environment = { production: true, apiUrl: 'https://labelvihitha-api-bqfs7gmrjf67k.azurewebsites.net/api' };
