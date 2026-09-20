@@ -1,11 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs/operators';
 import { AuthService } from '../core/auth/auth.service';
 
 interface NavItem { label: string; icon: string; path: string; show: () => boolean; }
@@ -19,8 +22,8 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
   ],
   template: `
     <mat-sidenav-container class="shell">
-      <mat-sidenav #snav mode="side" opened class="sidenav">
-        <a class="brand" [routerLink]="homePath()" title="Home">
+      <mat-sidenav #snav [mode]="isMobile() ? 'over' : 'side'" [opened]="!isMobile()" class="sidenav">
+        <a class="brand" [routerLink]="homePath()" (click)="closeIfMobile(snav)" title="Home">
           <span class="emblem"><img src="logo.jpeg" alt="Vihitha" /></span>
           <div class="brand-text">
             <div class="name">Vihitha</div>
@@ -29,7 +32,7 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
         <mat-nav-list>
           @for (item of nav; track item.path) {
             @if (item.show()) {
-            <a mat-list-item [routerLink]="item.path" routerLinkActive="active-link">
+            <a mat-list-item [routerLink]="item.path" routerLinkActive="active-link" (click)="closeIfMobile(snav)">
               <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
               <span matListItemTitle>{{ item.label }}</span>
             </a>
@@ -111,9 +114,16 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
 })
 export class ShellComponent {
   auth = inject(AuthService);
+  private bp = inject(BreakpointObserver);
+
+  /** True on phones/tablets, where the sidenav becomes an overlay drawer that starts closed. */
+  isMobile = toSignal(this.bp.observe('(max-width: 900px)').pipe(map(r => r.matches)), { initialValue: false });
 
   /** Clicking the logo goes to the product catalog (home). */
   homePath() { return '/products'; }
+
+  /** On mobile, close the overlay drawer after picking a destination. */
+  closeIfMobile(snav: MatSidenav) { if (this.isMobile()) snav.close(); }
 
   nav: NavItem[] = [
     { label: 'Analytics', icon: 'insights', path: '/analytics', show: () => this.auth.canViewReports() },

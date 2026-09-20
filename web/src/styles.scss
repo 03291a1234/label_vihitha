@@ -41,7 +41,11 @@ body {
 
 .serif { font-family: "Cormorant Garamond", Georgia, serif; }
 
-.page { padding: 28px; max-width: 1200px; margin: 0 auto; }
+.page { padding: 28px; max-width: 1200px; margin: 0 auto; box-sizing: border-box; }
+/* Tighter gutters on phones/tablets so content isn't cramped and never overflows the width. */
+@media (max-width: 640px) { .page { padding: 16px; } }
+/* Wide data tables scroll sideways within their card instead of stretching the page. */
+.card:has(table.full) { overflow-x: auto; }
 
 .page-header {
   display: flex;
@@ -126,14 +130,23 @@ table.full { width: 100%; }
 .low-stock { color: #b0324f; font-weight: 600; }
 .overdue { color: #b0324f; font-weight: 600; }
 
-.dialog-form { display: flex; flex-direction: column; gap: 6px; min-width: 360px; }
-.form-row { display: flex; gap: 12px; }
-.form-row > * { flex: 1; min-width: 0; }
+/* Dialog forms: a comfortable width on desktop, but never wider than the screen on phones/tablets. */
+.dialog-form { display: flex; flex-direction: column; gap: 6px; min-width: min(360px, 82vw); max-width: 100%; box-sizing: border-box; }
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.form-row > * { flex: 1 1 160px; min-width: 0; }
 
 /* Material zeroes the dialog content's top padding when a title is present, which clips
    the first row's floating labels. Restore a little top room and prevent horizontal clipping. */
 .mat-mdc-dialog-title + .mat-mdc-dialog-content,
 .mat-mdc-dialog-content { padding-top: 14px !important; }
-.mat-mdc-dialog-content { overflow-x: hidden; }
+.mat-mdc-dialog-content { overflow-x: hidden; max-width: 100%; box-sizing: border-box; }
+/* Never let a dialog exceed the viewport, whatever fixed width it was opened with. */
+.mat-mdc-dialog-surface, .cdk-overlay-pane.mat-mdc-dialog-panel { max-width: 96vw !important; box-sizing: border-box; }
+.cdk-overlay-pane.mat-mdc-dialog-panel { width: auto; }
+/* Full-width form controls inside dialogs so nothing overflows the surface. */
+.mat-mdc-dialog-content .mat-mdc-form-field,
+.mat-mdc-dialog-content app-search-select,
+.mat-mdc-dialog-content app-date-input,
+.mat-mdc-dialog-content app-money-input { max-width: 100%; }
 /* Keep field hints on one line (truncate) so a long hint can't overlap the row below. */
 .mat-mdc-form-field-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }

@@ -75,7 +75,7 @@ interface Row { vendorId: number | null; categoryId: number | null; sku: string;
     </mat-dialog-actions>
   `,
   styles: [`
-    mat-dialog-content { min-width: 720px; }
+    mat-dialog-content { min-width: min(720px, 90vw); }
     .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
     .bar .spacer { flex: 1; }
     .bill-link { display: inline-flex; align-items: center; gap: 4px; color: var(--lv-wine); font-weight: 600; text-decoration: none;

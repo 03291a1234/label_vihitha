@@ -102,7 +102,7 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     </mat-dialog-actions>
   `,
   styles: [`
-    mat-dialog-content { min-width: 460px; }
+    mat-dialog-content { min-width: min(460px, 84vw); }
     .bills-panel { border-top: 1px solid var(--lv-line); margin-top: 8px; padding-top: 12px; }
     .bills-panel h3 { margin: 0 0 8px; color: var(--lv-wine); font-size: 15px; }
     .bill { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px;
@@ -114,7 +114,7 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     a.fname:hover { text-decoration: underline; }
     .amt { font-weight: 700; white-space: nowrap; }
     .add-bill { margin-top: 8px; }
-    .bfields { display: flex; gap: 10px; margin-top: 8px; }
+    .bfields { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
     .famt, .fdate { flex: 1; }
     .fnote { width: 100%; }
     .muted { color: rgba(58,37,48,.6); }

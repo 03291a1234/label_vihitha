@@ -33,7 +33,7 @@ import { DateInputComponent } from '../../shared/date-input.component';
     </mat-dialog-actions>
   `,
   styles: [`
-    .form { display: flex; flex-direction: column; gap: 4px; min-width: 380px; }
+    .form { display: flex; flex-direction: column; gap: 4px; min-width: min(380px, 82vw); }
     .note { border: 1px solid var(--lv-line); border-radius: 6px; padding: 10px; font: inherit; }
   `]
 })

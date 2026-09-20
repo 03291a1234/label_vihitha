@@ -227,7 +227,7 @@ export class InventoryListComponent {
   }
 
   openEdit(i: Inventory | null) {
-    this.dialog.open(InventoryEditDialog, { data: i, width: '420px' }).afterClosed()
+    this.dialog.open(InventoryEditDialog, { data: i }).afterClosed()
       .subscribe(ok => { if (ok) this.load(); });
   }
 

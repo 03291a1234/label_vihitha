@@ -91,7 +91,7 @@ import { BillProductsDialog } from './bill-products.dialog';
     </mat-dialog-actions>
   `,
   styles: [`
-    mat-dialog-content { min-width: 480px; }
+    mat-dialog-content { min-width: min(480px, 84vw); }
     .vgroup { margin: 10px 0; }
     .vhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px;
       padding-bottom: 4px; border-bottom: 1px solid var(--lv-line); }
@@ -115,7 +115,7 @@ import { BillProductsDialog } from './bill-products.dialog';
     .add { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--lv-line); }
     .add h3 { margin: 0 0 10px; color: var(--lv-wine); font-size: 15px; }
     .add-row { margin-bottom: 10px; }
-    .fields { display: flex; gap: 12px; }
+    .fields { display: flex; gap: 12px; flex-wrap: wrap; }
     .fields mat-form-field, .fields app-date-input { flex: 1; }
     .full { width: 100%; }
     .muted { color: rgba(58,37,48,.6); }
