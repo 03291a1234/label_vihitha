@@ -9,4 +9,5 @@ public interface IInvoiceService
     Task<InvoiceDto> CreateAsync(CreateInvoiceRequest request, CancellationToken ct = default);
     Task<InvoiceDto> UpdateAsync(int id, UpdateInvoiceRequest request, CancellationToken ct = default);
     Task<InvoiceDto> RecordPaymentAsync(int invoiceId, RecordPaymentRequest request, CancellationToken ct = default);
+    Task<InvoiceDto> RecordRefundAsync(int invoiceId, RecordRefundRequest request, CancellationToken ct = default);
 }

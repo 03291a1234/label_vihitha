@@ -41,4 +41,9 @@ public class InvoicesController : ControllerBase
     [Authorize(Roles = ManageRoles)]
     public async Task<ActionResult<InvoiceDto>> RecordPayment(int id, RecordPaymentRequest request, CancellationToken ct)
         => Ok(await _service.RecordPaymentAsync(id, request, ct));
+
+    [HttpPost("{id:int}/refunds")]
+    [Authorize(Roles = ManageRoles)]
+    public async Task<ActionResult<InvoiceDto>> RecordRefund(int id, RecordRefundRequest request, CancellationToken ct)
+        => Ok(await _service.RecordRefundAsync(id, request, ct));
 }

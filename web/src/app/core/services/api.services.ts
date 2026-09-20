@@ -242,6 +242,9 @@ export class InvoiceApi {
   recordPayment(id: number, body: { amount: number; method: PaymentMethod; referenceNumber?: string | null }) {
     return this.http.post<Invoice>(`${base}/invoices/${id}/payments`, body);
   }
+  recordRefund(id: number, body: { amount: number; method: PaymentMethod; reason?: string | null; restock: boolean }) {
+    return this.http.post<Invoice>(`${base}/invoices/${id}/refunds`, body);
+  }
 }
 
 export interface FollowUpFilters {

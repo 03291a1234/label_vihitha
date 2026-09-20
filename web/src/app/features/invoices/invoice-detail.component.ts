@@ -12,6 +12,7 @@ import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Invoice } from '../../core/models';
 import { RecordPaymentDialog } from './record-payment.dialog';
+import { RecordRefundDialog } from './record-refund.dialog';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -33,6 +34,11 @@ import { RecordPaymentDialog } from './record-payment.dialog';
             @if (auth.canManageSales() && inv.amountRemaining > 0 && inv.paymentStatus !== 'Refunded') {
               <button mat-raised-button color="primary" (click)="recordPayment(inv)">
                 <mat-icon>add_card</mat-icon> Record payment
+              </button>
+            }
+            @if (auth.canManageSales() && inv.amountPaid > 0) {
+              <button mat-stroked-button (click)="recordRefund(inv)">
+                <mat-icon>undo</mat-icon> Record refund
               </button>
             }
           </div>
@@ -121,6 +127,12 @@ export class InvoiceDetailComponent {
 
   recordPayment(inv: Invoice) {
     this.dialog.open(RecordPaymentDialog, { data: inv, width: '420px' }).afterClosed().subscribe(ok => {
+      if (ok) this.load(inv.id);
+    });
+  }
+
+  recordRefund(inv: Invoice) {
+    this.dialog.open(RecordRefundDialog, { data: inv, width: '420px' }).afterClosed().subscribe(ok => {
       if (ok) this.load(inv.id);
     });
   }

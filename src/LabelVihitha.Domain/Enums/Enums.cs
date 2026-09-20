@@ -20,8 +20,10 @@ public enum PaymentStatus
     Unpaid = 0,
     PartiallyPaid = 1,
     Paid = 2,
-    /// <summary>Placeholder for manual cash/Zelle correction — not a full returns workflow.</summary>
-    Refunded = 3
+    /// <summary>Fully refunded — net collected is zero or below after refunds.</summary>
+    Refunded = 3,
+    /// <summary>Partly refunded — a refund was issued but money is still net collected.</summary>
+    PartiallyRefunded = 4
 }
 
 public enum FollowUpStatus

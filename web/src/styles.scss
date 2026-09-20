@@ -126,6 +126,7 @@ table.full { width: 100%; }
 .chip.Confirmed, .chip.PartiallyPaid, .chip.InProgress { background: var(--lv-rose-soft); color: var(--lv-wine); }
 .chip.Fulfilled, .chip.Paid, .chip.Resolved { background: #e5f3e8; color: #226b39; }
 .chip.Cancelled, .chip.Refunded { background: #efe7ea; color: #6b5560; }
+.chip.PartiallyRefunded { background: #fbe7d6; color: #9a5a12; }
 
 .low-stock { color: #b0324f; font-weight: 600; }
 .overdue { color: #b0324f; font-weight: 600; }

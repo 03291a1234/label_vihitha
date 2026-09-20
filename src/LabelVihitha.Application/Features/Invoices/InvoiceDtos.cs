@@ -8,7 +8,9 @@ public record PaymentDto(
     PaymentMethod Method,
     DateTime PaymentDate,
     string? ReferenceNumber,
-    string? RecordedBy);
+    string? RecordedBy,
+    bool IsRefund,
+    string? Notes);
 
 public record InvoiceDto(
     int Id,
@@ -55,6 +57,13 @@ public record RecordPaymentRequest(
     decimal Amount,
     PaymentMethod Method,
     string? ReferenceNumber);
+
+/// <summary>Refund (money returned). <see cref="Restock"/> returns the order's items to stock.</summary>
+public record RecordRefundRequest(
+    decimal Amount,
+    PaymentMethod Method,
+    string? Reason,
+    bool Restock = false);
 
 public record InvoiceQuery(
     PaymentStatus? PaymentStatus = null,

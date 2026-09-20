@@ -135,12 +135,65 @@ public class InvoiceService : IInvoiceService
         });
 
         invoice.AmountPaid += request.Amount;
-        RecomputeStatus(invoice);
+        RecomputeStatus(invoice, HasRefund(invoice));
         invoice.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(invoiceId, ct);
     }
+
+    public async Task<InvoiceDto> RecordRefundAsync(int invoiceId, RecordRefundRequest request, CancellationToken ct = default)
+    {
+        var invoice = await _db.Invoices
+            .Include(i => i.Payments.Where(p => !p.IsDeleted))
+            .FirstOrDefaultAsync(i => i.Id == invoiceId, ct)
+            ?? throw new NotFoundException(nameof(Invoice), invoiceId);
+
+        if (request.Amount <= 0m)
+            throw new ConflictException("Refund amount must be greater than zero.");
+        // Can't return more money than was actually collected.
+        if (request.Amount > invoice.AmountPaid)
+            throw new ConflictException($"Refund exceeds the amount collected ({invoice.AmountPaid:0.00}).");
+
+        invoice.Payments.Add(new Payment
+        {
+            Amount = -request.Amount,        // refunds are stored as negative payments
+            Method = request.Method,
+            PaymentDate = DateTime.UtcNow,
+            IsRefund = true,
+            Notes = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim(),
+            RecordedBy = _currentUser.UserName ?? _currentUser.UserId
+        });
+        invoice.AmountPaid -= request.Amount;
+        RecomputeStatus(invoice, hasRefund: true);
+        invoice.UpdatedAt = DateTime.UtcNow;
+
+        // Optional returns: put the order's items back into stock (product + matching variant).
+        if (request.Restock)
+            await RestockOrderAsync(invoice.OrderId, ct);
+
+        await _db.SaveChangesAsync(ct);
+        return await GetByIdAsync(invoiceId, ct);
+    }
+
+    /// <summary>Return every line of an order to stock (used when a refund is a return).</summary>
+    private async Task RestockOrderAsync(int orderId, CancellationToken ct)
+    {
+        var items = await _db.OrderItems.Where(i => i.OrderId == orderId && !i.IsDeleted).ToListAsync(ct);
+        foreach (var item in items)
+        {
+            var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId, ct);
+            if (product != null) product.QuantityOnHand += item.Quantity;
+            if (item.ProductVariantId is int vid)
+            {
+                var variant = await _db.ProductVariants.FirstOrDefaultAsync(v => v.Id == vid, ct);
+                if (variant != null) variant.QuantityOnHand += item.Quantity;
+            }
+        }
+    }
+
+    private static bool HasRefund(Invoice invoice) =>
+        invoice.Payments.Any(p => p.IsRefund && !p.IsDeleted);
 
     // ---- helpers -------------------------------------------------------
 
@@ -161,14 +214,21 @@ public class InvoiceService : IInvoiceService
         };
     }
 
-    private static void RecomputeStatus(Invoice invoice)
+    private static void RecomputeStatus(Invoice invoice, bool hasRefund = false)
     {
-        if (invoice.AmountPaid <= 0m)
+        var net = invoice.AmountPaid; // already net of refunds (stored as negative payments)
+        if (hasRefund)
+        {
+            // A refund was issued: fully refunded when nothing is net collected, else partly.
+            invoice.PaymentStatus = net <= 0m ? PaymentStatus.Refunded : PaymentStatus.PartiallyRefunded;
+            invoice.PaidDate = null;
+        }
+        else if (net <= 0m)
         {
             invoice.PaymentStatus = PaymentStatus.Unpaid;
             invoice.PaidDate = null;
         }
-        else if (invoice.AmountPaid < invoice.AmountDue)
+        else if (net < invoice.AmountDue)
         {
             invoice.PaymentStatus = PaymentStatus.PartiallyPaid;
             invoice.PaidDate = null;
@@ -205,6 +265,6 @@ public class InvoiceService : IInvoiceService
         i.Notes,
         i.Payments.Where(p => !p.IsDeleted)
             .OrderBy(p => p.PaymentDate)
-            .Select(p => new PaymentDto(p.Id, p.Amount, p.Method, p.PaymentDate, p.ReferenceNumber, p.RecordedBy))
+            .Select(p => new PaymentDto(p.Id, p.Amount, p.Method, p.PaymentDate, p.ReferenceNumber, p.RecordedBy, p.IsRefund, p.Notes))
             .ToList());
 }
