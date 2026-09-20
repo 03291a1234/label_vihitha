@@ -14,6 +14,7 @@ import { CategoryApi, VendorApi, ProductApi, apiOrigin } from '../../core/servic
 import { Notify } from '../../core/services/notify.service';
 import { Category, Vendor, InventoryBill } from '../../core/models';
 import { SearchSelectComponent } from '../../shared/search-select.component';
+import { SettingsService } from '../../core/services/settings.service';
 
 /** Optional bill: when present the dialog links to it; otherwise it's a plain per-inventory bulk add. */
 export interface BillProductsData { inventoryId: number; inventoryName: string; bill?: InventoryBill | null; }
@@ -115,7 +116,7 @@ interface Row {
         <span>{{ validCount() }} product(s) ready</span>
         <div class="totals">
           <span class="muted">Cost {{ sym() }}{{ totalCost() | number:'1.0-2' }}
-            <span class="inr">≈ {{ currency() === 'USD' ? '₹' + (totalCost() * 95 | number:'1.0-0') : '$' + (totalCost() / 95 | number:'1.0-2') }}</span></span>
+            <span class="inr">≈ {{ currency() === 'USD' ? '₹' + (totalCost() * rate | number:'1.0-0') : '$' + (totalCost() / rate | number:'1.0-2') }}</span></span>
           <span class="muted">· Sale {{ sym() }}{{ totalSale() | number:'1.0-2' }}</span>
           <mat-form-field class="w-recon"><mat-label>Invoice total {{ sym() }}</mat-label>
             <input matInput type="number" min="0" step="0.01" [(ngModel)]="invoiceTotal" /></mat-form-field>
@@ -293,7 +294,9 @@ export class BillProductsDialog {
   reconDiff() { return this.invoiceTotal == null ? null : this.round2(this.totalCost() - this.invoiceTotal); }
   reconOk() { const d = this.reconDiff(); return d !== null && Math.abs(d) < 1; }
 
-  private toUsd(v: number | null) { const n = Number(v) || 0; return this.currency() === 'INR' ? n / 95 : n; }
+  private settings = inject(SettingsService);
+  get rate() { return this.settings.inrPerUsd(); }
+  private toUsd(v: number | null) { const n = Number(v) || 0; return this.currency() === 'INR' ? n / this.rate : n; }
 
   createAll() {
     const valid = this.rows().filter(r => this.isValid(r));

@@ -1,14 +1,20 @@
+using LabelVihitha.Application.Common;
 using LabelVihitha.Application.Common.Interfaces;
 using LabelVihitha.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace LabelVihitha.Application.Features.Products;
 
 public class ProductImportService : IProductImportService
 {
-    private const decimal InrPerUsd = 95m;
+    private readonly decimal InrPerUsd;
     private readonly IApplicationDbContext _db;
-    public ProductImportService(IApplicationDbContext db) => _db = db;
+    public ProductImportService(IApplicationDbContext db, IOptions<CurrencySettings> currency)
+    {
+        _db = db;
+        InrPerUsd = currency.Value.InrPerUsd;
+    }
 
     public async Task<ProductImportResult> ImportAsync(IReadOnlyList<ProductImportRow> rows, CancellationToken ct = default)
     {
@@ -185,7 +191,7 @@ public class ProductImportService : IProductImportService
 
     /// <summary>Effective per-unit cost &amp; sale in USD. Uses explicit Cost/Sale when present; otherwise
     /// derives them from Rate + GST − discount (cost) and cost × markup, rounded (sale).</summary>
-    private static (decimal cost, decimal sale) ResolvePrice(ProductImportRow h)
+    private (decimal cost, decimal sale) ResolvePrice(ProductImportRow h)
     {
         decimal? costInr = h.CostInr;
         if (costInr is null && h.RateInr is decimal rate)

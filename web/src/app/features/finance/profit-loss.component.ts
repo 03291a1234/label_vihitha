@@ -14,11 +14,13 @@ import { Notify } from '../../core/services/notify.service';
 import { ProfitLossReport, VendorSpend } from '../../core/models';
 import { DateRangeComponent, DateRange } from '../../shared/date-range.component';
 import { RecordContributionDialog } from './record-contribution.dialog';
+import { InrAmountPipe } from '../../shared/inr-amount.pipe';
 
 @Component({
   selector: 'app-profit-loss',
   standalone: true,
   imports: [
+    InrAmountPipe,
     CurrencyPipe, DecimalPipe, RouterLink, FormsModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatIconModule, MatTableModule, MatProgressBarModule, DateRangeComponent
   ],
@@ -37,7 +39,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
           <div class="card k-card">
             <div class="k-top">Total invested <span class="muted">(to date)</span></div>
             <div class="k-big">{{ r.totalInvested | currency }}</div>
-            <div class="k-sub">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }} · stock + goods sold{{ r.totalBillsRecorded > 0 ? ' + bills' : '' }} + expenses</div>
+            <div class="k-sub">≈ {{ r.totalInvested | inrAmount | currency:'INR':'symbol':'1.0-0' }} · stock + goods sold{{ r.totalBillsRecorded > 0 ? ' + bills' : '' }} + expenses</div>
           </div>
           <div class="card k-card">
             <div class="k-top">Sales</div>
@@ -52,7 +54,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
           <div class="card k-card">
             <div class="k-top">Stock in hand (at cost)</div>
             <div class="k-big">{{ r.inventoryValueAtCost | currency }}</div>
-            <div class="k-sub">≈ {{ r.inventoryValueAtCost * 95 | currency:'INR':'symbol':'1.0-0' }} · {{ r.inventoryUnits }} units</div>
+            <div class="k-sub">≈ {{ r.inventoryValueAtCost | inrAmount | currency:'INR':'symbol':'1.0-0' }} · {{ r.inventoryUnits }} units</div>
           </div>
         </div>
 
@@ -73,7 +75,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             <div class="line memo bt">
               <span>Inventory on hand (at cost) <span class="muted">— asset, not a loss</span></span>
               <span class="mono">{{ r.inventoryValueAtCost | currency }}
-                <span class="muted inr">≈ {{ r.inventoryValueAtCost * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+                <span class="muted inr">≈ {{ r.inventoryValueAtCost | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></span>
             </div>
             <div class="muted foot">{{ r.orderCount }} orders · {{ r.unitsSold }} units sold · Stock purchases and supplier bills are
               capital (see Total investment), not expenses — so they don't reduce profit here.</div>
@@ -83,11 +85,11 @@ import { RecordContributionDialog } from './record-contribution.dialog';
           <div class="card kpis">
             <h2>Inventory on hand <span class="muted">(now)</span></h2>
             <div class="kpi"><div class="k-label">Capital in stock (at cost)</div><div class="k-val">{{ r.inventoryValueAtCost | currency }}</div>
-              <div class="muted">≈ {{ r.inventoryValueAtCost * 95 | currency:'INR':'symbol':'1.0-0' }}</div></div>
+              <div class="muted">≈ {{ r.inventoryValueAtCost | inrAmount | currency:'INR':'symbol':'1.0-0' }}</div></div>
             <div class="kpi"><div class="k-label">Retail value (at sale)</div><div class="k-val">{{ r.inventoryValueAtSale | currency }}</div>
-              <div class="muted">≈ {{ r.inventoryValueAtSale * 95 | currency:'INR':'symbol':'1.0-0' }}</div></div>
+              <div class="muted">≈ {{ r.inventoryValueAtSale | inrAmount | currency:'INR':'symbol':'1.0-0' }}</div></div>
             <div class="kpi"><div class="k-label">Potential margin</div><div class="k-val">{{ r.inventoryValueAtSale - r.inventoryValueAtCost | currency }}</div>
-              <div class="muted">≈ {{ (r.inventoryValueAtSale - r.inventoryValueAtCost) * 95 | currency:'INR':'symbol':'1.0-0' }}</div></div>
+              <div class="muted">≈ {{ (r.inventoryValueAtSale - r.inventoryValueAtCost) | inrAmount | currency:'INR':'symbol':'1.0-0' }}</div></div>
             <div class="kpi"><div class="k-label">Units in stock</div><div class="k-val">{{ r.inventoryUnits }}</div></div>
           </div>
         </div>
@@ -114,7 +116,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             <div class="line"><span>Owner withdrawals</span><span class="mono neg">−{{ r.totalWithdrawals | currency }}</span></div>
             <div class="line cash-net bt"><span>Cash remaining</span>
               <span class="mono" [class.neg]="cashRemaining() < 0">{{ cashRemaining() | currency }}
-                <span class="muted inr">≈ {{ cashRemaining() * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+                <span class="muted inr">≈ {{ cashRemaining() | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></span>
             </div>
           </div>
           <div class="muted foot">Money remaining = everything put in (contributions + sales collected) minus everything spent
@@ -133,7 +135,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             <div class="line"><span>Operating expenses <span class="muted">(to date)</span></span><span class="mono">{{ r.allTimeExpenses | currency }}</span></div>
             <div class="line strong bt"><span>Total invested</span>
               <span class="mono">{{ r.totalInvested | currency }}
-                <span class="muted inr">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+                <span class="muted inr">≈ {{ r.totalInvested | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></span>
             </div>
           </div>
           <div class="recon">
@@ -145,7 +147,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             <div class="rline"><span>Total invested (deployed)</span><span class="mono neg">−{{ r.totalInvested | currency }}</span></div>
             <div class="rline strong bt2"><span>Contributions left after investment</span>
               <span class="mono" [class.neg]="contributionsLeft() < 0">{{ contributionsLeft() | currency }}
-                <span class="muted inr">≈ {{ contributionsLeft() * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+                <span class="muted inr">≈ {{ contributionsLeft() | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></span>
             </div>
             @if (contributionsLeft() >= 0) {
               <div class="muted foot">Of the {{ r.totalContributions | currency }} contributed, {{ r.totalInvested | currency }}
@@ -204,7 +206,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
               <td mat-cell *matCellDef="let f" class="text-right mono">{{ f.units }}</td></ng-container>
             <ng-container matColumnDef="cost"><th mat-header-cell *matHeaderCellDef class="text-right">Cost invested</th>
               <td mat-cell *matCellDef="let f" class="text-right mono strong">{{ f.inventoryCost | currency }}
-                <span class="muted inr">≈ {{ f.inventoryCost * 95 | currency:'INR':'symbol':'1.0-0' }}</span></td></ng-container>
+                <span class="muted inr">≈ {{ f.inventoryCost | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></td></ng-container>
             <ng-container matColumnDef="pct"><th mat-header-cell *matHeaderCellDef class="text-right">Share of stock</th>
               <td mat-cell *matCellDef="let f" class="text-right mono">{{ fundedPct(f.inventoryCost) | number:'1.0-1' }}%</td></ng-container>
             <tr mat-header-row *matHeaderRowDef="fundedCols"></tr>
@@ -231,7 +233,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
                 <span class="v-figs">
                   <span class="muted">{{ v.units }} units</span>
                   <span class="mono strong">{{ v.totalCost | currency }}</span>
-                  <span class="muted inr">≈ {{ v.totalCost * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+                  <span class="muted inr">≈ {{ v.totalCost | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span>
                 </span>
               </div>
               <div class="inv-chips">

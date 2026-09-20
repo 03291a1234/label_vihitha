@@ -14,11 +14,13 @@ import { DateInputComponent } from '../../shared/date-input.component';
 import { SearchSelectComponent } from '../../shared/search-select.component';
 import { MoneyInputComponent } from '../../shared/money-input.component';
 import { BillProductsDialog } from './bill-products.dialog';
+import { InrAmountPipe } from '../../shared/inr-amount.pipe';
 
 @Component({
   selector: 'app-inventory-bills',
   standalone: true,
-  imports: [DateInputComponent, SearchSelectComponent, MoneyInputComponent,
+  imports: [
+    InrAmountPipe,DateInputComponent, SearchSelectComponent, MoneyInputComponent,
     CurrencyPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule,
     MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule
   ],
@@ -46,7 +48,7 @@ import { BillProductsDialog } from './bill-products.dialog';
                 <span class="amt">
                   @if (b.amount) {
                     {{ b.amount | currency:'USD':'symbol':'1.0-2' }}
-                    <span class="inr">≈ {{ b.amount * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+                    <span class="inr">≈ {{ b.amount | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span>
                   } @else { <span class="muted">—</span> }
                 </span>
                 <span class="bdate muted">{{ b.billDate ? (b.billDate | date:'mediumDate') : '' }}</span>
@@ -62,7 +64,7 @@ import { BillProductsDialog } from './bill-products.dialog';
           </div>
         }
         <div class="total">Total recorded: <strong>{{ total() | currency:'USD':'symbol':'1.0-2' }}</strong>
-          <span class="inr">≈ {{ total() * 95 | currency:'INR':'symbol':'1.0-0' }}</span></div>
+          <span class="inr">≈ {{ total() | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span></div>
       } @else {
         <p class="muted">No bills attached yet. Add the supplier invoice(s) for this batch below — one per vendor.</p>
       }

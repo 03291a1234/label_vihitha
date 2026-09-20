@@ -14,8 +14,8 @@ import { Notify } from '../../core/services/notify.service';
 import { Expense, ExpenseCategory, Owner, Inventory } from '../../core/models';
 import { DateInputComponent } from '../../shared/date-input.component';
 import { SearchSelectComponent } from '../../shared/search-select.component';
+import { SettingsService } from '../../core/services/settings.service';
 
-const INR_RATE = 95;
 
 @Component({
   selector: 'app-expense-edit',
@@ -106,7 +106,8 @@ export class ExpenseEditDialog {
   private notify = inject(Notify);
   ref = inject(MatDialogRef<ExpenseEditDialog>);
 
-  readonly rate = INR_RATE;
+  private settings = inject(SettingsService);
+  get rate() { return this.settings.inrPerUsd(); }
   categories = signal<ExpenseCategory[]>([]);
   owners = signal<Owner[]>([]);
   inventories = signal<Inventory[]>([]);

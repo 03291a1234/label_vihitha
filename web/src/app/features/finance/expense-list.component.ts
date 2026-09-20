@@ -19,6 +19,7 @@ import { ExpenseEditDialog } from './expense-edit.dialog';
 import { ExpenseCategoryManageDialog } from './expense-category-manage.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 import { SearchSelectComponent } from '../../shared/search-select.component';
+import { SettingsService } from '../../core/services/settings.service';
 
 @Component({
   selector: 'app-expense-list',
@@ -122,7 +123,8 @@ export class ExpenseListComponent {
   private dialog = inject(MatDialog);
   private notify = inject(Notify);
 
-  readonly inrRate = 95;
+  private settings = inject(SettingsService);
+  get inrRate() { return this.settings.inrPerUsd(); }
   rows = signal<Expense[]>([]);
   categories = signal<ExpenseCategory[]>([]);
   total = signal(0);

@@ -21,6 +21,8 @@ builder.Services.AddControllers(options => options.Filters.Add<ValidationFilter>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.Configure<LabelVihitha.Application.Common.CurrencySettings>(
+    builder.Configuration.GetSection(LabelVihitha.Application.Common.CurrencySettings.SectionName));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();

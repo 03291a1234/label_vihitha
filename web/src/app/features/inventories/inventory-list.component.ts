@@ -15,11 +15,13 @@ import { InventoryEditDialog } from './inventory-edit.dialog';
 import { InventoryBillsDialog } from './inventory-bills.dialog';
 import { BillProductsDialog } from './bill-products.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
+import { InrAmountPipe } from '../../shared/inr-amount.pipe';
 
 @Component({
   selector: 'app-inventory-list',
   standalone: true,
   imports: [
+    InrAmountPipe,
     CurrencyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule,
     MatDialogModule, MatProgressBarModule, MatSlideToggleModule
   ],
@@ -54,13 +56,13 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
               <div class="stat cost">
                 <span class="v">{{ i.totalCostUsd | currency:'USD':'symbol':'1.0-0' }}</span>
                 <span class="l">at cost</span>
-                <span class="inr">≈ {{ i.totalCostUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+                <span class="inr">≈ {{ i.totalCostUsd | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span>
               </div>
               @if (i.totalBillsUsd > 0) {
                 <div class="stat cost">
                   <span class="v">{{ i.totalBillsUsd | currency:'USD':'symbol':'1.0-0' }}</span>
                   <span class="l">billed</span>
-                  <span class="inr">≈ {{ i.totalBillsUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+                  <span class="inr">≈ {{ i.totalBillsUsd | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span>
                 </div>
               }
             </div>
@@ -88,17 +90,17 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <div class="pcell">
               <span class="pl">Initial total cost</span>
               <span class="pv">{{ i.initialCostUsd | currency:'USD':'symbol':'1.0-0' }}</span>
-              <span class="pinr">≈ {{ i.initialCostUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+              <span class="pinr">≈ {{ i.initialCostUsd | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
             <div class="pcell">
               <span class="pl">Current inventory cost</span>
               <span class="pv">{{ i.totalCostUsd | currency:'USD':'symbol':'1.0-0' }}</span>
-              <span class="pinr">≈ {{ i.totalCostUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+              <span class="pinr">≈ {{ i.totalCostUsd | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
             <div class="pcell">
               <span class="pl">Sale amount</span>
               <span class="pv">{{ i.soldRevenueUsd | currency:'USD':'symbol':'1.0-0' }}</span>
-              <span class="pinr">≈ {{ i.soldRevenueUsd * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+              <span class="pinr">≈ {{ i.soldRevenueUsd | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
             <div class="pcell">
               <span class="pl">Gross P&amp;L</span>
@@ -113,7 +115,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
             <div class="pcell">
               <span class="pl">Net P&amp;L</span>
               <span class="pv" [class.pos]="i.netProfitUsd >= 0" [class.neg]="i.netProfitUsd < 0">{{ signed(i.netProfitUsd) }}</span>
-              <span class="pinr">{{ i.netProfitUsd >= 0 ? '≈ ' : '≈ −' }}{{ (i.netProfitUsd < 0 ? -i.netProfitUsd : i.netProfitUsd) * 95 | currency:'INR':'symbol':'1.0-0' }}</span>
+              <span class="pinr">{{ i.netProfitUsd >= 0 ? '≈ ' : '≈ −' }}{{ (i.netProfitUsd < 0 ? -i.netProfitUsd : i.netProfitUsd) | inrAmount | currency:'INR':'symbol':'1.0-0' }}</span>
             </div>
           </div>
 

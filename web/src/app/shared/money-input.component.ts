@@ -1,11 +1,10 @@
-import { Component, Input, forwardRef, signal } from '@angular/core';
+import { Component, Input, forwardRef, inject, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-
-const INR_RATE = 95;
+import { SettingsService } from '../core/services/settings.service';
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
@@ -51,7 +50,8 @@ export class MoneyInputComponent implements ControlValueAccessor {
   @Input() label = 'Amount';
   @Input() placeholder = '';
 
-  readonly rate = INR_RATE;
+  private settings = inject(SettingsService);
+  get rate() { return this.settings.inrPerUsd(); }
   currency = signal<'USD' | 'INR'>('USD');
   usd = signal<number | null>(null);       // canonical value (USD)
   display = signal<number | null>(null);    // value shown in the current currency

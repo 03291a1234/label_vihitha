@@ -23,6 +23,7 @@ import { ImportResultDialog } from './import-result.dialog';
 import { BulkPaidByDialog } from './bulk-paid-by.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 import { SearchSelectComponent } from '../../shared/search-select.component';
+import { SettingsService } from '../../core/services/settings.service';
 
 @Component({
   selector: 'app-product-list',
@@ -263,7 +264,8 @@ export class ProductListComponent {
   auth = inject(AuthService);
 
   /** USD → INR conversion rate for the displayed Indian cost. */
-  readonly inrRate = 95;
+  private settings = inject(SettingsService);
+  get inrRate() { return this.settings.inrPerUsd(); }
 
   rows = signal<Product[]>([]);
   // Faceted filter options — each reflects the products matching the OTHER active filters.

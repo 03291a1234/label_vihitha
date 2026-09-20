@@ -15,11 +15,14 @@ import { Notify } from '../../core/services/notify.service';
 import { Category, SubCategory, Inventory, Vendor, Owner, Product } from '../../core/models';
 import { MoneyInputComponent } from '../../shared/money-input.component';
 import { SearchSelectComponent } from '../../shared/search-select.component';
+import { InrAmountPipe } from '../../shared/inr-amount.pipe';
+import { SettingsService } from '../../core/services/settings.service';
 
 @Component({
   selector: 'app-product-edit',
   standalone: true,
   imports: [
+    InrAmountPipe,
     DecimalPipe, ReactiveFormsModule, FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule,
     MatButtonToggleModule, MoneyInputComponent, SearchSelectComponent
@@ -131,9 +134,9 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
           <button mat-stroked-button type="button" (click)="addVariant('')"><mat-icon>add</mat-icon> Add size</button>
           <div class="ps-totals">
             <span>Stock value — cost <strong>\${{ variantCostUsd() | number:'1.0-2' }}</strong>
-              <span class="inr">≈ ₹{{ variantCostUsd() * 95 | number:'1.0-0' }}</span></span>
+              <span class="inr">≈ ₹{{ variantCostUsd() | inrAmount | number:'1.0-0' }}</span></span>
             <span>sale <strong>\${{ variantSaleUsd() | number:'1.0-2' }}</strong>
-              <span class="inr">≈ ₹{{ variantSaleUsd() * 95 | number:'1.0-0' }}</span></span>
+              <span class="inr">≈ ₹{{ variantSaleUsd() | inrAmount | number:'1.0-0' }}</span></span>
           </div>
         </div>
         <div class="form-row">
@@ -237,7 +240,8 @@ export class ProductEditDialog {
   previewUrl = signal<string | null>(null);
   /** Currency the per-size cost/sale inputs are entered in (stored canonically as USD). */
   priceCurrency = signal<'USD' | 'INR'>('USD');
-  private readonly inrRate = 95;
+  private settings = inject(SettingsService);
+  private get inrRate() { return this.settings.inrPerUsd(); }
   sym() { return this.priceCurrency() === 'USD' ? '$' : '₹'; }
   /** True once the user types their own SKU, so auto-fill stops overwriting it. */
   skuManual = false;
