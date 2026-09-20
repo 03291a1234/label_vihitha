@@ -53,6 +53,10 @@ import { SettingsService } from '../../core/services/settings.service';
                     title="Set who funded the products matching the current filters">
               <mat-icon>account_balance_wallet</mat-icon> Set paid by
             </button>
+            <button mat-stroked-button (click)="printLabels()" [disabled]="loading() || rows().length === 0"
+                    title="Print price/SKU labels for the products matching the current filters">
+              <mat-icon>label</mat-icon> Print labels
+            </button>
             <button mat-raised-button color="primary" (click)="openEdit(null)">
               <mat-icon>add</mat-icon> New product
             </button>
@@ -394,6 +398,35 @@ export class ProductListComponent {
   }
 
   /** Bulk-set the "paid by" funder on every product matching the current filters. */
+  /** Opens a print-ready sheet of price/SKU labels for the currently listed products. */
+  printLabels() {
+    const rate = this.inrRate;
+    const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] || c));
+    const inr = (usd: number) => '₹ ' + Math.round(usd * rate).toLocaleString('en-IN');
+    const labels = this.rows().map(p => `
+      <div class="label">
+        <div class="brand">Vihitha</div>
+        <div class="name">${esc(p.name)}</div>
+        <div class="sku">${esc(p.sku)}</div>
+        <div class="price">${inr(p.salePrice)}</div>
+      </div>`).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Labels</title><style>
+      @page { margin: 10mm; }
+      * { box-sizing: border-box; }
+      body { font-family: Roboto, Arial, sans-serif; margin: 0; }
+      .sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+      .label { border: 1px solid #d9c7cf; border-radius: 3mm; padding: 4mm; text-align: center;
+        break-inside: avoid; page-break-inside: avoid; height: 30mm; display: flex; flex-direction: column;
+        justify-content: center; gap: 1.5mm; }
+      .brand { font-family: Georgia, 'Times New Roman', serif; color: #6e1f3e; font-size: 11pt; letter-spacing: .5px; }
+      .name { font-size: 9pt; color: #3a2530; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .sku { font-family: 'Courier New', monospace; font-size: 10pt; font-weight: 700; letter-spacing: 1px; }
+      .price { font-size: 12pt; font-weight: 700; color: #6e1f3e; }
+    </style></head><body onload="window.print()"><div class="sheet">${labels}</div></body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+  }
+
   openBulkPaidBy() {
     const filter = {
       categoryId: this.categoryId,
