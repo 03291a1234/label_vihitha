@@ -11,7 +11,9 @@ namespace LabelVihitha.Infrastructure.Persistence;
 public class ApplicationDbContext
     : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
-    /// <summary>Single-boutique default tenant until real multi-tenancy is introduced.</summary>
+    /// <summary>The system is single-tenant by decision (see docs/adr/0001-single-tenant.md).
+    /// TenantId is a deliberate forward-compatibility seam stamped to this fixed value, not an
+    /// enforced isolation boundary — there is intentionally no tenant query filter.</summary>
     public static readonly Guid DefaultTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     private readonly ICurrentUser? _currentUser;
