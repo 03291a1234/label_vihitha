@@ -37,7 +37,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
           <div class="card k-card">
             <div class="k-top">Total invested <span class="muted">(to date)</span></div>
             <div class="k-big">{{ r.totalInvested | currency }}</div>
-            <div class="k-sub">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }} · stock + goods sold + expenses</div>
+            <div class="k-sub">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }} · stock + goods sold{{ r.totalBillsRecorded > 0 ? ' + bills' : '' }} + expenses</div>
           </div>
           <div class="card k-card">
             <div class="k-top">Sales</div>
