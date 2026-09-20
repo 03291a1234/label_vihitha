@@ -23,6 +23,7 @@ public static class DbSeeder
 
         await SeedRolesAsync(sp);
         await SeedOwnerAsync(sp);
+        await SeedOwnerLoginsAsync(sp);
         await SeedCatalogAsync(db, logger);
         await SeedExpenseCategoriesAsync(db);
     }
@@ -58,6 +59,25 @@ public static class DbSeeder
         // Demo accounts for the other two roles.
         await EnsureUserAsync(users, "manager", "manager@labelvihitha.local", "Manager#12345", "Store Owner", Roles.Owner);
         await EnsureUserAsync(users, "stock", "stock@labelvihitha.local", "Stock#12345", "Inventory Staff", Roles.Inventory);
+    }
+
+    /// <summary>Creates an Owner-role login for each business owner so the audit trail attributes
+    /// changes to the actual partner (e.g. "himaja") rather than a shared account. Idempotent.</summary>
+    private static async Task SeedOwnerLoginsAsync(IServiceProvider sp)
+    {
+        var db = sp.GetRequiredService<ApplicationDbContext>();
+        var users = sp.GetRequiredService<UserManager<ApplicationUser>>();
+
+        var owners = await db.Owners.Where(o => o.IsActive).ToListAsync();
+        foreach (var o in owners)
+        {
+            var userName = new string(o.Name.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+            if (userName.Length < 2) continue;
+            var email = $"{userName}@labelvihitha.local";
+            // Clear default login per owner (meets the password policy); change after first sign-in.
+            var password = $"{char.ToUpperInvariant(userName[0])}{userName[1..]}#2026";
+            await EnsureUserAsync(users, userName, email, password, o.Name, Roles.Owner);
+        }
     }
 
     private static async Task EnsureUserAsync(
