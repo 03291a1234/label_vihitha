@@ -49,7 +49,7 @@ type View = 'shop' | 'checkout' | 'done';
 
       <!-- SHOP -->
       @if (view() === 'shop') {
-        <div class="shop-body" [class.landing]="(collection() === null && !search().trim()) || showSubTiles()">
+        <div class="shop-body">
           <div class="products">
             <div class="search-row">
               <mat-form-field class="search">
@@ -282,10 +282,8 @@ type View = 'shop' | 'checkout' | 'done';
     .top-actions { display: flex; align-items: center; gap: 8px; }
     .top-actions .mat-mdc-button { color: #f3e4ec; }
 
-    .shop-body { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding: 24px; max-width: 1680px; margin: 0 auto; align-items: start; }
-    /* Collections landing spans the full width — no cart sidebar to shop yet. */
-    .shop-body.landing { grid-template-columns: 1fr; }
-    @media (min-width: 821px) { .shop-body.landing .cart, .shop-body.landing .cart-backdrop { display: none; } }
+    /* Products always span the full width; the cart is a slide-out panel on every device. */
+    .shop-body { display: grid; grid-template-columns: 1fr; gap: 24px; padding: 24px; max-width: 1680px; margin: 0 auto; align-items: start; }
     .products { min-width: 0; }
     .search-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
     .search { flex: 1 1 auto; min-width: 0; max-width: 340px; }
@@ -322,11 +320,16 @@ type View = 'shop' | 'checkout' | 'done';
     .prow { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
     .price { font-family: "Cormorant Garamond", Georgia, serif; font-size: 22px; font-weight: 700; color: var(--lv-wine); }
 
-    .cart { position: sticky; top: 88px; background: #fff; border: 1px solid var(--lv-line); border-radius: 14px; padding: 16px; box-shadow: 0 6px 20px rgba(110,31,62,.06); }
+    /* Cart slide-out panel — from the right on desktop, from the bottom on phones. */
+    .cart { position: fixed; top: 0; right: 0; bottom: 0; width: 384px; max-width: 92vw; z-index: 60;
+      background: #fff; border-left: 1px solid var(--lv-line); padding: 18px; overflow-y: auto;
+      transform: translateX(105%); transition: transform .28s ease; box-shadow: -10px 0 34px rgba(110,31,62,.16); }
+    .cart.open { transform: translateX(0); }
     .cart-head { display: flex; align-items: center; justify-content: space-between; }
     .cart h3 { margin: 0 0 10px; font-family: "Cormorant Garamond", Georgia, serif; color: var(--lv-wine); }
-    .cart-close { display: none; }
+    .cart-close { display: inline-flex; }
     .cart-backdrop { display: none; }
+    .cart-backdrop.show { display: block; position: fixed; inset: 0; background: rgba(40,12,26,.42); z-index: 55; }
     .cline { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0e6ea; }
     .cname { font-size: 14px; font-weight: 500; }
     .cqty { display: flex; align-items: center; gap: 2px; }
@@ -359,17 +362,14 @@ type View = 'shop' | 'checkout' | 'done';
     .done-card h2 { font-family: "Cormorant Garamond", Georgia, serif; color: var(--lv-wine); margin: 8px 0; }
 
     @media (max-width: 820px) {
-      .shop-body { grid-template-columns: 1fr; }
       .cols { grid-template-columns: 1fr; }
-      /* Cart becomes a slide-up drawer opened from the header Cart button. */
+      /* On phones the cart slides up from the bottom instead of in from the right. */
       .cart {
-        position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 60;
-        margin: 0; max-height: 82vh; overflow-y: auto; border-radius: 18px 18px 0 0;
-        transform: translateY(105%); transition: transform .28s ease; box-shadow: 0 -8px 30px rgba(0,0,0,.28);
+        left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none;
+        border-left: none; border-radius: 18px 18px 0 0; max-height: 82vh;
+        transform: translateY(105%); box-shadow: 0 -8px 30px rgba(0,0,0,.28);
       }
       .cart.open { transform: translateY(0); }
-      .cart-close { display: inline-flex; }
-      .cart-backdrop.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 55; }
     }
     /* Phones (incl. narrow foldables like the Flip): stack cleanly, no horizontal overflow. */
     @media (max-width: 560px) {
