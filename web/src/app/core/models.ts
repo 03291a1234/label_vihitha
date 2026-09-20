@@ -26,6 +26,7 @@ export interface Category {
   description?: string | null;
   isActive: boolean;
   productCount: number;
+  imageUrl?: string | null;
 }
 
 export interface SubCategory {

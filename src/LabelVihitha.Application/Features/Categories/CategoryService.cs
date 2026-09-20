@@ -21,7 +21,7 @@ public class CategoryService : ICategoryService
             .OrderBy(c => c.Name)
             .Select(c => new CategoryDto(
                 c.Id, c.Name, c.Description, c.IsActive,
-                c.Products.Count(p => !p.IsDeleted)))
+                c.Products.Count(p => !p.IsDeleted), c.ImageUrl))
             .ToListAsync(ct);
     }
 
@@ -31,7 +31,7 @@ public class CategoryService : ICategoryService
             .Where(c => c.Id == id)
             .Select(c => new CategoryDto(
                 c.Id, c.Name, c.Description, c.IsActive,
-                c.Products.Count(p => !p.IsDeleted)))
+                c.Products.Count(p => !p.IsDeleted), c.ImageUrl))
             .FirstOrDefaultAsync(ct);
 
         return category ?? throw new NotFoundException(nameof(Category), id);
@@ -43,6 +43,7 @@ public class CategoryService : ICategoryService
         {
             Name = request.Name.Trim(),
             Description = request.Description,
+            ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim(),
             IsActive = true
         };
 
@@ -58,6 +59,7 @@ public class CategoryService : ICategoryService
 
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
+        entity.ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim();
         entity.IsActive = request.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -79,5 +81,5 @@ public class CategoryService : ICategoryService
     }
 
     private static CategoryDto Map(Category c, int productCount) => new(
-        c.Id, c.Name, c.Description, c.IsActive, productCount);
+        c.Id, c.Name, c.Description, c.IsActive, productCount, c.ImageUrl);
 }

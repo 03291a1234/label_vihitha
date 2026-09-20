@@ -15,7 +15,8 @@ public record StoreProductDto(
     string? ImageUrl,
     int Available,
     bool InStock,
-    IReadOnlyList<StoreVariantDto> Variants);
+    IReadOnlyList<StoreVariantDto> Variants,
+    string? CategoryImageUrl = null);
 
 public record StoreCheckoutItem(int ProductId, int Quantity, int? ProductVariantId = null);
 

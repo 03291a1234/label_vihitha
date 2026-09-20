@@ -53,7 +53,7 @@ type View = 'shop' | 'checkout' | 'done';
           <div class="products">
             <div class="search-row">
               <mat-form-field class="search">
-                <mat-label>Search sarees</mat-label>
+                <mat-label>Search products</mat-label>
                 <input matInput [ngModel]="search()" (ngModelChange)="onSearchChange($event)" placeholder="Name or SKU" />
               </mat-form-field>
               @if (search()) { <button mat-button (click)="onSearchChange('')"><mat-icon>close</mat-icon></button> }
@@ -367,20 +367,22 @@ export class ShopComponent {
 
   /** Collections landing: products grouped by category, with a count and a representative image. */
   collections = computed(() => {
-    const map = new Map<string, { name: string; count: number; image: string | null }>();
+    const map = new Map<string, { name: string; count: number; cover: string | null; firstPhoto: string | null }>();
     for (const p of this.allProducts()) {
       const key = p.categoryName || 'Other';
       let c = map.get(key);
-      if (!c) { c = { name: key, count: 0, image: null }; map.set(key, c); }
+      if (!c) { c = { name: key, count: 0, cover: null, firstPhoto: null }; map.set(key, c); }
       c.count++;
-      if (!c.image && p.imageUrl) c.image = p.imageUrl;
+      // Prefer the category's own cover image; otherwise fall back to the first product photo.
+      if (!c.cover && p.categoryImageUrl) c.cover = p.categoryImageUrl;
+      if (!c.firstPhoto && p.imageUrl) c.firstPhoto = p.imageUrl;
     }
     return [...map.values()].sort((a, b) => {
       // Keep Accessories last; everything else alphabetical.
       const al = a.name.toLowerCase() === 'accessories' ? 1 : 0;
       const bl = b.name.toLowerCase() === 'accessories' ? 1 : 0;
       return al !== bl ? al - bl : a.name.localeCompare(b.name);
-    }).map((c, i) => ({ ...c, color: this.palette[i % this.palette.length] }));
+    }).map((c, i) => ({ name: c.name, count: c.count, image: c.cover ?? c.firstPhoto, color: this.palette[i % this.palette.length] }));
   });
 
   /** Products shown in the grid: filtered by the open collection and/or the search query. */

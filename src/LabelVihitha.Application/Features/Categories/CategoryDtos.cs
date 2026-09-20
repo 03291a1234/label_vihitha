@@ -5,13 +5,16 @@ public record CategoryDto(
     string Name,
     string? Description,
     bool IsActive,
-    int ProductCount);
+    int ProductCount,
+    string? ImageUrl);
 
 public record CreateCategoryRequest(
     string Name,
-    string? Description);
+    string? Description,
+    string? ImageUrl = null);
 
 public record UpdateCategoryRequest(
     string Name,
     string? Description,
-    bool IsActive);
+    bool IsActive,
+    string? ImageUrl = null);

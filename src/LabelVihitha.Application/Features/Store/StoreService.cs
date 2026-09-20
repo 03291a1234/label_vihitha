@@ -63,7 +63,8 @@ public class StoreService : IStoreService
                 p.SalePrice, p.ImageUrl, p.QuantityOnHand, p.QuantityOnHand > 0,
                 p.Variants.Where(v => !v.IsDeleted).OrderBy(v => v.Id)
                     .Select(v => new StoreVariantDto(v.Id, v.Size, v.QuantityOnHand, v.QuantityOnHand > 0))
-                    .ToList()))
+                    .ToList(),
+                p.Category.ImageUrl))
             .ToListAsync(ct);
     }
 
