@@ -17,6 +17,7 @@ export interface StoreProduct {
   inStock: boolean;
   variants: StoreVariant[];
   categoryImageUrl?: string | null;
+  subCategoryImageUrl?: string | null;
 }
 
 export interface CartLine {

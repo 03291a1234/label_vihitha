@@ -6,7 +6,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { SubCategoryApi } from '../../core/services/api.services';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { SubCategoryApi, ProductApi, apiOrigin } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { SubCategory } from '../../core/models';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
@@ -18,7 +19,7 @@ export interface SubCategoryManageData { categoryId: number; categoryName: strin
   standalone: true,
   imports: [
     FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatButtonModule, MatIconModule, MatListModule
+    MatButtonModule, MatIconModule, MatListModule, MatProgressSpinnerModule
   ],
   template: `
     <h2 mat-dialog-title>Subcategories · {{ data.categoryName }}</h2>
@@ -49,6 +50,18 @@ export interface SubCategoryManageData { categoryId: number; categoryName: strin
                   <input matInput [(ngModel)]="editSizes" placeholder="e.g. 2.4, 2.6, 2.8" />
                   <mat-hint>Offered as the Size options on products</mat-hint>
                 </mat-form-field>
+                <div class="cover">
+                  <div class="thumb" [class.empty]="!editImageUrl()">
+                    @if (editImageUrl()) { <img [src]="preview(editImageUrl())" alt="cover" /> }
+                    @else { <mat-icon>image</mat-icon> }
+                  </div>
+                  <button type="button" mat-stroked-button (click)="subFile.click()" [disabled]="uploadingSub()">
+                    @if (uploadingSub()) { <mat-spinner diameter="16"></mat-spinner> } @else { <mat-icon>upload</mat-icon> }
+                    {{ editImageUrl() ? 'Replace' : 'Cover' }}
+                  </button>
+                  @if (editImageUrl()) { <button type="button" mat-button color="warn" (click)="editImageUrl.set(null)">Remove</button> }
+                  <input #subFile type="file" hidden accept="image/*" (change)="onSubFile($event)" />
+                </div>
                 <div class="edit-actions">
                   <button mat-icon-button color="primary" (click)="saveEdit(s)"><mat-icon>check</mat-icon></button>
                   <button mat-icon-button (click)="editingId.set(null)"><mat-icon>close</mat-icon></button>
@@ -56,6 +69,8 @@ export interface SubCategoryManageData { categoryId: number; categoryName: strin
               </div>
             } @else {
               <div class="view">
+                <div class="vleft">
+                @if (s.imageUrl) { <img class="vthumb" [src]="preview(s.imageUrl)" alt="" /> }
                 <div class="info">
                   <strong>{{ s.name }}</strong>
                   <span class="muted count">{{ s.productCount }} product{{ s.productCount === 1 ? '' : 's' }}</span>
@@ -65,6 +80,7 @@ export interface SubCategoryManageData { categoryId: number; categoryName: strin
                       @for (z of s.sizes; track z) { <span class="size-chip">{{ z }}</span> }
                     </div>
                   }
+                </div>
                 </div>
                 <div class="row-actions">
                   <button mat-icon-button (click)="startEdit(s)" title="Edit name & sizes"><mat-icon>edit</mat-icon></button>
@@ -93,10 +109,18 @@ export interface SubCategoryManageData { categoryId: number; categoryName: strin
     .size-chip { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 2px 9px; font-weight: 600; }
     .edit { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
     .edit-actions, .row-actions { display: flex; align-items: center; }
+    .cover { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .cover .thumb { width: 54px; height: 40px; border-radius: 7px; overflow: hidden; flex: 0 0 auto;
+      background: var(--lv-cream-2); display: grid; place-items: center; border: 1px solid var(--lv-line); }
+    .cover .thumb.empty mat-icon { color: #c9a24b; font-size: 20px; }
+    .cover .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .vleft { display: flex; align-items: center; }
+    .vthumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; margin-right: 10px; flex: 0 0 auto; }
   `]
 })
 export class SubCategoryManageDialog {
   private api = inject(SubCategoryApi);
+  private products = inject(ProductApi);
   private notify = inject(Notify);
   private dialog = inject(MatDialog);
   ref = inject(MatDialogRef<SubCategoryManageDialog>);
@@ -104,10 +128,26 @@ export class SubCategoryManageDialog {
   rows = signal<SubCategory[]>([]);
   busy = signal(false);
   editingId = signal<number | null>(null);
+  editImageUrl = signal<string | null>(null);
+  uploadingSub = signal(false);
   newName = '';
   editName = '';
   editSizes = '';
   changed = false;
+
+  preview(url: string | null | undefined) { return !url ? '' : url.startsWith('http') ? url : apiOrigin + url; }
+
+  onSubFile(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.uploadingSub.set(true);
+    this.products.uploadImage(file).subscribe({
+      next: (r) => { this.editImageUrl.set(r.url); this.uploadingSub.set(false); },
+      error: (e) => { this.uploadingSub.set(false); this.notify.error(e); }
+    });
+    input.value = '';
+  }
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: SubCategoryManageData) {
     this.load();
@@ -131,13 +171,14 @@ export class SubCategoryManageDialog {
     this.editingId.set(s.id);
     this.editName = s.name;
     this.editSizes = s.sizes.join(', ');
+    this.editImageUrl.set(s.imageUrl ?? null);
   }
 
   saveEdit(s: SubCategory) {
     const name = this.editName.trim();
     if (!name) return;
     const sizes = this.editSizes.split(',').map(x => x.trim()).filter(x => x.length > 0);
-    this.api.update(s.id, { name, description: s.description ?? null, isActive: s.isActive, sizes }).subscribe({
+    this.api.update(s.id, { name, description: s.description ?? null, isActive: s.isActive, sizes, imageUrl: this.editImageUrl() }).subscribe({
       next: () => { this.editingId.set(null); this.changed = true; this.notify.success('Saved'); this.load(); },
       error: (e) => this.notify.error(e)
     });

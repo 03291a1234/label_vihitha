@@ -13,6 +13,10 @@ public class SubCategory : BaseEntity
 
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+
+    /// <summary>Optional cover image for the sub-collection (shown on the storefront).</summary>
+    public string? ImageUrl { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     /// <summary>Comma-separated size options offered to products in this subcategory (e.g. "2.4,2.6,2.8").</summary>

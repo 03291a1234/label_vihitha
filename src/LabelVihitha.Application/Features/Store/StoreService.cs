@@ -64,7 +64,8 @@ public class StoreService : IStoreService
                 p.Variants.Where(v => !v.IsDeleted).OrderBy(v => v.Id)
                     .Select(v => new StoreVariantDto(v.Id, v.Size, v.QuantityOnHand, v.QuantityOnHand > 0))
                     .ToList(),
-                p.Category.ImageUrl))
+                p.Category.ImageUrl,
+                p.SubCategory != null ? p.SubCategory.ImageUrl : null))
             .ToListAsync(ct);
     }
 

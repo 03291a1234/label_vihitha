@@ -38,6 +38,7 @@ export interface SubCategory {
   isActive: boolean;
   productCount: number;
   sizes: string[];
+  imageUrl?: string | null;
 }
 
 export interface Inventory {

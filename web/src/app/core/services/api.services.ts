@@ -47,10 +47,10 @@ export class SubCategoryApi {
   list(categoryId?: number | null, includeInactive = false): Observable<SubCategory[]> {
     return this.http.get<SubCategory[]>(`${base}/subcategories`, { params: toParams({ categoryId, includeInactive }) });
   }
-  create(body: { categoryId: number; name: string; description?: string | null; sizes?: string[] }) {
+  create(body: { categoryId: number; name: string; description?: string | null; sizes?: string[]; imageUrl?: string | null }) {
     return this.http.post<SubCategory>(`${base}/subcategories`, body);
   }
-  update(id: number, body: { name: string; description?: string | null; isActive: boolean; sizes?: string[] }) {
+  update(id: number, body: { name: string; description?: string | null; isActive: boolean; sizes?: string[]; imageUrl?: string | null }) {
     return this.http.put<SubCategory>(`${base}/subcategories/${id}`, body);
   }
   remove(id: number) { return this.http.delete<void>(`${base}/subcategories/${id}`); }

@@ -49,7 +49,7 @@ type View = 'shop' | 'checkout' | 'done';
 
       <!-- SHOP -->
       @if (view() === 'shop') {
-        <div class="shop-body" [class.landing]="collection() === null && !search().trim()">
+        <div class="shop-body" [class.landing]="(collection() === null && !search().trim()) || showSubTiles()">
           <div class="products">
             <div class="search-row">
               <mat-form-field class="search">
@@ -74,10 +74,45 @@ type View = 'shop' | 'checkout' | 'done';
                 }
               </div>
               @if (!loading() && collections().length === 0) { <div class="empty">No collections yet.</div> }
+            } @else if (showSubTiles()) {
+              <div class="crumb">
+                <button mat-button (click)="backToCollections()"><mat-icon>arrow_back</mat-icon> Collections</button>
+                <span class="crumb-here">{{ collection() }}</span>
+              </div>
+              <div class="collections">
+                <button class="ctile" (click)="openSub('*')" [style.background-color]="'#5a1a38'">
+                  <span class="cveil"></span>
+                  <span class="cmeta">
+                    <span class="cname">All {{ collection() }}</span>
+                    <span class="ccount">{{ products().length }} style{{ products().length === 1 ? '' : 's' }}</span>
+                  </span>
+                </button>
+                @for (s of subcollections(); track s.name) {
+                  <button class="ctile" (click)="openSub(s.name)"
+                    [style.background-color]="s.color"
+                    [style.background-image]="s.image ? 'url(' + img(s.image) + ')' : null">
+                    <span class="cveil"></span>
+                    <span class="cmeta">
+                      <span class="cname">{{ s.name }}</span>
+                      <span class="ccount">{{ s.count }} style{{ s.count === 1 ? '' : 's' }}</span>
+                    </span>
+                  </button>
+                }
+              </div>
             } @else {
               <div class="crumb">
                 <button mat-button (click)="backToCollections()"><mat-icon>arrow_back</mat-icon> Collections</button>
-                <span class="crumb-here">{{ collection() || ('Search: “' + search() + '”') }}</span>
+                @if (collection()) {
+                  @if (subcollection() && subcollection() !== '*') {
+                    <button mat-button class="crumb-link" (click)="backToSubcollections()">{{ collection() }}</button>
+                    <mat-icon class="crumb-sep">chevron_right</mat-icon>
+                    <span class="crumb-here">{{ subcollection() }}</span>
+                  } @else {
+                    <span class="crumb-here">{{ collection() }}</span>
+                  }
+                } @else {
+                  <span class="crumb-here">Search: “{{ search() }}”</span>
+                }
               </div>
               <div class="grid">
               @for (p of products(); track p.id) {
@@ -266,8 +301,10 @@ type View = 'shop' | 'checkout' | 'done';
     .ctile .cmeta { position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 1; display: flex; flex-direction: column; gap: 3px; }
     .ctile .cname { font-family: "Cormorant Garamond", Georgia, serif; font-size: 25px; font-weight: 700; color: #fff; line-height: 1.05; }
     .ctile .ccount { font-size: 11px; color: rgba(255,255,255,.85); text-transform: uppercase; letter-spacing: 1.2px; }
-    .crumb { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .crumb { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
     .crumb-here { font-family: "Cormorant Garamond", Georgia, serif; font-size: 24px; font-weight: 700; color: var(--lv-wine); }
+    .crumb-link { font-family: "Cormorant Garamond", Georgia, serif; font-size: 22px; font-weight: 700; color: rgba(58,37,48,.6); }
+    .crumb-sep { color: rgba(58,37,48,.4); }
     .pcard { background: #fff; border: 1px solid var(--lv-line); border-radius: 14px; overflow: hidden; box-shadow: 0 6px 20px rgba(110,31,62,.06); display: flex; flex-direction: column; }
     .pcard.out { opacity: .7; }
     .pimg { position: relative; height: 180px; background: #f3ead9; display: grid; place-items: center; }
@@ -361,6 +398,8 @@ export class ShopComponent {
   search = signal('');
   /** The chosen collection (category name); null shows the collections landing. */
   collection = signal<string | null>(null);
+  /** The chosen sub-collection: a subcategory name, '*' for all in the category, or null (choose one). */
+  subcollection = signal<string | null>(null);
 
   /** Tile colours cycled across collections when a category has no representative photo. */
   private palette = ['#6e1f3e', '#0F6E56', '#D85A30', '#993556', '#BA7517', '#3B6D11', '#185FA5', '#7F77DD'];
@@ -385,14 +424,38 @@ export class ShopComponent {
     }).map((c, i) => ({ name: c.name, count: c.count, image: c.cover ?? c.firstPhoto, color: this.palette[i % this.palette.length] }));
   });
 
-  /** Products shown in the grid: filtered by the open collection and/or the search query. */
+  /** Sub-collections within the open category: its subcategories, with a count and cover image. */
+  subcollections = computed(() => {
+    const col = this.collection();
+    if (!col) return [];
+    const map = new Map<string, { name: string; count: number; cover: string | null; firstPhoto: string | null }>();
+    for (const p of this.allProducts()) {
+      if ((p.categoryName || 'Other') !== col || !p.subCategoryName) continue;
+      let c = map.get(p.subCategoryName);
+      if (!c) { c = { name: p.subCategoryName, count: 0, cover: null, firstPhoto: null }; map.set(p.subCategoryName, c); }
+      c.count++;
+      if (!c.cover && p.subCategoryImageUrl) c.cover = p.subCategoryImageUrl;
+      if (!c.firstPhoto && p.imageUrl) c.firstPhoto = p.imageUrl;
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
+      .map((c, i) => ({ name: c.name, count: c.count, image: c.cover ?? c.firstPhoto, color: this.palette[i % this.palette.length] }));
+  });
+
+  /** Show the subcategory tier when a category with subcategories is open and none is chosen yet. */
+  showSubTiles = computed(() =>
+    !!this.collection() && this.subcollection() === null && !this.search().trim() && this.subcollections().length > 0);
+
+  /** Products shown in the grid: filtered by the open collection, sub-collection and/or search query. */
   products = computed(() => {
     const q = this.search().trim().toLowerCase();
     const col = this.collection();
+    const sub = this.subcollection();
     let list = this.allProducts();
     if (col) list = list.filter(p => (p.categoryName || 'Other') === col);
+    if (sub && sub !== '*') list = list.filter(p => p.subCategoryName === sub);
     if (q) list = list.filter(p =>
-      p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.categoryName ?? '').toLowerCase().includes(q));
+      p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+      || (p.categoryName ?? '').toLowerCase().includes(q) || (p.subCategoryName ?? '').toLowerCase().includes(q));
     return list;
   });
   name = '';
@@ -419,8 +482,11 @@ export class ShopComponent {
   /** Search filters the already-loaded catalogue client-side (no round-trip). */
   onSearchChange(value: string) { this.search.set(value); }
 
-  openCollection(name: string) { this.collection.set(name); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* ignore */ } }
-  backToCollections() { this.collection.set(null); this.search.set(''); }
+  private scrollTop() { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* ignore */ } }
+  openCollection(name: string) { this.collection.set(name); this.subcollection.set(null); this.scrollTop(); }
+  openSub(name: string) { this.subcollection.set(name); this.scrollTop(); }
+  backToCollections() { this.collection.set(null); this.subcollection.set(null); this.search.set(''); this.scrollTop(); }
+  backToSubcollections() { this.subcollection.set(null); this.scrollTop(); }
 
   load() {
     this.loading.set(true);
@@ -450,7 +516,7 @@ export class ShopComponent {
   inc(id: number, qty: number, available: number) { if (qty < available) this.cart.setQty(id, qty + 1); }
   dec(id: number, qty: number) { if (qty > 1) this.cart.setQty(id, qty - 1); else this.cart.remove(id); }
 
-  goHome() { this.view.set('shop'); this.collection.set(null); this.search.set(''); this.closeCart(); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* ignore */ } }
+  goHome() { this.view.set('shop'); this.collection.set(null); this.subcollection.set(null); this.search.set(''); this.closeCart(); this.scrollTop(); }
   goCheckout() { if (this.cart.count() > 0) { this.closeCart(); this.view.set('checkout'); } }
 
   /** Mobile cart drawer (on desktop the sidebar is always visible, so this is a no-op there). */
