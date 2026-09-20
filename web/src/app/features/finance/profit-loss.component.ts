@@ -8,10 +8,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { FinanceApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { ProfitLossReport, VendorSpend } from '../../core/models';
 import { DateRangeComponent, DateRange } from '../../shared/date-range.component';
+import { RecordContributionDialog } from './record-contribution.dialog';
 
 @Component({
   selector: 'app-profit-loss',
@@ -90,30 +92,39 @@ import { DateRangeComponent, DateRange } from '../../shared/date-range.component
           </div>
         </div>
 
-        <!-- Cash position (joint account) -->
+        <!-- Joint account (cash) -->
         <div class="card cash">
-          <h2>Cash position <span class="muted">(joint account, to date)</span></h2>
-          <div class="cash-grid">
-            <div class="line"><span>Owner contributions</span><span class="mono">{{ r.totalContributions | currency }}</span></div>
-            <div class="line"><span>Owner withdrawals</span><span class="mono neg">−{{ r.totalWithdrawals | currency }}</span></div>
-            <div class="line"><span>Retained profit / loss</span><span class="mono">{{ r.allTimeNetProfit | currency }}</span></div>
-            <div class="line strong bt"><span>Owner equity</span><span class="mono">{{ r.totalOwnerEquity | currency }}</span></div>
-            <div class="line"><span>Money tied up in stock (inventory at cost)</span><span class="mono neg">−{{ r.inventoryValueAtCost | currency }}</span></div>
-            <div class="line cash-net bt"><span>Cash remaining</span>
-              <span class="mono">{{ r.totalOwnerEquity - r.inventoryValueAtCost | currency }}
-                <span class="muted inr">≈ {{ (r.totalOwnerEquity - r.inventoryValueAtCost) * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+          <div class="jh">
+            <h2>Joint account <span class="muted">(common account, to date)</span></h2>
+            <div class="j-actions">
+              <button mat-stroked-button (click)="recordContribution()"><mat-icon>savings</mat-icon> Record contribution</button>
+              <button mat-stroked-button routerLink="/inventories"><mat-icon>add_shopping_cart</mat-icon> Buy new inventory</button>
             </div>
           </div>
-          <div class="muted foot">Buying stock moves cash into "inventory at cost", so it's deducted here automatically. Assumes sales are collected in full (no receivables tracked).</div>
+          <div class="cash-grid">
+            <div class="sec">Money in</div>
+            <div class="line"><span>Owner contributions</span><span class="mono pos">+{{ r.totalContributions | currency }}</span></div>
+            <div class="line"><span>Sales collected <span class="muted">(all time)</span></span><span class="mono pos">+{{ r.allTimeRevenue | currency }}</span></div>
+            <div class="sec bt">Money out</div>
+            <div class="line"><span>Inventory purchased <span class="muted">(at cost)</span></span><span class="mono neg">−{{ r.inventoryValueAtCost + r.allTimeCogs | currency }}</span></div>
+            <div class="line"><span>Operating expenses <span class="muted">(incl. bills)</span></span><span class="mono neg">−{{ r.allTimeExpenses | currency }}</span></div>
+            <div class="line"><span>Owner withdrawals</span><span class="mono neg">−{{ r.totalWithdrawals | currency }}</span></div>
+            <div class="line cash-net bt"><span>Cash remaining</span>
+              <span class="mono" [class.neg]="cashRemaining() < 0">{{ cashRemaining() | currency }}
+                <span class="muted inr">≈ {{ cashRemaining() * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+            </div>
+          </div>
+          <div class="muted foot">Money remaining = everything put in (contributions + sales collected) minus everything spent
+            (inventory at cost + operating expenses + withdrawals). This is what's available to buy new inventory. Assumes sales are collected in full.</div>
         </div>
 
-        <!-- Total investment reconciliation -->
+        <!-- Total investment (capital deployed) -->
         <div class="card invest">
-          <h2>Total investment <span class="muted">(all money put in, to date)</span></h2>
+          <h2>Total investment <span class="muted">(capital deployed, to date)</span></h2>
           <div class="cash-grid">
             <div class="line"><span>Stock on hand <span class="muted">(at cost)</span></span><span class="mono">{{ r.inventoryValueAtCost | currency }}</span></div>
             <div class="line"><span>Cost of goods already sold <span class="muted">(bought &amp; since sold)</span></span><span class="mono">{{ r.allTimeCogs | currency }}</span></div>
-            <div class="line"><span>Operating expenses <span class="muted">(to date)</span></span><span class="mono">{{ r.allTimeExpenses | currency }}</span></div>
+            <div class="line"><span>Operating expenses <span class="muted">(incl. bills, to date)</span></span><span class="mono">{{ r.allTimeExpenses | currency }}</span></div>
             <div class="line strong bt"><span>Total invested</span>
               <span class="mono">{{ r.totalInvested | currency }}
                 <span class="muted inr">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
@@ -121,26 +132,22 @@ import { DateRangeComponent, DateRange } from '../../shared/date-range.component
           </div>
           <div class="recon">
             <div class="rline">
-              <span>Owner contributions recorded</span>
+              <span>Funded by owner contributions</span>
               <span class="mono">{{ r.totalContributions | currency }}</span>
             </div>
             <div class="rline">
-              <span>Documented on supplier bills</span>
-              <span class="mono">{{ r.totalBillsRecorded | currency }}
-                <span class="muted">of {{ r.inventoryValueAtCost + r.allTimeCogs | currency }} inventory cost</span></span>
+              <span>Funded by reinvested sales profit</span>
+              <span class="mono">{{ r.allTimeNetProfit | currency }}</span>
             </div>
             @if (fundingGap() > 1) {
               <div class="rline gap">
-                <span><mat-icon>info</mat-icon> Unrecorded funding gap</span>
+                <span><mat-icon>info</mat-icon> Not yet covered by contributions + profit</span>
                 <span class="mono">{{ fundingGap() | currency }}</span>
               </div>
-              <div class="muted foot">Contributions are less than what's been invested — either some capital came from
-                retained sales, or owner contributions haven't all been logged. Add them under
-                <a routerLink="/owners" class="link">Owners</a>, or attach bills on the
-                <a routerLink="/inventories" class="link">Inventories</a> tab to document the spend.</div>
+              <div class="muted foot">Some deployed capital isn't yet explained by recorded contributions or retained profit —
+                log the missing deposits with <strong>Record contribution</strong> above.</div>
             } @else {
-              <div class="muted foot">Recorded contributions cover the invested capital. Attach supplier bills on the
-                <a routerLink="/inventories" class="link">Inventories</a> tab to document the actual spend per batch.</div>
+              <div class="muted foot">Contributions plus retained profit cover the capital deployed.</div>
             }
           </div>
         </div>
@@ -272,6 +279,12 @@ import { DateRangeComponent, DateRange } from '../../shared/date-range.component
     .k-val { font-size: 20px; font-weight: 700; color: var(--lv-wine); }
     .cash { margin-bottom: 16px; }
     .cash-grid { max-width: 520px; }
+    .jh { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .j-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cash-grid .sec { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: rgba(58,37,48,.5);
+      margin: 8px 0 2px; font-weight: 700; }
+    .cash-grid .sec.bt { border-top: 1px solid var(--lv-line); padding-top: 8px; margin-top: 8px; }
+    .line .pos { color: #2e7d32; }
     .spend-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
     .sort-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; }
     .sort-toggle button { border: 1px solid var(--lv-line); background: #fff; border-radius: 999px; padding: 3px 12px;
@@ -309,6 +322,7 @@ import { DateRangeComponent, DateRange } from '../../shared/date-range.component
 export class ProfitLossComponent {
   private api = inject(FinanceApi);
   private notify = inject(Notify);
+  private dialog = inject(MatDialog);
 
   report = signal<ProfitLossReport | null>(null);
   loading = signal(false);
@@ -334,11 +348,24 @@ export class ProfitLossComponent {
       : copy.sort((a, b) => b.totalCost - a.totalCost);
   }
 
-  /** How much of the invested capital isn't covered by recorded owner contributions. */
+  /** Cash left in the joint account = money in (contributions + sales) − money out (inventory + expenses + withdrawals). */
+  cashRemaining(): number {
+    const r = this.report();
+    if (!r) return 0;
+    return r.totalContributions + r.allTimeRevenue
+      - (r.inventoryValueAtCost + r.allTimeCogs) - r.allTimeExpenses - r.totalWithdrawals;
+  }
+
+  /** Deployed capital not yet explained by recorded contributions + retained profit. */
   fundingGap(): number {
     const r = this.report();
     if (!r) return 0;
-    return Math.max(0, r.totalInvested - r.totalContributions);
+    return Math.max(0, r.totalInvested - r.totalContributions - r.allTimeNetProfit);
+  }
+
+  recordContribution() {
+    this.dialog.open(RecordContributionDialog, { width: '440px' }).afterClosed()
+      .subscribe(ok => { if (ok) this.load(); });
   }
 
   label() {

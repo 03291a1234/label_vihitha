@@ -30,7 +30,7 @@ public class InventoryGroupService : IInventoryGroupService
         var breakdown = await BuildBreakdownAsync(ids, ct);
         var bills = await BuildBillsAsync(ids, ct);
         var sold = await BuildSoldAsync(ids, ct);
-        var expenses = await TotalExpensesAsync(ct);
+        var (directExp, unattributedExp) = await ExpenseAttributionAsync(ct);
         var totalInvRev = sold.Values.Sum(v => v.Revenue);
 
         return inventories.Select(i =>
@@ -39,9 +39,12 @@ public class InventoryGroupService : IInventoryGroupService
             var count = cats.Sum(c => c.ProductCount);
             var bl = bills.TryGetValue(i.Id, out var lst) ? lst : new List<InventoryBillDto>();
             var (rev, cogs) = sold.TryGetValue(i.Id, out var s) ? s : (0m, 0m);
-            var alloc = totalInvRev > 0 ? Math.Round(expenses * (rev / totalInvRev), 2) : 0m;
+            var billTotal = bl.Sum(x => x.Amount ?? 0m);
+            // Direct costs (this inventory's own expenses + its bills) plus its share of unattributed expenses.
+            var direct = directExp.GetValueOrDefault(i.Id) + billTotal;
+            var alloc = Math.Round(direct + (totalInvRev > 0 ? unattributedExp * (rev / totalInvRev) : 0m), 2);
             return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
-                count, units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m),
+                count, units, cost, cats, bl, billTotal,
                 rev, cogs, cost + cogs, rev - cogs, alloc, rev - cogs - alloc);
         }).ToList();
     }
@@ -64,16 +67,28 @@ public class InventoryGroupService : IInventoryGroupService
         var allSold = await BuildSoldAsync(allIds, ct);
         var (rev, cogs) = allSold.TryGetValue(id, out var s) ? s : (0m, 0m);
         var totalInvRev = allSold.Values.Sum(v => v.Revenue);
-        var expenses = await TotalExpensesAsync(ct);
-        var alloc = totalInvRev > 0 ? Math.Round(expenses * (rev / totalInvRev), 2) : 0m;
+        var (directExp, unattributedExp) = await ExpenseAttributionAsync(ct);
+        var billTotal = bl.Sum(x => x.Amount ?? 0m);
+        var direct = directExp.GetValueOrDefault(id) + billTotal;
+        var alloc = Math.Round(direct + (totalInvRev > 0 ? unattributedExp * (rev / totalInvRev) : 0m), 2);
         return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
-            cats.Sum(c => c.ProductCount), units, cost, cats, bl, bl.Sum(x => x.Amount ?? 0m),
+            cats.Sum(c => c.ProductCount), units, cost, cats, bl, billTotal,
             rev, cogs, cost + cogs, rev - cogs, alloc, rev - cogs - alloc);
     }
 
-    /// <summary>Total all-time operating expenses — the pool spread across inventories by sales share.</summary>
-    private async Task<decimal> TotalExpensesAsync(CancellationToken ct) =>
-        await _db.Expenses.AsNoTracking().SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
+    /// <summary>Operating expenses split for per-inventory P&L: expenses tagged to a specific inventory
+    /// (charged directly), and the remaining untagged pool (spread by each inventory's sales share).
+    /// Supplier bills are added to each inventory's direct costs at the call site.</summary>
+    private async Task<(Dictionary<int, decimal> DirectByInventory, decimal Unattributed)> ExpenseAttributionAsync(CancellationToken ct)
+    {
+        var rows = await _db.Expenses.AsNoTracking()
+            .GroupBy(e => e.InventoryId)
+            .Select(g => new { g.Key, Amount = g.Sum(x => x.Amount) })
+            .ToListAsync(ct);
+        var direct = rows.Where(r => r.Key != null).ToDictionary(r => r.Key!.Value, r => r.Amount);
+        var unattributed = rows.Where(r => r.Key == null).Sum(r => r.Amount);
+        return (direct, unattributed);
+    }
 
     /// <summary>Revenue and cost of goods sold to date, per inventory, from committed sales.
     /// Prices are the snapshots taken at sale time; a sold line is attributed to its product's

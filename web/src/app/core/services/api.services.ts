@@ -270,6 +270,7 @@ export class ExpenseCategoryApi {
 
 export interface ExpenseFilters {
   categoryId?: number | null;
+  inventoryId?: number | null;
   fromDate?: string | null;
   toDate?: string | null;
   sortBy?: string | null;
@@ -284,10 +285,10 @@ export class ExpenseApi {
   list(filters: ExpenseFilters = {}): Observable<PagedResult<Expense>> {
     return this.http.get<PagedResult<Expense>>(`${base}/expenses`, { params: toParams(filters as Record<string, unknown>) });
   }
-  create(body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null; paidByOwnerId?: number | null; receiptUrl?: string | null }) {
+  create(body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null; paidByOwnerId?: number | null; receiptUrl?: string | null; inventoryId?: number | null }) {
     return this.http.post<Expense>(`${base}/expenses`, body);
   }
-  update(id: number, body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null; paidByOwnerId?: number | null; receiptUrl?: string | null }) {
+  update(id: number, body: { expenseCategoryId: number; date: string; amount: number; description?: string | null; notes?: string | null; paidByOwnerId?: number | null; receiptUrl?: string | null; inventoryId?: number | null }) {
     return this.http.put<Expense>(`${base}/expenses/${id}`, body);
   }
   remove(id: number) { return this.http.delete<void>(`${base}/expenses/${id}`); }

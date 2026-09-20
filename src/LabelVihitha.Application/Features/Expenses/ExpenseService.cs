@@ -18,6 +18,7 @@ public class ExpenseService : IExpenseService
 
         var q = _db.Expenses.AsNoTracking();
         if (query.CategoryId is int cid) q = q.Where(e => e.ExpenseCategoryId == cid);
+        if (query.InventoryId is int iid) q = q.Where(e => e.InventoryId == iid);
         if (query.FromDate is DateTime f) q = q.Where(e => e.Date >= f);
         if (query.ToDate is DateTime t) q = q.Where(e => e.Date <= t);
 
@@ -27,7 +28,8 @@ public class ExpenseService : IExpenseService
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(e => new ExpenseDto(e.Id, e.ExpenseCategoryId, e.ExpenseCategory.Name,
                 e.Date, e.Amount, e.Description, e.Notes,
-                e.PaidByOwnerId, e.PaidByOwner != null ? e.PaidByOwner.Name : null, e.ReceiptUrl))
+                e.PaidByOwnerId, e.PaidByOwner != null ? e.PaidByOwner.Name : null, e.ReceiptUrl,
+                e.InventoryId, e.Inventory != null ? e.Inventory.Name : null))
             .ToListAsync(ct);
 
         return new PagedResult<ExpenseDto> { Items = items, TotalCount = total, Page = page, PageSize = pageSize };
@@ -39,7 +41,8 @@ public class ExpenseService : IExpenseService
             .Where(e => e.Id == id)
             .Select(e => new ExpenseDto(e.Id, e.ExpenseCategoryId, e.ExpenseCategory.Name,
                 e.Date, e.Amount, e.Description, e.Notes,
-                e.PaidByOwnerId, e.PaidByOwner != null ? e.PaidByOwner.Name : null, e.ReceiptUrl))
+                e.PaidByOwnerId, e.PaidByOwner != null ? e.PaidByOwner.Name : null, e.ReceiptUrl,
+                e.InventoryId, e.Inventory != null ? e.Inventory.Name : null))
             .FirstOrDefaultAsync(ct);
         return dto ?? throw new NotFoundException(nameof(Expense), id);
     }
@@ -48,6 +51,7 @@ public class ExpenseService : IExpenseService
     {
         await EnsureCategoryAsync(request.ExpenseCategoryId, ct);
         await EnsureOwnerAsync(request.PaidByOwnerId, ct);
+        await EnsureInventoryAsync(request.InventoryId, ct);
         var entity = new Expense
         {
             ExpenseCategoryId = request.ExpenseCategoryId,
@@ -56,7 +60,8 @@ public class ExpenseService : IExpenseService
             Description = request.Description,
             Notes = request.Notes,
             PaidByOwnerId = request.PaidByOwnerId,
-            ReceiptUrl = request.ReceiptUrl
+            ReceiptUrl = request.ReceiptUrl,
+            InventoryId = request.InventoryId
         };
         _db.Expenses.Add(entity);
         await _db.SaveChangesAsync(ct);
@@ -69,6 +74,7 @@ public class ExpenseService : IExpenseService
             ?? throw new NotFoundException(nameof(Expense), id);
         await EnsureCategoryAsync(request.ExpenseCategoryId, ct);
         await EnsureOwnerAsync(request.PaidByOwnerId, ct);
+        await EnsureInventoryAsync(request.InventoryId, ct);
         entity.ExpenseCategoryId = request.ExpenseCategoryId;
         entity.Date = request.Date;
         entity.Amount = request.Amount;
@@ -76,6 +82,7 @@ public class ExpenseService : IExpenseService
         entity.Notes = request.Notes;
         entity.PaidByOwnerId = request.PaidByOwnerId;
         entity.ReceiptUrl = request.ReceiptUrl;
+        entity.InventoryId = request.InventoryId;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(id, ct);
@@ -101,6 +108,13 @@ public class ExpenseService : IExpenseService
         if (ownerId is not int id) return;
         if (!await _db.Owners.AnyAsync(o => o.Id == id && !o.IsDeleted, ct))
             throw new NotFoundException(nameof(Owner), id);
+    }
+
+    private async Task EnsureInventoryAsync(int? inventoryId, CancellationToken ct)
+    {
+        if (inventoryId is not int id) return;
+        if (!await _db.Inventories.AnyAsync(i => i.Id == id && !i.IsDeleted, ct))
+            throw new NotFoundException(nameof(Inventory), id);
     }
 
     private static IQueryable<Expense> ApplySort(IQueryable<Expense> q, string? sortBy, string? dir)

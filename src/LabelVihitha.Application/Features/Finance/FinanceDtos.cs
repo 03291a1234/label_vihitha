@@ -71,4 +71,6 @@ public record ProfitLossReport(
     // Sum of amounts on supplier bills attached to inventories (documented actual spend).
     decimal TotalBillsRecorded,
     // Authoritative total capital deployed to date = stock on hand at cost + all-time COGS + all-time expenses.
-    decimal TotalInvested);
+    decimal TotalInvested,
+    // All-time committed sales revenue (money collected), for the joint-account cash view.
+    decimal AllTimeRevenue);

@@ -9,9 +9,9 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CurrencyPipe } from '@angular/common';
-import { ExpenseApi, ExpenseCategoryApi, OwnerApi, resolveImageUrl } from '../../core/services/api.services';
+import { ExpenseApi, ExpenseCategoryApi, OwnerApi, InventoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
-import { Expense, ExpenseCategory, Owner } from '../../core/models';
+import { Expense, ExpenseCategory, Owner, Inventory } from '../../core/models';
 import { DateInputComponent } from '../../shared/date-input.component';
 import { SearchSelectComponent } from '../../shared/search-select.component';
 
@@ -55,6 +55,9 @@ const INR_RATE = 95;
         <app-search-select label="Paid by" [items]="owners()" formControlName="paidByOwnerId"
           nullOption nullLabel="— Company / unspecified —"
           [hint]="owners().length === 0 ? 'Add owners on the Owners page to attribute who paid' : ''" />
+        <app-search-select label="For inventory" [items]="inventories()" formControlName="inventoryId"
+          nullOption nullLabel="— None (spread across all) —"
+          hint="Tag a batch (e.g. stitching) to charge it to that inventory's P&amp;L; leave blank to spread by sales" />
         <mat-form-field>
           <mat-label>Notes</mat-label>
           <textarea matInput rows="2" formControlName="notes"></textarea>
@@ -99,12 +102,14 @@ export class ExpenseEditDialog {
   private api = inject(ExpenseApi);
   private catApi = inject(ExpenseCategoryApi);
   private ownerApi = inject(OwnerApi);
+  private invApi = inject(InventoryApi);
   private notify = inject(Notify);
   ref = inject(MatDialogRef<ExpenseEditDialog>);
 
   readonly rate = INR_RATE;
   categories = signal<ExpenseCategory[]>([]);
   owners = signal<Owner[]>([]);
+  inventories = signal<Inventory[]>([]);
   currency = signal<'USD' | 'INR'>('USD');
   saving = signal(false);
   uploading = signal(false);
@@ -116,12 +121,14 @@ export class ExpenseEditDialog {
     amount: [0, [Validators.required, Validators.min(0)]],
     description: [''],
     notes: [''],
-    paidByOwnerId: [null as number | null]
+    paidByOwnerId: [null as number | null],
+    inventoryId: [null as number | null]
   });
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: Expense | null) {
     this.catApi.list(false).subscribe(cs => this.categories.set(cs));
     this.ownerApi.list(false).subscribe(os => this.owners.set(os));
+    this.invApi.list(false).subscribe(inv => this.inventories.set(inv));
     if (data) {
       this.form.patchValue({
         expenseCategoryId: data.expenseCategoryId,
@@ -129,7 +136,8 @@ export class ExpenseEditDialog {
         amount: data.amount,
         description: data.description ?? '',
         notes: data.notes ?? '',
-        paidByOwnerId: data.paidByOwnerId ?? null
+        paidByOwnerId: data.paidByOwnerId ?? null,
+        inventoryId: data.inventoryId ?? null
       });
       this.receiptUrl.set(data.receiptUrl ?? null);
     }
@@ -163,7 +171,8 @@ export class ExpenseEditDialog {
       description: v.description || null,
       notes: v.notes || null,
       paidByOwnerId: v.paidByOwnerId ?? null,
-      receiptUrl: this.receiptUrl()
+      receiptUrl: this.receiptUrl(),
+      inventoryId: v.inventoryId ?? null
     };
     const req = this.data ? this.api.update(this.data.id, body) : this.api.create(body);
     req.subscribe({

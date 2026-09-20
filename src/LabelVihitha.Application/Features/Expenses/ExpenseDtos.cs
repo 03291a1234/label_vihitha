@@ -18,7 +18,9 @@ public record ExpenseDto(
     string? Notes,
     int? PaidByOwnerId,
     string? PaidByOwnerName,
-    string? ReceiptUrl);
+    string? ReceiptUrl,
+    int? InventoryId,
+    string? InventoryName);
 
 public record CreateExpenseRequest(
     int ExpenseCategoryId,
@@ -27,7 +29,8 @@ public record CreateExpenseRequest(
     string? Description,
     string? Notes,
     int? PaidByOwnerId,
-    string? ReceiptUrl);
+    string? ReceiptUrl,
+    int? InventoryId = null);
 
 public record UpdateExpenseRequest(
     int ExpenseCategoryId,
@@ -36,10 +39,12 @@ public record UpdateExpenseRequest(
     string? Description,
     string? Notes,
     int? PaidByOwnerId,
-    string? ReceiptUrl);
+    string? ReceiptUrl,
+    int? InventoryId = null);
 
 public record ExpenseQuery(
     int? CategoryId = null,
+    int? InventoryId = null,
     DateTime? FromDate = null,
     DateTime? ToDate = null,
     string? SortBy = null,

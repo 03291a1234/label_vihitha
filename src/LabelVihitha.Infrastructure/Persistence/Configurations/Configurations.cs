@@ -345,6 +345,11 @@ public class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
             .HasForeignKey(x => x.PaidByOwnerId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        b.HasOne(x => x.Inventory)
+            .WithMany()
+            .HasForeignKey(x => x.InventoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

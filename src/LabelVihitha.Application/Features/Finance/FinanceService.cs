@@ -46,9 +46,19 @@ public class FinanceService : IFinanceService
                 lines.Select(l => l.OrderId).Distinct().Count(), lines.Sum(l => l.Quantity));
     }
 
-    private async Task<decimal> ExpensesTotalAsync(DateTime f, DateTime t, CancellationToken ct) =>
-        await _db.Expenses.AsNoTracking().Where(e => e.Date >= f && e.Date <= t)
+    /// <summary>All operating expenses in a range — regular expenses plus supplier bills attached to
+    /// inventories (bills are treated as operating expenses, dated by BillDate or, if absent, CreatedAt).</summary>
+    private async Task<decimal> ExpensesTotalAsync(DateTime f, DateTime t, CancellationToken ct)
+    {
+        var expenses = await _db.Expenses.AsNoTracking().Where(e => e.Date >= f && e.Date <= t)
             .SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
+        return expenses + await BillsTotalAsync(f, t, ct);
+    }
+
+    private async Task<decimal> BillsTotalAsync(DateTime f, DateTime t, CancellationToken ct) =>
+        await _db.InventoryBills.AsNoTracking()
+            .Where(b => b.Amount != null && (b.BillDate ?? b.CreatedAt) >= f && (b.BillDate ?? b.CreatedAt) <= t)
+            .SumAsync(b => (decimal?)b.Amount, ct) ?? 0m;
 
     public async Task<ProfitLossReport> GetProfitAndLossAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
     {
@@ -62,13 +72,17 @@ public class FinanceService : IFinanceService
             .Where(e => e.Date >= f && e.Date <= t)
             .Select(e => new { e.ExpenseCategoryId, CategoryName = e.ExpenseCategory.Name, e.Amount })
             .ToListAsync(ct);
-        var expensesTotal = expenseRows.Sum(r => r.Amount);
+        // Supplier bills attached to inventories count as operating expenses too.
+        var billsTotal = await BillsTotalAsync(f, t, ct);
+        var expensesTotal = expenseRows.Sum(r => r.Amount) + billsTotal;
         var expensesByCategory = expenseRows
             .GroupBy(r => new { r.ExpenseCategoryId, r.CategoryName })
             .Select(g => new ExpenseLineDto(g.Key.ExpenseCategoryId, g.Key.CategoryName, g.Sum(x => x.Amount),
                 Pct(g.Sum(x => x.Amount), expensesTotal)))
             .OrderByDescending(x => x.Amount)
             .ToList();
+        if (billsTotal > 0)
+            expensesByCategory.Add(new ExpenseLineDto(0, "Supplier bills (inventory)", billsTotal, Pct(billsTotal, expensesTotal)));
 
         var netProfit = grossProfit - expensesTotal;
 
@@ -212,6 +226,7 @@ public class FinanceService : IFinanceService
             allCogs,
             allExpenses,
             totalBillsRecorded,
-            totalInvested);
+            totalInvested,
+            allRev);
     }
 }

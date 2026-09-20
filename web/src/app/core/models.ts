@@ -121,6 +121,8 @@ export interface Expense {
   paidByOwnerId?: number | null;
   paidByOwnerName?: string | null;
   receiptUrl?: string | null;
+  inventoryId?: number | null;
+  inventoryName?: string | null;
 }
 
 export interface Owner {
@@ -189,6 +191,7 @@ export interface ProfitLossReport {
   allTimeExpenses: number;
   totalBillsRecorded: number;
   totalInvested: number;
+  allTimeRevenue: number;
 }
 
 export interface OwnerInventory {

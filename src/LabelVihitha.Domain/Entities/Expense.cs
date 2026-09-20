@@ -25,6 +25,11 @@ public class Expense : BaseEntity
     public int? PaidByOwnerId { get; set; }
     public Owner? PaidByOwner { get; set; }
 
+    /// <summary>Optional inventory this cost belongs to (e.g. stitching for a specific batch).
+    /// When set, it's charged directly to that inventory's P&amp;L instead of being spread by sales.</summary>
+    public int? InventoryId { get; set; }
+    public Inventory? Inventory { get; set; }
+
     /// <summary>Optional uploaded receipt (image or PDF), stored as a served URL path.</summary>
     public string? ReceiptUrl { get; set; }
 }
