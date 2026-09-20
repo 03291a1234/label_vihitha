@@ -35,9 +35,9 @@ import { RecordContributionDialog } from './record-contribution.dialog';
         <!-- Headline metrics -->
         <div class="kpi-strip">
           <div class="card k-card">
-            <div class="k-top">Invested by owners <span class="muted">(to date)</span></div>
-            <div class="k-big">{{ netContributions() | currency }}</div>
-            <div class="k-sub">≈ {{ netContributions() * 95 | currency:'INR':'symbol':'1.0-0' }} · contributions, net of withdrawals</div>
+            <div class="k-top">Total invested <span class="muted">(to date)</span></div>
+            <div class="k-big">{{ r.totalInvested | currency }}</div>
+            <div class="k-sub">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }} · stock + goods sold + expenses</div>
           </div>
           <div class="card k-card">
             <div class="k-top">Sales</div>
@@ -130,26 +130,37 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             (inventory at cost + operating expenses + withdrawals). This is what's available to buy new inventory. Assumes sales are collected in full.</div>
         </div>
 
-        <!-- Total investment (owner capital) -->
+        <!-- Total investment (capital deployed) -->
         <div class="card invest">
-          <h2>Total investment <span class="muted">(owner capital, to date)</span></h2>
+          <h2>Total investment <span class="muted">(capital deployed, to date)</span></h2>
           <div class="cash-grid">
-            <div class="line"><span>Owner contributions <span class="muted">(money put in)</span></span><span class="mono pos">+{{ r.totalContributions | currency }}</span></div>
-            <div class="line"><span>Owner withdrawals</span><span class="mono neg">−{{ r.totalWithdrawals | currency }}</span></div>
-            <div class="line strong bt"><span>Net invested by owners</span>
-              <span class="mono">{{ netContributions() | currency }}
-                <span class="muted inr">≈ {{ netContributions() * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+            <div class="line"><span>Stock on hand <span class="muted">(at cost)</span></span><span class="mono">{{ r.inventoryValueAtCost | currency }}</span></div>
+            <div class="line"><span>Cost of goods already sold <span class="muted">(bought &amp; since sold)</span></span><span class="mono">{{ r.allTimeCogs | currency }}</span></div>
+            <div class="line"><span>Operating expenses <span class="muted">(incl. bills, to date)</span></span><span class="mono">{{ r.allTimeExpenses | currency }}</span></div>
+            <div class="line strong bt"><span>Total invested</span>
+              <span class="mono">{{ r.totalInvested | currency }}
+                <span class="muted inr">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
             </div>
-            <div class="line"><span>Profit kept in the business</span><span class="mono pos">+{{ r.allTimeNetProfit | currency }}</span></div>
-            <div class="line strong"><span>Total capital in business</span><span class="mono">{{ netContributions() + r.allTimeNetProfit | currency }}</span></div>
           </div>
           <div class="recon">
-            <div class="sec">Where it stands now</div>
-            <div class="rline"><span>Tied up in stock <span class="muted">(at cost)</span></span><span class="mono">{{ r.inventoryValueAtCost | currency }}</span></div>
-            <div class="rline"><span>Cash available <span class="muted">(joint account)</span></span><span class="mono">{{ cashRemaining() | currency }}</span></div>
-            <div class="muted foot">A contribution grows "money put in" and sits as <strong>cash available</strong> until you spend it
-              on stock or costs. What's actually been deployed to date (stock at cost + goods sold + expenses) is
-              <strong>{{ r.totalInvested | currency }}</strong>, funded by contributions and reinvested sales profit.</div>
+            <div class="sec">From contributions</div>
+            <div class="rline"><span>Total owner contributions</span><span class="mono pos">+{{ r.totalContributions | currency }}</span></div>
+            @if (r.totalWithdrawals > 0) {
+              <div class="rline"><span>Owner withdrawals</span><span class="mono neg">−{{ r.totalWithdrawals | currency }}</span></div>
+            }
+            <div class="rline"><span>Total invested (deployed)</span><span class="mono neg">−{{ r.totalInvested | currency }}</span></div>
+            <div class="rline strong bt2"><span>Contributions left after investment</span>
+              <span class="mono" [class.neg]="contributionsLeft() < 0">{{ contributionsLeft() | currency }}
+                <span class="muted inr">≈ {{ contributionsLeft() * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
+            </div>
+            @if (contributionsLeft() >= 0) {
+              <div class="muted foot">Of the {{ r.totalContributions | currency }} contributed, {{ r.totalInvested | currency }}
+                has been deployed into stock and costs — leaving <strong>{{ contributionsLeft() | currency }}</strong> of contribution
+                money not yet spent. (Total cash on hand is more — {{ cashRemaining() | currency }} — because sales collected add to it too.)</div>
+            } @else {
+              <div class="muted foot">More has been deployed than owners contributed — the extra
+                <strong>{{ -contributionsLeft() | currency }}</strong> was funded by reinvested sales profit.</div>
+            }
           </div>
         </div>
 
@@ -295,6 +306,9 @@ import { RecordContributionDialog } from './record-contribution.dialog';
     .invest { margin-bottom: 16px; }
     .recon { max-width: 560px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--lv-line); }
     .rline { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 4px 0; }
+    .rline.strong { font-weight: 700; color: var(--lv-wine); font-size: 15px; }
+    .rline.bt2 { border-top: 1px solid var(--lv-line); padding-top: 8px; margin-top: 4px; }
+    .rline.bt2 .inr { font-weight: 400; margin-left: 6px; }
     .rline.gap { color: #b3261e; font-weight: 600; }
     .rline.gap span:first-child { display: inline-flex; align-items: center; gap: 6px; }
     .rline.gap mat-icon { font-size: 18px; height: 18px; width: 18px; }
@@ -358,11 +372,12 @@ export class ProfitLossComponent {
       - (r.inventoryValueAtCost + r.allTimeCogs) - r.allTimeExpenses - r.totalWithdrawals;
   }
 
-  /** Net money owners have put into the business (contributions less withdrawals). */
-  netContributions(): number {
+  /** How much of the owners' contributions is still available after what's been deployed
+   * (contributions − withdrawals − capital deployed). Negative means sales profit funded the rest. */
+  contributionsLeft(): number {
     const r = this.report();
     if (!r) return 0;
-    return r.totalContributions - r.totalWithdrawals;
+    return r.totalContributions - r.totalWithdrawals - r.totalInvested;
   }
 
   recordContribution() {
