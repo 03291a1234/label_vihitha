@@ -36,8 +36,6 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
         </div>
       </div>
 
-      <p class="muted intro">Group your stock into named collections (Inventory 1…n) — a batch of sarees or dresses.</p>
-
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
 
       @for (i of rows(); track i.id) {

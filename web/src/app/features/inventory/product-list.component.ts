@@ -63,10 +63,11 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
       @if (summary(); as s) {
         <div class="card summary">
           <div class="summary-head" (click)="showSummary.set(!showSummary())">
-            <span><mat-icon>insights</mat-icon> Inventory summary
+            <span class="sh-title"><mat-icon>insights</mat-icon> Inventory summary
               @if (anyFilterActive()) { <span class="filtered-tag">(filtered)</span> }
-              — <strong>{{ s.totalProducts }}</strong> products · <strong>{{ s.totalUnits }}</strong> units in stock</span>
-            <mat-icon>{{ showSummary() ? 'expand_less' : 'expand_more' }}</mat-icon>
+              <span class="sh-stats">— <span class="stat"><strong>{{ s.totalProducts }}</strong> products</span>
+                · <span class="stat"><strong>{{ s.totalUnits }}</strong> units in stock</span></span></span>
+            <mat-icon class="sh-chevron">{{ showSummary() ? 'expand_less' : 'expand_more' }}</mat-icon>
           </div>
           @if (showSummary()) {
             <div class="summary-body">
@@ -234,8 +235,12 @@ import { SearchSelectComponent } from '../../shared/search-select.component';
       padding: 2px 8px; font-size: 12px; font-weight: 600; }
     .size-chip.out { background: #f0f0f0; color: #999; text-decoration: line-through; }
     .summary { margin-bottom: 16px; padding: 0; overflow: hidden; }
-    .summary-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; }
-    .summary-head span { display: flex; align-items: center; gap: 8px; color: var(--lv-wine); }
+    .summary-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; cursor: pointer; }
+    .summary-head .sh-title { color: var(--lv-wine); line-height: 1.5; }
+    .summary-head .sh-title mat-icon { vertical-align: middle; margin-right: 4px; }
+    .sh-stats { white-space: normal; }
+    .sh-stats .stat { white-space: nowrap; }
+    .sh-chevron { flex: 0 0 auto; }
     .filtered-tag { color: var(--lv-wine); opacity: .7; font-size: 13px; font-weight: 600; font-style: italic; }
     .summary-body { padding: 4px 18px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     .cat-block { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px; background: #fffdfb; }
