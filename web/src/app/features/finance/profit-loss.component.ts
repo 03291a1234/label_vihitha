@@ -64,7 +64,18 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             <div class="line sub"><span>Cost of goods sold</span><span class="mono neg">−{{ r.cogs | currency }}</span></div>
             <div class="line strong bt"><span>Gross profit <span class="muted">({{ r.grossMarginPct | number:'1.0-1' }}%)</span></span><span class="mono">{{ r.grossProfit | currency }}</span></div>
 
-            <div class="line bt"><span>Operating expenses <span class="muted">— itemised on the <a routerLink="/expenses" class="link">Expenses tab</a></span></span><span class="mono neg">−{{ r.expensesTotal | currency }}</span></div>
+            <div class="line bt strong"><span>Operating expenses</span><span class="mono neg">−{{ r.expensesTotal | currency }}</span></div>
+            @for (e of r.expensesByCategory; track e.categoryId + e.categoryName) {
+              <div class="line sub exp-item">
+                <span>{{ e.categoryName }}
+                  @if (e.categoryId === 0) { <span class="muted">· from <a routerLink="/inventories" class="link">Inventories</a></span> }
+                </span>
+                <span class="mono neg">−{{ e.amount | currency }}</span>
+              </div>
+            }
+            @if (r.expensesByCategory.length === 0) {
+              <div class="line sub exp-item muted"><span>No expenses recorded</span><span></span></div>
+            }
 
             <div class="line net bt" [class.loss]="r.netProfit < 0">
               <span>{{ r.netProfit < 0 ? 'Net loss' : 'Net profit' }} <span class="muted">({{ r.netMarginPct | number:'1.0-1' }}%)</span></span>
@@ -75,8 +86,9 @@ import { RecordContributionDialog } from './record-contribution.dialog';
               <span class="mono">{{ r.inventoryValueAtCost | currency }}
                 <span class="muted inr">≈ {{ r.inventoryValueAtCost * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
             </div>
-            <div class="muted foot">{{ r.orderCount }} orders · {{ r.unitsSold }} units sold · Stock purchases are capital,
-              expensed as cost-of-goods only when sold — so they don't reduce profit here.</div>
+            <div class="muted foot">{{ r.orderCount }} orders · {{ r.unitsSold }} units sold · Regular expenses come from the
+              <a routerLink="/expenses" class="link">Expenses tab</a>; supplier bills come from <a routerLink="/inventories" class="link">Inventories</a>.
+              Stock purchases are capital, expensed as cost-of-goods only when sold — so they don't reduce profit here.</div>
           </div>
 
           <!-- Inventory on hand -->
@@ -262,6 +274,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
     h2 { font-size: 16px; margin: 0 0 12px; color: var(--lv-wine); }
     .line { display: flex; justify-content: space-between; padding: 6px 0; }
     .line.sub { padding-left: 12px; color: #444; }
+    .line.exp-item { font-size: 13px; padding: 2px 0 2px 16px; }
     .line.strong { font-weight: 700; }
     .line.bt { border-top: 1px solid var(--lv-line); margin-top: 4px; padding-top: 8px; }
     .line.net { font-weight: 800; font-size: 17px; color: #1e7d3a; }
