@@ -37,8 +37,12 @@ import { BillProductsDialog } from './bill-products.dialog';
             </div>
             @for (b of g.bills; track b.id) {
               <div class="bill">
-                <mat-icon class="file-ic">{{ isPdf(b.fileUrl) ? 'picture_as_pdf' : 'image' }}</mat-icon>
-                <a class="fname" [href]="fileUrl(b.fileUrl)" target="_blank" rel="noopener">{{ b.fileName }}</a>
+                <mat-icon class="file-ic">{{ b.fileUrl ? (isPdf(b.fileUrl) ? 'picture_as_pdf' : 'image') : 'receipt_long' }}</mat-icon>
+                @if (b.fileUrl) {
+                  <a class="fname" [href]="fileUrl(b.fileUrl)" target="_blank" rel="noopener">{{ b.fileName }}</a>
+                } @else {
+                  <span class="fname muted">{{ b.note || 'Amount only (no invoice)' }}</span>
+                }
                 <span class="amt">
                   @if (b.amount) {
                     {{ b.amount | currency:'USD':'symbol':'1.0-2' }}
@@ -46,11 +50,13 @@ import { BillProductsDialog } from './bill-products.dialog';
                   } @else { <span class="muted">—</span> }
                 </span>
                 <span class="bdate muted">{{ b.billDate ? (b.billDate | date:'mediumDate') : '' }}</span>
-                <button mat-stroked-button class="extract-btn" (click)="addProducts(b)" title="Create products from this bill">
-                  <mat-icon>playlist_add</mat-icon> Products
-                </button>
+                @if (b.fileUrl) {
+                  <button mat-stroked-button class="extract-btn" (click)="addProducts(b)" title="Create products from this bill">
+                    <mat-icon>playlist_add</mat-icon> Products
+                  </button>
+                }
                 <button mat-icon-button color="warn" (click)="remove(b)" title="Delete bill"><mat-icon>delete</mat-icon></button>
-                @if (b.note) { <div class="note muted">{{ b.note }}</div> }
+                @if (b.fileUrl && b.note) { <div class="note muted">{{ b.note }}</div> }
               </div>
             }
           </div>
@@ -65,7 +71,7 @@ import { BillProductsDialog } from './bill-products.dialog';
         <h3>Attach a bill</h3>
         <div class="add-row">
           <button mat-stroked-button (click)="fileInput.click()" [disabled]="busy()">
-            <mat-icon>upload_file</mat-icon> {{ pendingName() || 'Choose file (image / PDF)' }}
+            <mat-icon>upload_file</mat-icon> {{ pendingName() || 'Choose file (image / PDF, optional)' }}
           </button>
           <input #fileInput type="file" hidden accept="image/*,application/pdf" (change)="onFile($event)" />
         </div>
@@ -79,9 +85,10 @@ import { BillProductsDialog } from './bill-products.dialog';
           <mat-label>Note (what it covers…)</mat-label>
           <input matInput [(ngModel)]="note" />
         </mat-form-field>
-        <button mat-raised-button color="primary" (click)="save()" [disabled]="!pendingUrl() || busy()">
+        <button mat-raised-button color="primary" (click)="save()" [disabled]="!canSave() || busy()">
           <mat-icon>add</mat-icon> Add bill
         </button>
+        <p class="add-hint muted">Attach an invoice, or just record a vendor and amount — add one per vendor.</p>
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -113,6 +120,7 @@ import { BillProductsDialog } from './bill-products.dialog';
     .add { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--lv-line); }
     .add h3 { margin: 0 0 10px; color: var(--lv-wine); font-size: 15px; }
     .add-row { margin-bottom: 10px; }
+    .add-hint { font-size: 12px; margin: 8px 2px 0; }
     .fields { display: flex; gap: 12px; flex-wrap: wrap; }
     .fields mat-form-field, .fields app-date-input { flex: 1; }
     .full { width: 100%; }
@@ -179,13 +187,16 @@ export class InventoryBillsDialog {
     input.value = '';
   }
 
+  /** Addable once there's an attached file or a positive amount. */
+  canSave() { return !!this.pendingUrl() || (this.amount != null && this.amount > 0); }
+
   save() {
+    if (!this.canSave()) return;
     const url = this.pendingUrl();
-    if (!url) return;
     this.busy.set(true);
     this.api.addBill(this.data.id, {
-      fileUrl: url,
-      fileName: this.pendingName() ?? 'bill',
+      fileUrl: url ?? '',
+      fileName: url ? (this.pendingName() ?? 'bill') : '',
       amount: this.amount != null && this.amount > 0 ? this.amount : null,
       billDate: this.billDate || null,
       note: this.note.trim() || null,

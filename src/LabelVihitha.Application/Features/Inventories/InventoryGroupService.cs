@@ -161,8 +161,10 @@ public class InventoryGroupService : IInventoryGroupService
     {
         if (!await _db.Inventories.AnyAsync(i => i.Id == inventoryId, ct))
             throw new NotFoundException(nameof(Inventory), inventoryId);
-        if (string.IsNullOrWhiteSpace(request.FileUrl))
-            throw new FluentValidation.ValidationException("A bill file is required.");
+        var hasFile = !string.IsNullOrWhiteSpace(request.FileUrl);
+        // A bill line is meaningful if it carries either an attached invoice or an amount.
+        if (!hasFile && !(request.Amount is > 0))
+            throw new FluentValidation.ValidationException("A bill needs a file or an amount.");
         if (request.VendorId is int vid && !await _db.Vendors.AnyAsync(v => v.Id == vid && !v.IsDeleted, ct))
             throw new NotFoundException(nameof(Vendor), vid);
 
@@ -170,8 +172,8 @@ public class InventoryGroupService : IInventoryGroupService
         {
             InventoryId = inventoryId,
             VendorId = request.VendorId,
-            FileUrl = request.FileUrl.Trim(),
-            FileName = string.IsNullOrWhiteSpace(request.FileName) ? "bill" : request.FileName.Trim(),
+            FileUrl = hasFile ? request.FileUrl.Trim() : string.Empty,
+            FileName = string.IsNullOrWhiteSpace(request.FileName) ? (hasFile ? "bill" : string.Empty) : request.FileName.Trim(),
             Amount = request.Amount is > 0 ? request.Amount : null,
             BillDate = request.BillDate,
             Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim()

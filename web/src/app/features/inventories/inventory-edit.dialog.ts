@@ -56,18 +56,23 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
         <h3>Bills <span class="muted">(supplier invoices for this batch)</span></h3>
         @for (b of savedBills(); track b.id) {
           <div class="bill">
-            <mat-icon class="fic">{{ isPdf(b.fileUrl) ? 'picture_as_pdf' : 'image' }}</mat-icon>
-            <a class="fname" [href]="fileUrl(b.fileUrl)" target="_blank" rel="noopener">{{ b.fileName }}
-              @if (b.vendorName) { <span class="vtag">{{ b.vendorName }}</span> }</a>
+            <mat-icon class="fic">{{ b.fileUrl ? (isPdf(b.fileUrl) ? 'picture_as_pdf' : 'image') : 'receipt_long' }}</mat-icon>
+            @if (b.fileUrl) {
+              <a class="fname" [href]="fileUrl(b.fileUrl)" target="_blank" rel="noopener">{{ b.fileName }}
+                @if (b.vendorName) { <span class="vtag">{{ b.vendorName }}</span> }</a>
+            } @else {
+              <span class="fname">{{ b.vendorName || b.note || 'Bill' }}
+                @if (b.vendorName && b.note) { <span class="vtag">{{ b.note }}</span> }</span>
+            }
             <span class="amt">{{ b.amount ? (b.amount | currency) : '—' }}</span>
             <button mat-icon-button color="warn" (click)="removeSaved(b)"><mat-icon>delete</mat-icon></button>
           </div>
         }
         @for (b of staged(); track $index) {
           <div class="bill staged">
-            <mat-icon class="fic">{{ isPdf(b.fileUrl) ? 'picture_as_pdf' : 'image' }}</mat-icon>
-            <span class="fname">{{ b.fileName }} <span class="muted">(pending)</span>
-              @if (b.vendorName) { <span class="vtag">{{ b.vendorName }}</span> }</span>
+            <mat-icon class="fic">{{ b.fileUrl ? (isPdf(b.fileUrl) ? 'picture_as_pdf' : 'image') : 'receipt_long' }}</mat-icon>
+            <span class="fname">{{ b.fileUrl ? b.fileName : (b.vendorName || b.note || 'Bill') }} <span class="muted">(pending)</span>
+              @if (b.fileUrl && b.vendorName) { <span class="vtag">{{ b.vendorName }}</span> }</span>
             <span class="amt">{{ b.amount ? (b.amount | currency) : '—' }}</span>
             <button mat-icon-button color="warn" (click)="removeStaged($index)"><mat-icon>close</mat-icon></button>
           </div>
@@ -75,7 +80,7 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
 
         <div class="add-bill">
           <button mat-stroked-button type="button" (click)="fileInput.click()" [disabled]="busy()">
-            <mat-icon>upload_file</mat-icon> {{ pendingName() || 'Choose file (image / PDF)' }}
+            <mat-icon>upload_file</mat-icon> {{ pendingName() || 'Choose file (image / PDF, optional)' }}
           </button>
           <input #fileInput type="file" hidden accept="image/*,application/pdf" (change)="onFile($event)" />
           <app-search-select label="Vendor" [items]="vendors()" [(ngModel)]="billVendorId" [ngModelOptions]="{standalone:true}"
@@ -88,9 +93,10 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
             <mat-label>Note (vendor, what it covers…)</mat-label>
             <input matInput [(ngModel)]="billNote" [ngModelOptions]="{standalone:true}" />
           </mat-form-field>
-          <button mat-stroked-button type="button" (click)="addBill()" [disabled]="!pendingUrl() || busy()">
+          <button mat-stroked-button type="button" (click)="addBill()" [disabled]="!canAddBill() || busy()">
             <mat-icon>add</mat-icon> Add bill
           </button>
+          <p class="add-hint muted">Attach an invoice or just enter a vendor and amount — add as many as you need.</p>
         </div>
       </div>
     </mat-dialog-content>
@@ -112,6 +118,7 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     a.fname:hover { text-decoration: underline; }
     .amt { font-weight: 700; white-space: nowrap; }
     .add-bill { margin-top: 8px; }
+    .add-hint { font-size: 12px; margin: 6px 2px 0; }
     .bfields { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
     .famt, .fdate { flex: 1; }
     .fnote { width: 100%; }
@@ -170,11 +177,14 @@ export class InventoryEditDialog {
     input.value = '';
   }
 
+  /** A bill line is addable once it carries either an attached file or a positive amount. */
+  canAddBill() { return !!this.pendingUrl() || (this.billAmount != null && this.billAmount > 0); }
+
   addBill() {
+    if (!this.canAddBill()) return;
     const url = this.pendingUrl();
-    if (!url) return;
     const bill: StagedBill = {
-      fileUrl: url, fileName: this.pendingName() ?? 'bill',
+      fileUrl: url ?? '', fileName: url ? (this.pendingName() ?? 'bill') : '',
       amount: this.billAmount != null && this.billAmount > 0 ? this.billAmount : null,
       billDate: this.billDate || '', note: this.billNote.trim(),
       vendorId: this.billVendorId ?? null,
