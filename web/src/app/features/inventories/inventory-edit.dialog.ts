@@ -16,13 +16,14 @@ import { Notify } from '../../core/services/notify.service';
 import { Inventory, InventoryBill, Owner, Vendor } from '../../core/models';
 import { SearchSelectComponent } from '../../shared/search-select.component';
 import { DateInputComponent } from '../../shared/date-input.component';
+import { MoneyInputComponent } from '../../shared/money-input.component';
 
 interface StagedBill { fileUrl: string; fileName: string; amount: number | null; billDate: string; note: string; vendorId: number | null; vendorName: string | null; }
 
 @Component({
   selector: 'app-inventory-edit',
   standalone: true,
-  imports: [DateInputComponent, SearchSelectComponent, 
+  imports: [DateInputComponent, SearchSelectComponent, MoneyInputComponent,
     CurrencyPipe, FormsModule, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatSlideToggleModule, MatProgressBarModule
   ],
@@ -80,10 +81,7 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
           <app-search-select label="Vendor" [items]="vendors()" [(ngModel)]="billVendorId" [ngModelOptions]="{standalone:true}"
             nullOption nullLabel="— No vendor —" searchPlaceholder="Search vendors…" />
           <div class="bfields">
-            <mat-form-field appearance="outline" class="famt">
-              <mat-label>Amount (USD)</mat-label>
-              <input matInput type="number" min="0" step="0.01" [(ngModel)]="billAmount" [ngModelOptions]="{standalone:true}" />
-            </mat-form-field>
+            <app-money-input class="famt" label="Amount" [(ngModel)]="billAmount" [ngModelOptions]="{standalone:true}" />
             <app-date-input class="fdate" label="Bill date" [(ngModel)]="billDate" [ngModelOptions]="{standalone:true}" />
           </div>
           <mat-form-field appearance="outline" class="fnote">

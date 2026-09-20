@@ -12,12 +12,13 @@ import { Notify } from '../../core/services/notify.service';
 import { Inventory, InventoryBill, Vendor } from '../../core/models';
 import { DateInputComponent } from '../../shared/date-input.component';
 import { SearchSelectComponent } from '../../shared/search-select.component';
+import { MoneyInputComponent } from '../../shared/money-input.component';
 import { BillProductsDialog } from './bill-products.dialog';
 
 @Component({
   selector: 'app-inventory-bills',
   standalone: true,
-  imports: [DateInputComponent, SearchSelectComponent,
+  imports: [DateInputComponent, SearchSelectComponent, MoneyInputComponent,
     CurrencyPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule,
     MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule
   ],
@@ -71,10 +72,7 @@ import { BillProductsDialog } from './bill-products.dialog';
         <app-search-select label="Vendor" [items]="vendors()" [(ngModel)]="vendorId"
           nullOption nullLabel="— No vendor —" searchPlaceholder="Search vendors…" />
         <div class="fields">
-          <mat-form-field appearance="outline">
-            <mat-label>Amount (USD)</mat-label>
-            <input matInput type="number" min="0" step="0.01" [(ngModel)]="amount" />
-          </mat-form-field>
+          <app-money-input label="Amount" [(ngModel)]="amount" [ngModelOptions]="{standalone:true}" />
           <app-date-input class="fdate" label="Bill date" [(ngModel)]="billDate" [ngModelOptions]="{standalone:true}" />
         </div>
         <mat-form-field appearance="outline" class="full">
