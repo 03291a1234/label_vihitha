@@ -49,7 +49,7 @@ type View = 'shop' | 'checkout' | 'done';
 
       <!-- SHOP -->
       @if (view() === 'shop') {
-        <div class="shop-body">
+        <div class="shop-body" [class.landing]="collection() === null && !search().trim()">
           <div class="products">
             <div class="search-row">
               <mat-form-field class="search">
@@ -248,6 +248,9 @@ type View = 'shop' | 'checkout' | 'done';
     .top-actions .mat-mdc-button { color: #f3e4ec; }
 
     .shop-body { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding: 24px; max-width: 1200px; margin: 0 auto; align-items: start; }
+    /* Collections landing spans the full width — no cart sidebar to shop yet. */
+    .shop-body.landing { grid-template-columns: 1fr; }
+    @media (min-width: 821px) { .shop-body.landing .cart, .shop-body.landing .cart-backdrop { display: none; } }
     .products { min-width: 0; }
     .search-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
     .search { flex: 1 1 auto; min-width: 0; max-width: 340px; }
@@ -372,8 +375,12 @@ export class ShopComponent {
       c.count++;
       if (!c.image && p.imageUrl) c.image = p.imageUrl;
     }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
-      .map((c, i) => ({ ...c, color: this.palette[i % this.palette.length] }));
+    return [...map.values()].sort((a, b) => {
+      // Keep Accessories last; everything else alphabetical.
+      const al = a.name.toLowerCase() === 'accessories' ? 1 : 0;
+      const bl = b.name.toLowerCase() === 'accessories' ? 1 : 0;
+      return al !== bl ? al - bl : a.name.localeCompare(b.name);
+    }).map((c, i) => ({ ...c, color: this.palette[i % this.palette.length] }));
   });
 
   /** Products shown in the grid: filtered by the open collection and/or the search query. */
