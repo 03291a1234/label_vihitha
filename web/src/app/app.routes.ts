@@ -77,6 +77,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/customers/customer-list.component').then(m => m.CustomerListComponent)
       },
       {
+        path: 'audit',
+        loadComponent: () => import('./features/audit/audit-log.component').then(m => m.AuditLogComponent)
+      },
+      {
         path: 'promo-codes',
         loadComponent: () => import('./features/promotions/promo-code-list.component').then(m => m.PromoCodeListComponent)
       }

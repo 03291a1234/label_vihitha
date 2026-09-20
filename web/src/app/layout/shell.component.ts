@@ -137,6 +137,7 @@ export class ShellComponent {
     { label: 'Vendors', icon: 'storefront', path: '/vendors', show: () => true },
     { label: 'Expenses', icon: 'payments', path: '/expenses', show: () => this.auth.canViewReports() },
     { label: 'Owners', icon: 'diversity_3', path: '/owners', show: () => this.auth.canViewReports() },
+    { label: 'Audit log', icon: 'history', path: '/audit', show: () => this.auth.canViewReports() },
     { label: 'Customers', icon: 'group', path: '/customers', show: () => this.auth.canManageSales() },
     { label: 'Promo codes', icon: 'sell', path: '/promo-codes', show: () => this.auth.canManageSales() }
   ];

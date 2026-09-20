@@ -59,7 +59,10 @@ public class ApplicationDbContext
         }
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override int SaveChanges()
+        => SaveChangesAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
@@ -77,14 +80,32 @@ public class ApplicationDbContext
             }
         }
 
-        WriteAuditLogs(now);
-        return base.SaveChangesAsync(cancellationToken);
+        // Capture audit rows BEFORE saving (to read original values); resolve DB-generated Ids after.
+        var pending = CaptureAudits(now);
+        var result = await base.SaveChangesAsync(cancellationToken);
+
+        if (pending.Count > 0)
+        {
+            foreach (var (log, entry) in pending)
+                log.EntityId = entry.Entity.Id.ToString();
+            AuditLogs.AddRange(pending.Select(p => p.Log));
+            // AuditLog is not a BaseEntity, so this second save does not re-audit itself.
+            await base.SaveChangesAsync(cancellationToken);
+        }
+        return result;
     }
 
-    private void WriteAuditLogs(DateTime now)
+    /// <summary>Property names never worth recording in the change trail.</summary>
+    private static readonly HashSet<string> AuditIgnore = new()
+    {
+        nameof(BaseEntity.Id), nameof(BaseEntity.CreatedAt), nameof(BaseEntity.UpdatedAt),
+        nameof(BaseEntity.TenantId), "RowVersion"
+    };
+
+    private List<(AuditLog Log, Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<BaseEntity> Entry)> CaptureAudits(DateTime now)
     {
         var user = _currentUser?.UserName ?? _currentUser?.UserId;
-        var logs = new List<AuditLog>();
+        var captured = new List<(AuditLog, Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<BaseEntity>)>();
 
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
@@ -98,17 +119,44 @@ public class ApplicationDbContext
                 _ => entry.Entity.IsDeleted ? "Delete" : "Update"
             };
 
-            logs.Add(new AuditLog
+            var oldValues = new Dictionary<string, object?>();
+            var newValues = new Dictionary<string, object?>();
+            foreach (var p in entry.Properties)
+            {
+                var name = p.Metadata.Name;
+                if (AuditIgnore.Contains(name)) continue;
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        newValues[name] = p.CurrentValue;
+                        break;
+                    case EntityState.Deleted:
+                        oldValues[name] = p.OriginalValue;
+                        break;
+                    default: // Modified — record only what actually changed
+                        if (p.IsModified && !Equals(p.OriginalValue, p.CurrentValue))
+                        {
+                            oldValues[name] = p.OriginalValue;
+                            newValues[name] = p.CurrentValue;
+                        }
+                        break;
+                }
+            }
+
+            // A "modified" entry whose only change was the audit stamps has nothing meaningful to log.
+            if (action == "Update" && newValues.Count == 0) continue;
+
+            captured.Add((new AuditLog
             {
                 EntityName = entry.Entity.GetType().Name,
                 EntityId = entry.Entity.Id.ToString(),
                 Action = action,
                 ChangedBy = user,
-                ChangedAt = now
-            });
+                ChangedAt = now,
+                OldValues = oldValues.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(oldValues) : null,
+                NewValues = newValues.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(newValues) : null
+            }, entry));
         }
-
-        if (logs.Count > 0)
-            AuditLogs.AddRange(logs);
+        return captured;
     }
 }
