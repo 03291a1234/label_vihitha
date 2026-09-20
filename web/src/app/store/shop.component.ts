@@ -61,6 +61,13 @@ type View = 'shop' | 'checkout' | 'done';
 
             @if (collection() === null && !search().trim()) {
               <div class="collections">
+                <button class="ctile" (click)="openCollection('*')" [style.background-color]="'#3f1228'">
+                  <span class="cveil"></span>
+                  <span class="cmeta">
+                    <span class="cname">All products</span>
+                    <span class="ccount">{{ allProducts().length }} style{{ allProducts().length === 1 ? '' : 's' }}</span>
+                  </span>
+                </button>
                 @for (c of collections(); track c.name) {
                   <button class="ctile" (click)="openCollection(c.name)"
                     [style.background-color]="c.color"
@@ -108,7 +115,7 @@ type View = 'shop' | 'checkout' | 'done';
                     <mat-icon class="crumb-sep">chevron_right</mat-icon>
                     <span class="crumb-here">{{ subcollection() }}</span>
                   } @else {
-                    <span class="crumb-here">{{ collection() }}</span>
+                    <span class="crumb-here">{{ collection() === '*' ? 'All products' : collection() }}</span>
                   }
                 } @else {
                   <span class="crumb-here">Search: “{{ search() }}”</span>
@@ -451,7 +458,7 @@ export class ShopComponent {
     const col = this.collection();
     const sub = this.subcollection();
     let list = this.allProducts();
-    if (col) list = list.filter(p => (p.categoryName || 'Other') === col);
+    if (col && col !== '*') list = list.filter(p => (p.categoryName || 'Other') === col);
     if (sub && sub !== '*') list = list.filter(p => p.subCategoryName === sub);
     if (q) list = list.filter(p =>
       p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
