@@ -64,18 +64,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             <div class="line sub"><span>Cost of goods sold</span><span class="mono neg">−{{ r.cogs | currency }}</span></div>
             <div class="line strong bt"><span>Gross profit <span class="muted">({{ r.grossMarginPct | number:'1.0-1' }}%)</span></span><span class="mono">{{ r.grossProfit | currency }}</span></div>
 
-            <div class="line bt strong"><span>Operating expenses</span><span class="mono neg">−{{ r.expensesTotal | currency }}</span></div>
-            @for (e of r.expensesByCategory; track e.categoryId + e.categoryName) {
-              <div class="line sub exp-item">
-                <span>{{ e.categoryName }}
-                  @if (e.categoryId === 0) { <span class="muted">· from <a routerLink="/inventories" class="link">Inventories</a></span> }
-                </span>
-                <span class="mono neg">−{{ e.amount | currency }}</span>
-              </div>
-            }
-            @if (r.expensesByCategory.length === 0) {
-              <div class="line sub exp-item muted"><span>No expenses recorded</span><span></span></div>
-            }
+            <div class="line bt"><span>Operating expenses <span class="muted">— itemised on the <a routerLink="/expenses" class="link">Expenses tab</a></span></span><span class="mono neg">−{{ r.expensesTotal | currency }}</span></div>
 
             <div class="line net bt" [class.loss]="r.netProfit < 0">
               <span>{{ r.netProfit < 0 ? 'Net loss' : 'Net profit' }} <span class="muted">({{ r.netMarginPct | number:'1.0-1' }}%)</span></span>
@@ -86,9 +75,8 @@ import { RecordContributionDialog } from './record-contribution.dialog';
               <span class="mono">{{ r.inventoryValueAtCost | currency }}
                 <span class="muted inr">≈ {{ r.inventoryValueAtCost * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
             </div>
-            <div class="muted foot">{{ r.orderCount }} orders · {{ r.unitsSold }} units sold · Regular expenses come from the
-              <a routerLink="/expenses" class="link">Expenses tab</a>; supplier bills come from <a routerLink="/inventories" class="link">Inventories</a>.
-              Stock purchases are capital, expensed as cost-of-goods only when sold — so they don't reduce profit here.</div>
+            <div class="muted foot">{{ r.orderCount }} orders · {{ r.unitsSold }} units sold · Stock purchases and supplier bills are
+              capital (see Total investment), not expenses — so they don't reduce profit here.</div>
           </div>
 
           <!-- Inventory on hand -->
@@ -119,7 +107,10 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             <div class="line"><span>Sales collected <span class="muted">(all time)</span></span><span class="mono pos">+{{ r.allTimeRevenue | currency }}</span></div>
             <div class="sec bt">Money out</div>
             <div class="line"><span>Inventory purchased <span class="muted">(at cost)</span></span><span class="mono neg">−{{ r.inventoryValueAtCost + r.allTimeCogs | currency }}</span></div>
-            <div class="line"><span>Operating expenses <span class="muted">(incl. bills)</span></span><span class="mono neg">−{{ r.allTimeExpenses | currency }}</span></div>
+            @if (r.totalBillsRecorded > 0) {
+              <div class="line"><span>Supplier bills <span class="muted">(stitching, cloth…)</span></span><span class="mono neg">−{{ r.totalBillsRecorded | currency }}</span></div>
+            }
+            <div class="line"><span>Operating expenses</span><span class="mono neg">−{{ r.allTimeExpenses | currency }}</span></div>
             <div class="line"><span>Owner withdrawals</span><span class="mono neg">−{{ r.totalWithdrawals | currency }}</span></div>
             <div class="line cash-net bt"><span>Cash remaining</span>
               <span class="mono" [class.neg]="cashRemaining() < 0">{{ cashRemaining() | currency }}
@@ -127,7 +118,7 @@ import { RecordContributionDialog } from './record-contribution.dialog';
             </div>
           </div>
           <div class="muted foot">Money remaining = everything put in (contributions + sales collected) minus everything spent
-            (inventory at cost + operating expenses + withdrawals). This is what's available to buy new inventory. Assumes sales are collected in full.</div>
+            (inventory at cost + supplier bills + operating expenses + withdrawals). This is what's available to buy new inventory. Assumes sales are collected in full.</div>
         </div>
 
         <!-- Total investment (capital deployed) -->
@@ -136,7 +127,10 @@ import { RecordContributionDialog } from './record-contribution.dialog';
           <div class="cash-grid">
             <div class="line"><span>Stock on hand <span class="muted">(at cost)</span></span><span class="mono">{{ r.inventoryValueAtCost | currency }}</span></div>
             <div class="line"><span>Cost of goods already sold <span class="muted">(bought &amp; since sold)</span></span><span class="mono">{{ r.allTimeCogs | currency }}</span></div>
-            <div class="line"><span>Operating expenses <span class="muted">(incl. bills, to date)</span></span><span class="mono">{{ r.allTimeExpenses | currency }}</span></div>
+            @if (r.totalBillsRecorded > 0) {
+              <div class="line"><span>Supplier bills <span class="muted">(stitching, cloth… from Inventories)</span></span><span class="mono">{{ r.totalBillsRecorded | currency }}</span></div>
+            }
+            <div class="line"><span>Operating expenses <span class="muted">(to date)</span></span><span class="mono">{{ r.allTimeExpenses | currency }}</span></div>
             <div class="line strong bt"><span>Total invested</span>
               <span class="mono">{{ r.totalInvested | currency }}
                 <span class="muted inr">≈ {{ r.totalInvested * 95 | currency:'INR':'symbol':'1.0-0' }}</span></span>
@@ -369,7 +363,7 @@ export class ProfitLossComponent {
     const r = this.report();
     if (!r) return 0;
     return r.totalContributions + r.allTimeRevenue
-      - (r.inventoryValueAtCost + r.allTimeCogs) - r.allTimeExpenses - r.totalWithdrawals;
+      - (r.inventoryValueAtCost + r.allTimeCogs) - r.totalBillsRecorded - r.allTimeExpenses - r.totalWithdrawals;
   }
 
   /** How much of the owners' contributions is still available after what's been deployed

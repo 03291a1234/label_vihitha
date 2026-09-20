@@ -46,19 +46,11 @@ public class FinanceService : IFinanceService
                 lines.Select(l => l.OrderId).Distinct().Count(), lines.Sum(l => l.Quantity));
     }
 
-    /// <summary>All operating expenses in a range — regular expenses plus supplier bills attached to
-    /// inventories (bills are treated as operating expenses, dated by BillDate or, if absent, CreatedAt).</summary>
-    private async Task<decimal> ExpensesTotalAsync(DateTime f, DateTime t, CancellationToken ct)
-    {
-        var expenses = await _db.Expenses.AsNoTracking().Where(e => e.Date >= f && e.Date <= t)
+    /// <summary>Operating expenses in a range (Expenses tab only). Supplier bills are NOT expenses —
+    /// they're capitalised into Total Investment.</summary>
+    private async Task<decimal> ExpensesTotalAsync(DateTime f, DateTime t, CancellationToken ct) =>
+        await _db.Expenses.AsNoTracking().Where(e => e.Date >= f && e.Date <= t)
             .SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
-        return expenses + await BillsTotalAsync(f, t, ct);
-    }
-
-    private async Task<decimal> BillsTotalAsync(DateTime f, DateTime t, CancellationToken ct) =>
-        await _db.InventoryBills.AsNoTracking()
-            .Where(b => b.Amount != null && (b.BillDate ?? b.CreatedAt) >= f && (b.BillDate ?? b.CreatedAt) <= t)
-            .SumAsync(b => (decimal?)b.Amount, ct) ?? 0m;
 
     public async Task<ProfitLossReport> GetProfitAndLossAsync(DateTime? from, DateTime? to, CancellationToken ct = default)
     {
@@ -72,17 +64,13 @@ public class FinanceService : IFinanceService
             .Where(e => e.Date >= f && e.Date <= t)
             .Select(e => new { e.ExpenseCategoryId, CategoryName = e.ExpenseCategory.Name, e.Amount })
             .ToListAsync(ct);
-        // Supplier bills attached to inventories count as operating expenses too.
-        var billsTotal = await BillsTotalAsync(f, t, ct);
-        var expensesTotal = expenseRows.Sum(r => r.Amount) + billsTotal;
+        var expensesTotal = expenseRows.Sum(r => r.Amount);
         var expensesByCategory = expenseRows
             .GroupBy(r => new { r.ExpenseCategoryId, r.CategoryName })
             .Select(g => new ExpenseLineDto(g.Key.ExpenseCategoryId, g.Key.CategoryName, g.Sum(x => x.Amount),
                 Pct(g.Sum(x => x.Amount), expensesTotal)))
             .OrderByDescending(x => x.Amount)
             .ToList();
-        if (billsTotal > 0)
-            expensesByCategory.Add(new ExpenseLineDto(0, "Supplier bills (inventory)", billsTotal, Pct(billsTotal, expensesTotal)));
 
         var netProfit = grossProfit - expensesTotal;
 
@@ -181,13 +169,14 @@ public class FinanceService : IFinanceService
             new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc), DateTime.UtcNow.AddDays(1), ct);
         var allTimeNetProfit = allRev - allCogs - allExpenses;
 
-        // ---- Total investment reconciliation ----
-        // Documented spend from supplier bills attached to inventories.
+        // ---- Total investment ----
+        // Supplier bills attached to inventories — capitalised acquisition costs (stitching, cloth…),
+        // NOT operating expenses. They count toward Total Investment.
         var totalBillsRecorded = await _db.InventoryBills.AsNoTracking()
             .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
         // Capital deployed to date: inventory bought (still-on-hand at cost + cost of goods already
-        // sold) plus operating expenses spent. This is the authoritative "total invested".
-        var totalInvested = invCost + allCogs + allExpenses;
+        // sold) + supplier bills + operating expenses spent. This is the authoritative "total invested".
+        var totalInvested = invCost + allCogs + totalBillsRecorded + allExpenses;
 
         var owners = await _db.Owners.AsNoTracking()
             .Where(o => o.IsActive)

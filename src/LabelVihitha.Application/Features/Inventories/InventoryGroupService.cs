@@ -40,12 +40,13 @@ public class InventoryGroupService : IInventoryGroupService
             var bl = bills.TryGetValue(i.Id, out var lst) ? lst : new List<InventoryBillDto>();
             var (rev, cogs) = sold.TryGetValue(i.Id, out var s) ? s : (0m, 0m);
             var billTotal = bl.Sum(x => x.Amount ?? 0m);
-            // Direct costs (this inventory's own expenses + its bills) plus its share of unattributed expenses.
-            var direct = directExp.GetValueOrDefault(i.Id) + billTotal;
+            // Operating expenses: this inventory's own tagged expenses + its share of untagged ones.
+            // (Bills are capital, not expenses — they go into the initial cost below, not here.)
+            var direct = directExp.GetValueOrDefault(i.Id);
             var alloc = Math.Round(direct + (totalInvRev > 0 ? unattributedExp * (rev / totalInvRev) : 0m), 2);
             return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
                 count, units, cost, cats, bl, billTotal,
-                rev, cogs, cost + cogs, rev - cogs, alloc, rev - cogs - alloc);
+                rev, cogs, cost + cogs + billTotal, rev - cogs, alloc, rev - cogs - alloc);
         }).ToList();
     }
 
@@ -69,11 +70,11 @@ public class InventoryGroupService : IInventoryGroupService
         var totalInvRev = allSold.Values.Sum(v => v.Revenue);
         var (directExp, unattributedExp) = await ExpenseAttributionAsync(ct);
         var billTotal = bl.Sum(x => x.Amount ?? 0m);
-        var direct = directExp.GetValueOrDefault(id) + billTotal;
+        var direct = directExp.GetValueOrDefault(id);
         var alloc = Math.Round(direct + (totalInvRev > 0 ? unattributedExp * (rev / totalInvRev) : 0m), 2);
         return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
             cats.Sum(c => c.ProductCount), units, cost, cats, bl, billTotal,
-            rev, cogs, cost + cogs, rev - cogs, alloc, rev - cogs - alloc);
+            rev, cogs, cost + cogs + billTotal, rev - cogs, alloc, rev - cogs - alloc);
     }
 
     /// <summary>Operating expenses split for per-inventory P&L: expenses tagged to a specific inventory
