@@ -13,6 +13,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Inventory, SubCategoryCount } from '../../core/models';
 import { InventoryEditDialog } from './inventory-edit.dialog';
 import { InventoryBillsDialog } from './inventory-bills.dialog';
+import { BillProductsDialog } from './bill-products.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 
 @Component({
@@ -71,6 +72,11 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
                 <mat-icon>receipt_long</mat-icon> Bills
                 @if (i.bills.length) { <span class="bills-badge">{{ i.bills.length }}</span> }
               </button>
+              @if (auth.canManageInventory()) {
+                <button mat-stroked-button (click)="bulkAdd(i)">
+                  <mat-icon>library_add</mat-icon> Bulk add
+                </button>
+              }
               @if (auth.canManageInventory()) {
                 <button mat-icon-button (click)="openEdit(i)"><mat-icon>edit</mat-icon></button>
                 <button mat-icon-button color="warn" (click)="remove(i)"><mat-icon>delete</mat-icon></button>
@@ -222,6 +228,13 @@ export class InventoryListComponent {
   openBills(i: Inventory) {
     this.dialog.open(InventoryBillsDialog, { data: i, width: '600px' }).afterClosed()
       .subscribe(changed => { if (changed) this.load(); });
+  }
+
+  bulkAdd(i: Inventory) {
+    this.dialog.open(BillProductsDialog, {
+      data: { inventoryId: i.id, inventoryName: i.name, bill: null },
+      width: '920px', maxWidth: '95vw'
+    }).afterClosed().subscribe(created => { if (created) this.load(); });
   }
 
   openEdit(i: Inventory | null) {
