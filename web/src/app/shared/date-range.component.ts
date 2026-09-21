@@ -1,15 +1,20 @@
-import { Component, EventEmitter, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DateInputComponent } from './date-input.component';
 
-export type DateRangePreset = 'all' | '3m' | '6m' | 'ytd' | 'custom';
+export type DateRangePreset = 'all' | 'today' | 'yesterday' | '3m' | '6m' | 'ytd' | 'custom';
 export interface DateRange { from: string | null; to: string | null; }
 
+const PRESET_LABELS: Record<DateRangePreset, string> = {
+  all: 'All time', today: 'Today', yesterday: 'Yesterday',
+  '3m': 'Last 3 months', '6m': 'Last 6 months', ytd: 'YTD', custom: 'Custom',
+};
+
 /**
- * A date-range picker used by the report screens: preset chips (All time — default,
- * Last 3 / 6 months, YTD, Custom) plus two calendar inputs when Custom is chosen.
- * Emits {from, to} as yyyy-mm-dd strings (or null for open-ended) on every change —
- * no Apply button; the parent reloads on each emission.
+ * A date-range picker used by the report and list screens: preset chips plus two
+ * calendar inputs when Custom is chosen. Which chips show is configurable via
+ * [presets] (defaults to the report set). Emits {from, to} as yyyy-mm-dd strings
+ * (or null for open-ended) on every change — no Apply button; the parent reloads.
  */
 @Component({
   selector: 'app-date-range',
@@ -18,11 +23,9 @@ export interface DateRange { from: string | null; to: string | null; }
   template: `
     <div class="dr">
       <div class="presets">
-        <button type="button" [class.on]="preset() === 'all'" (click)="setPreset('all')">All time</button>
-        <button type="button" [class.on]="preset() === '3m'" (click)="setPreset('3m')">Last 3 months</button>
-        <button type="button" [class.on]="preset() === '6m'" (click)="setPreset('6m')">Last 6 months</button>
-        <button type="button" [class.on]="preset() === 'ytd'" (click)="setPreset('ytd')">YTD</button>
-        <button type="button" [class.on]="preset() === 'custom'" (click)="setPreset('custom')">Custom</button>
+        @for (p of presets; track p) {
+          <button type="button" [class.on]="preset() === p" (click)="setPreset(p)">{{ labels[p] }}</button>
+        }
       </div>
       @if (preset() === 'custom') {
         <div class="custom">
@@ -45,7 +48,9 @@ export interface DateRange { from: string | null; to: string | null; }
 })
 export class DateRangeComponent {
   @Output() rangeChange = new EventEmitter<DateRange>();
+  @Input() presets: DateRangePreset[] = ['all', '3m', '6m', 'ytd', 'custom'];
 
+  labels = PRESET_LABELS;
   preset = signal<DateRangePreset>('all');
   today = new Date().toISOString().slice(0, 10);
   fromStr: string | null = null;
@@ -56,11 +61,14 @@ export class DateRangeComponent {
     return `${y}-${m}-${day}`;
   }
   private monthsAgo(n: number): string { const d = new Date(); d.setMonth(d.getMonth() - n); return this.fmt(d); }
+  private daysAgo(n: number): string { const d = new Date(); d.setDate(d.getDate() - n); return this.fmt(d); }
 
   setPreset(p: DateRangePreset) {
     this.preset.set(p);
     switch (p) {
       case 'all': this.emit(null, null); break;
+      case 'today': this.emit(this.today, this.today); break;
+      case 'yesterday': { const y = this.daysAgo(1); this.emit(y, y); break; }
       case '3m': this.emit(this.monthsAgo(3), this.today); break;
       case '6m': this.emit(this.monthsAgo(6), this.today); break;
       case 'ytd': this.emit(`${new Date().getFullYear()}-01-01`, this.today); break;

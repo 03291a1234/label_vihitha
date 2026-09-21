@@ -74,6 +74,7 @@ public record UpdateOrderDateRequest(DateTime OrderDate);
 public record OrderQuery(
     int? CustomerId = null,
     OrderStatus? Status = null,
+    IReadOnlyList<OrderStatus>? Statuses = null,
     DateTime? FromDate = null,
     DateTime? ToDate = null,
     string? Search = null,

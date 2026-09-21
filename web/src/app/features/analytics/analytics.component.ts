@@ -18,7 +18,7 @@ import {
   InventoryValuationReport, PaymentMethodReport, MoversReport
 } from '../../core/reports.models';
 import { ChartComponent } from '../../shared/chart.component';
-import { DateRangeComponent, DateRange } from '../../shared/date-range.component';
+import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/date-range.component';
 
 const PALETTE = ['#5b5bd6', '#2e7d32', '#e65100', '#1565c0', '#c62828', '#00897b', '#6a1b9a', '#f9a825'];
 
@@ -33,7 +33,7 @@ const PALETTE = ['#5b5bd6', '#2e7d32', '#e65100', '#1565c0', '#c62828', '#00897b
     <div class="page">
       <div class="page-header">
         <h1>Analytics</h1>
-        <app-date-range (rangeChange)="onRange($event)" />
+        <app-date-range [presets]="datePresets" (rangeChange)="onRange($event)" />
       </div>
 
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
@@ -155,6 +155,7 @@ export class AnalyticsComponent {
 
   fromDate = '';
   toDate = '';
+  datePresets: DateRangePreset[] = ['all', 'today', 'yesterday', '3m', '6m', 'ytd', 'custom'];
   moverCols = ['name', 'unitsSold', 'revenue'];
   slowCols = ['name', 'unitsSold', 'quantityOnHand'];
 

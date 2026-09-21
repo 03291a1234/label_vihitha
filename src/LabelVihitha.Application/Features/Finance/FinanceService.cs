@@ -17,7 +17,9 @@ public class FinanceService : IFinanceService
     private static (DateTime from, DateTime to) Range(DateTime? from, DateTime? to)
     {
         var f = from ?? new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var t = to ?? DateTime.UtcNow.AddDays(1);
+        // ToDate is inclusive of the whole calendar day — sales/expenses carry a time-of-day,
+        // so a same-day upper bound (e.g. the Today/Yesterday presets) must reach end of day.
+        var t = to.HasValue ? to.Value.Date.AddDays(1).AddTicks(-1) : DateTime.UtcNow.AddDays(1);
         return (f, t);
     }
 

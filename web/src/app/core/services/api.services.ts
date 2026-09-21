@@ -24,7 +24,14 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
 function toParams(obj: Record<string, unknown>): HttpParams {
   let p = new HttpParams();
   for (const [k, v] of Object.entries(obj)) {
-    if (v !== null && v !== undefined && v !== '') p = p.set(k, String(v));
+    if (v === null || v === undefined || v === '') continue;
+    if (Array.isArray(v)) {
+      for (const item of v) {
+        if (item !== null && item !== undefined && item !== '') p = p.append(k, String(item));
+      }
+    } else {
+      p = p.set(k, String(v));
+    }
   }
   return p;
 }
@@ -173,6 +180,7 @@ export class CustomerApi {
 export interface OrderFilters {
   customerId?: number | null;
   status?: OrderStatus | null;
+  statuses?: OrderStatus[] | null;
   fromDate?: string | null;
   toDate?: string | null;
   search?: string;

@@ -22,7 +22,9 @@ public class AnalyticsService : IAnalyticsService
     private static (DateTime from, DateTime to) Range(DateTime? from, DateTime? to)
     {
         var f = from ?? new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var t = to ?? DateTime.UtcNow.AddDays(1);
+        // ToDate is inclusive of the whole calendar day — keep this identical to
+        // FinanceService.Range so P&L and Analytics reconcile for the same range.
+        var t = to.HasValue ? to.Value.Date.AddDays(1).AddTicks(-1) : DateTime.UtcNow.AddDays(1);
         return (f, t);
     }
 

@@ -53,7 +53,8 @@ public class OrderService : IOrderService
     private static IQueryable<Order> Filter(IQueryable<Order> q, OrderQuery query)
     {
         if (query.CustomerId is int cid) q = q.Where(o => o.CustomerId == cid);
-        if (query.Status is OrderStatus st) q = q.Where(o => o.Status == st);
+        if (query.Statuses is { Count: > 0 } sts) q = q.Where(o => sts.Contains(o.Status));
+        else if (query.Status is OrderStatus st) q = q.Where(o => o.Status == st);
         if (query.FromDate is DateTime from) q = q.Where(o => o.OrderDate >= from.Date);
         if (query.ToDate is DateTime to) q = q.Where(o => o.OrderDate < to.Date.AddDays(1));
         if (!string.IsNullOrWhiteSpace(query.Search))

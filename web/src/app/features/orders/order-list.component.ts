@@ -15,7 +15,7 @@ import { OrderApi, OrderSummary } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrderListItem, OrderStatus } from '../../core/models';
-import { DateRangeComponent, DateRange } from '../../shared/date-range.component';
+import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/date-range.component';
 
 @Component({
   selector: 'app-order-list',
@@ -41,8 +41,7 @@ import { DateRangeComponent, DateRange } from '../../shared/date-range.component
         </mat-form-field>
         <mat-form-field>
           <mat-label>Status</mat-label>
-          <mat-select [(ngModel)]="status" (selectionChange)="reload()">
-            <mat-option [value]="null">All</mat-option>
+          <mat-select [(ngModel)]="selectedStatuses" (selectionChange)="reload()" multiple>
             @for (s of statuses; track s) { <mat-option [value]="s">{{ s }}</mat-option> }
           </mat-select>
         </mat-form-field>
@@ -50,7 +49,7 @@ import { DateRangeComponent, DateRange } from '../../shared/date-range.component
       </div>
 
       <div class="toolbar-row date-row">
-        <app-date-range (rangeChange)="onRange($event)" />
+        <app-date-range [presets]="datePresets" (rangeChange)="onRange($event)" />
       </div>
 
       <div class="totals">
@@ -130,10 +129,11 @@ export class OrderListComponent {
   summary = signal<OrderSummary>({ totalOrders: 0, totalAmount: 0 });
   loading = signal(false);
   search = '';
-  status: OrderStatus | null = null;
+  selectedStatuses: OrderStatus[] = [];
   fromDate: string | null = null;
   toDate: string | null = null;
   statuses: OrderStatus[] = ['Pending', 'Confirmed', 'Fulfilled', 'Cancelled'];
+  datePresets: DateRangePreset[] = ['all', 'today', 'yesterday', '3m', '6m', 'ytd', 'custom'];
   sortBy: string | null = null;
   sortDir: string | null = null;
   page = 1;
@@ -144,7 +144,8 @@ export class OrderListComponent {
 
   private filters() {
     return {
-      search: this.search || undefined, status: this.status,
+      search: this.search || undefined,
+      statuses: this.selectedStatuses.length ? this.selectedStatuses : undefined,
       fromDate: this.fromDate, toDate: this.toDate,
     };
   }

@@ -12,7 +12,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { FinanceApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { ProfitLossReport, VendorSpend } from '../../core/models';
-import { DateRangeComponent, DateRange } from '../../shared/date-range.component';
+import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/date-range.component';
 import { RecordContributionDialog } from './record-contribution.dialog';
 import { InrAmountPipe } from '../../shared/inr-amount.pipe';
 
@@ -28,7 +28,7 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
     <div class="page">
       <div class="page-header">
         <h1>Profit &amp; Loss</h1>
-        <app-date-range (rangeChange)="onRange($event)" />
+        <app-date-range [presets]="datePresets" (rangeChange)="onRange($event)" />
       </div>
 
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
@@ -340,6 +340,7 @@ export class ProfitLossComponent {
   loading = signal(false);
   fromDate = '';
   toDate = '';
+  datePresets: DateRangePreset[] = ['all', 'today', 'yesterday', '3m', '6m', 'ytd', 'custom'];
   ownerCols = ['name', 'share', 'contrib', 'withdraw', 'profit', 'equity'];
   fundedCols = ['owner', 'units', 'cost', 'pct'];
 
