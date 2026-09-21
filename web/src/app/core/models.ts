@@ -70,6 +70,11 @@ export interface ApplyShippingResult {
   markupPercent: number;
 }
 
+export interface RepriceResult {
+  productsUpdated: number;
+  markupPercent: number;
+}
+
 export interface InventoryBill {
   id: number;
   fileUrl: string;

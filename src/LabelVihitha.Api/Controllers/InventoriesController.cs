@@ -64,4 +64,9 @@ public class InventoriesController : ControllerBase
     [Authorize(Roles = "Admin,Inventory,Owner")]
     public async Task<ActionResult<ApplyShippingResult>> ApplyShipping(int id, ApplyShippingRequest request, CancellationToken ct)
         => Ok(await _service.ApplyShippingAsync(id, request, ct));
+
+    [HttpPost("{id:int}/reprice")]
+    [Authorize(Roles = "Admin,Inventory,Owner")]
+    public async Task<ActionResult<RepriceResult>> Reprice(int id, RepriceRequest request, CancellationToken ct)
+        => Ok(await _service.RepriceAsync(id, request, ct));
 }

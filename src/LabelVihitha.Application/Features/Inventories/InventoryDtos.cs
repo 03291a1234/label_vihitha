@@ -40,3 +40,8 @@ public record ApplyShippingRequest(decimal AmountUsd, decimal MarkupPercent = 10
 
 public record ApplyShippingResult(
     int ProductsUpdated, int UnitsCovered, decimal PerUnitUsd, decimal TotalUsd, decimal MarkupPercent);
+
+/// <summary>Recompute every product's sale price to the given markup over its current cost,
+/// without changing the cost (unlike shipping, which also adds to cost).</summary>
+public record RepriceRequest(decimal MarkupPercent = 100m);
+public record RepriceResult(int ProductsUpdated, decimal MarkupPercent);

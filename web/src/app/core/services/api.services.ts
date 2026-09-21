@@ -7,7 +7,7 @@ import {
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
   ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult,
   BulkSetPaidByRequest, BulkSetPaidByResult, ProductTotals, ProductFilterOptions, PromoCode,
-  CashAccount, CashMovement, CashOverview, CashMovementKind, ApplyShippingResult
+  CashAccount, CashMovement, CashOverview, CashMovementKind, ApplyShippingResult, RepriceResult
 } from '../models';
 
 const base = environment.apiUrl;
@@ -104,6 +104,9 @@ export class InventoryApi {
   }
   applyShipping(inventoryId: number, body: { amountUsd: number; markupPercent: number }) {
     return this.http.post<ApplyShippingResult>(`${base}/inventories/${inventoryId}/shipping`, body);
+  }
+  reprice(inventoryId: number, markupPercent: number) {
+    return this.http.post<RepriceResult>(`${base}/inventories/${inventoryId}/reprice`, { markupPercent });
   }
   uploadBill(file: File): Observable<{ url: string; fileName: string }> {
     const form = new FormData();

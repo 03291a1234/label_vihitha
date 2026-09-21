@@ -14,6 +14,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Inventory, SubCategoryCount } from '../../core/models';
 import { printProductLabels } from '../../shared/label-print';
 import { ApplyShippingDialog } from './apply-shipping.dialog';
+import { RepriceDialog } from './reprice.dialog';
 import { InventoryEditDialog } from './inventory-edit.dialog';
 import { InventoryBillsDialog } from './inventory-bills.dialog';
 import { BillProductsDialog } from './bill-products.dialog';
@@ -85,9 +86,8 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
                 <button mat-stroked-button (click)="bulkAdd(i)">
                   <mat-icon>library_add</mat-icon> Bulk add
                 </button>
-                <button mat-stroked-button (click)="addShipping(i)" [disabled]="!i.totalUnits"
-                        title="Split a shipping cost across this batch's units and re-price">
-                  <mat-icon>local_shipping</mat-icon> Add shipping
+                <button mat-stroked-button [matMenuTriggerFor]="priceMenu" [matMenuTriggerData]="{ inv: i }" [disabled]="!i.totalUnits">
+                  <mat-icon>sell</mat-icon> Pricing <mat-icon>arrow_drop_down</mat-icon>
                 </button>
               }
               @if (auth.canManageInventory()) {
@@ -165,6 +165,17 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
         </button>
         <button mat-menu-item (click)="printLabels(inv, true)">
           <mat-icon>inventory_2</mat-icon><span>One per unit in stock</span>
+        </button>
+      </ng-template>
+    </mat-menu>
+
+    <mat-menu #priceMenu="matMenu">
+      <ng-template matMenuContent let-inv="inv">
+        <button mat-menu-item (click)="addShipping(inv)">
+          <mat-icon>local_shipping</mat-icon><span>Add shipping (splits into cost + re-prices)</span>
+        </button>
+        <button mat-menu-item (click)="reprice(inv)">
+          <mat-icon>percent</mat-icon><span>Re-price only (markup, no shipping)</span>
         </button>
       </ng-template>
     </mat-menu>
@@ -273,6 +284,12 @@ export class InventoryListComponent {
     this.dialog.open(ApplyShippingDialog, {
       data: { inventoryId: i.id, inventoryName: i.name, totalUnits: i.totalUnits }, width: '480px'
     }).afterClosed().subscribe(applied => { if (applied) this.load(); });
+  }
+
+  reprice(i: Inventory) {
+    this.dialog.open(RepriceDialog, {
+      data: { inventoryId: i.id, inventoryName: i.name }, width: '440px'
+    }).afterClosed().subscribe(done => { if (done) this.load(); });
   }
 
   bulkAdd(i: Inventory) {

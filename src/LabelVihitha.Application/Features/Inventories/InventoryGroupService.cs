@@ -241,6 +241,31 @@ public class InventoryGroupService : IInventoryGroupService
         return new ApplyShippingResult(updated, totalUnits, decimal.Round(perUnit, 4), request.AmountUsd, request.MarkupPercent);
     }
 
+    /// <summary>Reset every product's sale price to the given markup over its current cost. Cost is
+    /// untouched — use this to fix a markup without re-charging shipping.</summary>
+    public async Task<RepriceResult> RepriceAsync(int inventoryId, RepriceRequest request, CancellationToken ct = default)
+    {
+        if (!await _db.Inventories.AnyAsync(i => i.Id == inventoryId, ct))
+            throw new NotFoundException(nameof(Inventory), inventoryId);
+        if (request.MarkupPercent < 0) throw new ConflictException("Markup can't be negative.");
+
+        var products = await _db.Products
+            .Include(p => p.Variants.Where(v => !v.IsDeleted))
+            .Where(p => p.InventoryId == inventoryId && !p.IsDeleted)
+            .ToListAsync(ct);
+
+        var mult = 1m + request.MarkupPercent / 100m;
+        foreach (var p in products)
+        {
+            p.SalePrice = decimal.Round(p.OriginalPrice * mult, 2);
+            foreach (var v in p.Variants)
+                v.SalePrice = decimal.Round((v.CostPrice ?? p.OriginalPrice) * mult, 2);
+            p.UpdatedAt = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync(ct);
+        return new RepriceResult(products.Count, request.MarkupPercent);
+    }
+
     /// <summary>Per-inventory category → subcategory stock breakdown, plus total units and cost.</summary>
     private async Task<Dictionary<int, (int Units, decimal Cost, List<CategoryCount> Categories)>> BuildBreakdownAsync(
         List<int> inventoryIds, CancellationToken ct)
