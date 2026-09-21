@@ -106,6 +106,38 @@ export interface InventorySummary {
 
 export type OwnerTransactionType = 'Contribution' | 'Withdrawal';
 
+export type CashMovementKind = 'Transfer' | 'CashIn' | 'CashOut' | 'Opening';
+
+export interface CashAccount {
+  id: number;
+  name: string;
+  isCommon: boolean;
+  ownerId?: number | null;
+  ownerName?: string | null;
+  balance: number;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface CashMovement {
+  id: number;
+  date: string;
+  kind: CashMovementKind;
+  amount: number;
+  fromAccountId?: number | null;
+  fromAccountName?: string | null;
+  toAccountId?: number | null;
+  toAccountName?: string | null;
+  note?: string | null;
+}
+
+export interface CashOverview {
+  accounts: CashAccount[];
+  trackedTotal: number;
+  expectedCash: number;
+  difference: number;
+}
+
 export interface ExpenseCategory {
   id: number;
   name: string;

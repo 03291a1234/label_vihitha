@@ -403,3 +403,37 @@ public class OwnerTransactionConfiguration : IEntityTypeConfiguration<OwnerTrans
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }
+
+public class CashAccountConfiguration : IEntityTypeConfiguration<CashAccount>
+{
+    public void Configure(EntityTypeBuilder<CashAccount> b)
+    {
+        b.Property(x => x.Name).IsRequired().HasMaxLength(120);
+        b.HasOne(x => x.Owner)
+            .WithMany()
+            .HasForeignKey(x => x.OwnerId)
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
+public class CashMovementConfiguration : IEntityTypeConfiguration<CashMovement>
+{
+    public void Configure(EntityTypeBuilder<CashMovement> b)
+    {
+        b.Property(x => x.Note).HasMaxLength(500);
+        b.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+        b.HasIndex(x => x.Date);
+
+        b.HasOne(x => x.FromAccount)
+            .WithMany(a => a.MovementsFrom)
+            .HasForeignKey(x => x.FromAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(x => x.ToAccount)
+            .WithMany(a => a.MovementsTo)
+            .HasForeignKey(x => x.ToAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}

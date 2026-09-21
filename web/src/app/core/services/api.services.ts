@@ -6,7 +6,8 @@ import {
   Category, SubCategory, Inventory, InventoryBill, Vendor, InventorySummary, Product, Customer, Order, OrderListItem, Invoice, InvoiceListItem,
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
   ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult,
-  BulkSetPaidByRequest, BulkSetPaidByResult, ProductTotals, ProductFilterOptions, PromoCode
+  BulkSetPaidByRequest, BulkSetPaidByResult, ProductTotals, ProductFilterOptions, PromoCode,
+  CashAccount, CashMovement, CashOverview, CashMovementKind
 } from '../models';
 
 const base = environment.apiUrl;
@@ -350,6 +351,29 @@ export class FinanceApi {
   profitLoss(fromDate?: string | null, toDate?: string | null): Observable<ProfitLossReport> {
     return this.http.get<ProfitLossReport>(`${base}/finance/profit-loss`, { params: toParams({ fromDate, toDate }) });
   }
+}
+
+export interface RecordCashMovement {
+  date: string; kind: CashMovementKind; amount: number;
+  fromAccountId?: number | null; toAccountId?: number | null; note?: string | null;
+}
+
+@Injectable({ providedIn: 'root' })
+export class CashApi {
+  constructor(private http: HttpClient) {}
+  overview(): Observable<CashOverview> { return this.http.get<CashOverview>(`${base}/cash/overview`); }
+  createAccount(body: { name: string; isCommon: boolean; ownerId?: number | null; sortOrder?: number }) {
+    return this.http.post<CashAccount>(`${base}/cash/accounts`, body);
+  }
+  updateAccount(id: number, body: { name: string; isCommon: boolean; ownerId?: number | null; isActive: boolean; sortOrder: number }) {
+    return this.http.put<CashAccount>(`${base}/cash/accounts/${id}`, body);
+  }
+  deleteAccount(id: number) { return this.http.delete<void>(`${base}/cash/accounts/${id}`); }
+  movements(accountId?: number | null): Observable<CashMovement[]> {
+    return this.http.get<CashMovement[]>(`${base}/cash/movements`, { params: toParams({ accountId }) });
+  }
+  recordMovement(body: RecordCashMovement) { return this.http.post<CashMovement>(`${base}/cash/movements`, body); }
+  deleteMovement(id: number) { return this.http.delete<void>(`${base}/cash/movements/${id}`); }
 }
 
 @Injectable({ providedIn: 'root' })

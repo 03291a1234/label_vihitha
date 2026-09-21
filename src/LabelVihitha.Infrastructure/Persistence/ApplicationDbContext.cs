@@ -44,6 +44,8 @@ public class ApplicationDbContext
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<Owner> Owners => Set<Owner>();
     public DbSet<OwnerTransaction> OwnerTransactions => Set<OwnerTransaction>();
+    public DbSet<CashAccount> CashAccounts => Set<CashAccount>();
+    public DbSet<CashMovement> CashMovements => Set<CashMovement>();
     public DbSet<PromoCode> PromoCodes => Set<PromoCode>();
 
     protected override void OnModelCreating(ModelBuilder builder)

@@ -128,6 +128,7 @@ export class ShellComponent {
   nav: NavItem[] = [
     { label: 'Analytics', icon: 'insights', path: '/analytics', show: () => this.auth.canViewReports() },
     { label: 'Profit & Loss', icon: 'account_balance', path: '/profit-loss', show: () => this.auth.canViewReports() },
+    { label: 'Cash accounts', icon: 'account_balance_wallet', path: '/cash', show: () => this.auth.canViewReports() },
     { label: 'Orders', icon: 'receipt_long', path: '/orders', show: () => this.auth.canManageSales() },
     { label: 'Invoicing', icon: 'payments', path: '/invoices', show: () => this.auth.canManageSales() },
     { label: 'Follow-ups', icon: 'task_alt', path: '/follow-ups', show: () => this.auth.canManageSales() },
