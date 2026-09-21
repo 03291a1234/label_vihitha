@@ -1,4 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -37,7 +39,9 @@ import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/dat
       <div class="toolbar-row">
         <mat-form-field>
           <mat-label>Search</mat-label>
-          <input matInput [(ngModel)]="search" (keyup.enter)="reload()" placeholder="Order # or customer" />
+          <input matInput [(ngModel)]="search" (ngModelChange)="onSearchInput()"
+                 (keyup.enter)="reload()" placeholder="Order # or customer (3+ chars)" />
+          <mat-hint>Searches order # &amp; customer after 3 characters</mat-hint>
         </mat-form-field>
         <mat-form-field>
           <mat-label>Status</mat-label>
@@ -139,8 +143,22 @@ export class OrderListComponent {
   page = 1;
   pageSize = 25;
   cols = ['orderNumber', 'customerName', 'orderDate', 'status', 'itemCount', 'grandTotal', 'invoice'];
+  private searchInput$ = new Subject<string>();
 
-  constructor() { this.load(); }
+  constructor() {
+    // Search as you type: fire once there are 3+ characters, or when cleared (reset to all).
+    this.searchInput$.pipe(
+      map(s => s.trim()),
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntilDestroyed()
+    ).subscribe(term => {
+      if (term.length >= 3 || term.length === 0) this.reload();
+    });
+    this.load();
+  }
+
+  onSearchInput() { this.searchInput$.next(this.search); }
 
   private filters() {
     return {
