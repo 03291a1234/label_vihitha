@@ -62,6 +62,14 @@ export interface Inventory {
   netProfitUsd: number;
 }
 
+export interface ApplyShippingResult {
+  productsUpdated: number;
+  unitsCovered: number;
+  perUnitUsd: number;
+  totalUsd: number;
+  markupPercent: number;
+}
+
 export interface InventoryBill {
   id: number;
   fileUrl: string;

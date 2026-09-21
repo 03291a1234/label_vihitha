@@ -58,4 +58,10 @@ public class InventoriesController : ControllerBase
         await _service.DeleteBillAsync(id, billId, ct);
         return NoContent();
     }
+
+    // ---- Capitalise a shipping cost into the batch's products and re-price ----
+    [HttpPost("{id:int}/shipping")]
+    [Authorize(Roles = "Admin,Inventory,Owner")]
+    public async Task<ActionResult<ApplyShippingResult>> ApplyShipping(int id, ApplyShippingRequest request, CancellationToken ct)
+        => Ok(await _service.ApplyShippingAsync(id, request, ct));
 }

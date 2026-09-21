@@ -10,4 +10,6 @@ public interface IInventoryGroupService
 
     Task<InventoryBillDto> AddBillAsync(int inventoryId, AddInventoryBillRequest request, CancellationToken ct = default);
     Task DeleteBillAsync(int inventoryId, int billId, CancellationToken ct = default);
+
+    Task<ApplyShippingResult> ApplyShippingAsync(int inventoryId, ApplyShippingRequest request, CancellationToken ct = default);
 }

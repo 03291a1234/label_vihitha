@@ -13,6 +13,7 @@ import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Inventory, SubCategoryCount } from '../../core/models';
 import { printProductLabels } from '../../shared/label-print';
+import { ApplyShippingDialog } from './apply-shipping.dialog';
 import { InventoryEditDialog } from './inventory-edit.dialog';
 import { InventoryBillsDialog } from './inventory-bills.dialog';
 import { BillProductsDialog } from './bill-products.dialog';
@@ -83,6 +84,10 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
               @if (auth.canManageInventory()) {
                 <button mat-stroked-button (click)="bulkAdd(i)">
                   <mat-icon>library_add</mat-icon> Bulk add
+                </button>
+                <button mat-stroked-button (click)="addShipping(i)" [disabled]="!i.totalUnits"
+                        title="Split a shipping cost across this batch's units and re-price">
+                  <mat-icon>local_shipping</mat-icon> Add shipping
                 </button>
               }
               @if (auth.canManageInventory()) {
@@ -262,6 +267,12 @@ export class InventoryListComponent {
       },
       error: (e) => { this.printingId.set(null); this.notify.error(e); }
     });
+  }
+
+  addShipping(i: Inventory) {
+    this.dialog.open(ApplyShippingDialog, {
+      data: { inventoryId: i.id, inventoryName: i.name, totalUnits: i.totalUnits }, width: '480px'
+    }).afterClosed().subscribe(applied => { if (applied) this.load(); });
   }
 
   bulkAdd(i: Inventory) {

@@ -195,6 +195,52 @@ public class InventoryGroupService : IInventoryGroupService
         await _db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Split a shipping cost evenly across every on-hand unit in the inventory, add each unit's
+    /// share to its product's cost, then reset the sale price to the given markup over the new cost.
+    /// </summary>
+    public async Task<ApplyShippingResult> ApplyShippingAsync(int inventoryId, ApplyShippingRequest request, CancellationToken ct = default)
+    {
+        if (!await _db.Inventories.AnyAsync(i => i.Id == inventoryId, ct))
+            throw new NotFoundException(nameof(Inventory), inventoryId);
+        if (request.AmountUsd <= 0) throw new ConflictException("Shipping amount must be greater than zero.");
+        if (request.MarkupPercent < 0) throw new ConflictException("Markup can't be negative.");
+
+        var products = await _db.Products
+            .Include(p => p.Variants.Where(v => !v.IsDeleted))
+            .Include(p => p.CostComponents.Where(c => !c.IsDeleted))
+            .Where(p => p.InventoryId == inventoryId && !p.IsDeleted)
+            .ToListAsync(ct);
+
+        var totalUnits = products.Sum(p => p.QuantityOnHand);
+        if (totalUnits <= 0) throw new ConflictException("This inventory has no units on hand to spread shipping across.");
+
+        var perUnit = request.AmountUsd / totalUnits;          // full precision; money columns round on save
+        var mult = 1m + request.MarkupPercent / 100m;
+        var updated = 0;
+
+        foreach (var p in products.Where(p => p.QuantityOnHand > 0))
+        {
+            // Add each unit's shipping share to the per-unit cost. Keep the cost-component ledger in
+            // step for products that use it, so a later re-sum doesn't drop the shipping.
+            if (p.CostComponents.Count > 0)
+                p.CostComponents.Add(new ProductCostComponent { Label = "Shipping (allocated)", Amount = decimal.Round(perUnit, 2) });
+            p.OriginalPrice = decimal.Round(p.OriginalPrice + perUnit, 2);
+            p.SalePrice = decimal.Round(p.OriginalPrice * mult, 2);
+
+            foreach (var v in p.Variants.Where(v => v.CostPrice != null))
+            {
+                v.CostPrice = decimal.Round(v.CostPrice!.Value + perUnit, 2);
+                v.SalePrice = decimal.Round(v.CostPrice.Value * mult, 2);
+            }
+            p.UpdatedAt = DateTime.UtcNow;
+            updated++;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return new ApplyShippingResult(updated, totalUnits, decimal.Round(perUnit, 4), request.AmountUsd, request.MarkupPercent);
+    }
+
     /// <summary>Per-inventory category → subcategory stock breakdown, plus total units and cost.</summary>
     private async Task<Dictionary<int, (int Units, decimal Cost, List<CategoryCount> Categories)>> BuildBreakdownAsync(
         List<int> inventoryIds, CancellationToken ct)
