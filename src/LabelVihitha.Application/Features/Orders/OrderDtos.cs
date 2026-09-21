@@ -81,3 +81,6 @@ public record OrderQuery(
     string? SortDir = null,
     int Page = 1,
     int PageSize = 25);
+
+/// <summary>Totals across the whole filtered set (all pages), for the Orders list header.</summary>
+public record OrderSummaryDto(int TotalOrders, decimal TotalAmount);

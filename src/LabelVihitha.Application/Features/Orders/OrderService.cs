@@ -23,16 +23,7 @@ public class OrderService : IOrderService
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = query.PageSize is < 1 or > 200 ? 25 : query.PageSize;
 
-        var q = _db.Orders.AsNoTracking();
-        if (query.CustomerId is int cid) q = q.Where(o => o.CustomerId == cid);
-        if (query.Status is OrderStatus st) q = q.Where(o => o.Status == st);
-        if (query.FromDate is DateTime from) q = q.Where(o => o.OrderDate >= from);
-        if (query.ToDate is DateTime to) q = q.Where(o => o.OrderDate <= to);
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            var term = query.Search.Trim();
-            q = q.Where(o => o.OrderNumber.Contains(term) || o.Customer.Name.Contains(term));
-        }
+        var q = Filter(_db.Orders.AsNoTracking(), query);
 
         var total = await q.CountAsync(ct);
         var items = await ApplySort(q, query.SortBy, query.SortDir)
@@ -47,6 +38,30 @@ public class OrderService : IOrderService
         {
             Items = items, TotalCount = total, Page = page, PageSize = pageSize
         };
+    }
+
+    public async Task<OrderSummaryDto> GetSummaryAsync(OrderQuery query, CancellationToken ct = default)
+    {
+        var q = Filter(_db.Orders.AsNoTracking(), query);
+        var count = await q.CountAsync(ct);
+        var amount = await q.SumAsync(o => (decimal?)o.GrandTotal, ct) ?? 0m;
+        return new OrderSummaryDto(count, amount);
+    }
+
+    /// <summary>Shared list/summary filter. ToDate is inclusive of the whole calendar day
+    /// (orders carry a time-of-day, so a same-day upper bound must reach end of day).</summary>
+    private static IQueryable<Order> Filter(IQueryable<Order> q, OrderQuery query)
+    {
+        if (query.CustomerId is int cid) q = q.Where(o => o.CustomerId == cid);
+        if (query.Status is OrderStatus st) q = q.Where(o => o.Status == st);
+        if (query.FromDate is DateTime from) q = q.Where(o => o.OrderDate >= from.Date);
+        if (query.ToDate is DateTime to) q = q.Where(o => o.OrderDate < to.Date.AddDays(1));
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = query.Search.Trim();
+            q = q.Where(o => o.OrderNumber.Contains(term) || o.Customer.Name.Contains(term));
+        }
+        return q;
     }
 
     public async Task<OrderDto> GetByIdAsync(int id, CancellationToken ct = default)

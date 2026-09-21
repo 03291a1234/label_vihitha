@@ -20,6 +20,11 @@ public class OrdersController : ControllerBase
         [FromQuery] OrderQuery query, CancellationToken ct)
         => Ok(await _service.GetAsync(query, ct));
 
+    [HttpGet("summary")]
+    public async Task<ActionResult<OrderSummaryDto>> GetSummary(
+        [FromQuery] OrderQuery query, CancellationToken ct)
+        => Ok(await _service.GetSummaryAsync(query, ct));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<OrderDto>> GetById(int id, CancellationToken ct)
         => Ok(await _service.GetByIdAsync(id, ct));

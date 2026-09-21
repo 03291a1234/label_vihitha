@@ -11,10 +11,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
-import { OrderApi } from '../../core/services/api.services';
+import { OrderApi, OrderSummary } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrderListItem, OrderStatus } from '../../core/models';
+import { DateRangeComponent, DateRange } from '../../shared/date-range.component';
 
 @Component({
   selector: 'app-order-list',
@@ -22,7 +23,7 @@ import { OrderListItem, OrderStatus } from '../../core/models';
   imports: [
     CurrencyPipe, DatePipe, FormsModule, RouterLink, MatTableModule, MatButtonModule,
     MatIconModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatPaginatorModule, MatProgressBarModule, MatSortModule
+    MatPaginatorModule, MatProgressBarModule, MatSortModule, DateRangeComponent
   ],
   template: `
     <div class="page">
@@ -46,6 +47,21 @@ import { OrderListItem, OrderStatus } from '../../core/models';
           </mat-select>
         </mat-form-field>
         <button mat-button (click)="reload()"><mat-icon>search</mat-icon> Apply</button>
+      </div>
+
+      <div class="toolbar-row date-row">
+        <app-date-range (rangeChange)="onRange($event)" />
+      </div>
+
+      <div class="totals">
+        <div class="stat">
+          <span class="label">Total orders</span>
+          <span class="value">{{ summary().totalOrders }}</span>
+        </div>
+        <div class="stat">
+          <span class="label">Total amount</span>
+          <span class="value">{{ summary().totalAmount | currency }}</span>
+        </div>
       </div>
 
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
@@ -95,6 +111,13 @@ import { OrderListItem, OrderStatus } from '../../core/models';
     .clickable { cursor: pointer; }
     .clickable:hover { background: #fafafa; }
     .ok { color: #2e7d32; }
+    .date-row { margin-top: -4px; }
+    .totals { display: flex; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; }
+    .totals .stat { flex: 1 1 160px; min-width: 140px; border: 1px solid var(--lv-line); border-radius: 12px;
+      padding: 12px 16px; background: var(--lv-cream-2); }
+    .totals .label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+      color: rgba(58,37,48,.55); font-weight: 700; }
+    .totals .value { display: block; font-size: 22px; font-weight: 800; color: var(--lv-wine); margin-top: 2px; }
   `]
 })
 export class OrderListComponent {
@@ -104,9 +127,12 @@ export class OrderListComponent {
 
   rows = signal<OrderListItem[]>([]);
   total = signal(0);
+  summary = signal<OrderSummary>({ totalOrders: 0, totalAmount: 0 });
   loading = signal(false);
   search = '';
   status: OrderStatus | null = null;
+  fromDate: string | null = null;
+  toDate: string | null = null;
   statuses: OrderStatus[] = ['Pending', 'Confirmed', 'Fulfilled', 'Cancelled'];
   sortBy: string | null = null;
   sortDir: string | null = null;
@@ -116,17 +142,29 @@ export class OrderListComponent {
 
   constructor() { this.load(); }
 
+  private filters() {
+    return {
+      search: this.search || undefined, status: this.status,
+      fromDate: this.fromDate, toDate: this.toDate,
+    };
+  }
+
   load() {
     this.loading.set(true);
-    this.api.list({
-      search: this.search || undefined, status: this.status,
-      sortBy: this.sortBy, sortDir: this.sortDir,
-      page: this.page, pageSize: this.pageSize
-    }).subscribe({
-      next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
-      error: (e) => { this.loading.set(false); this.notify.error(e); }
+    const f = this.filters();
+    this.api.list({ ...f, sortBy: this.sortBy, sortDir: this.sortDir, page: this.page, pageSize: this.pageSize })
+      .subscribe({
+        next: (r) => { this.rows.set(r.items); this.total.set(r.totalCount); this.loading.set(false); },
+        error: (e) => { this.loading.set(false); this.notify.error(e); }
+      });
+    // Totals span the whole filtered set (all pages), so they use the same filters without paging.
+    this.api.summary(f).subscribe({
+      next: (s) => this.summary.set(s),
+      error: (e) => this.notify.error(e)
     });
   }
+
+  onRange(r: DateRange) { this.fromDate = r.from; this.toDate = r.to; this.reload(); }
 
   reload() { this.page = 1; this.load(); }
   onPage(e: PageEvent) { this.page = e.pageIndex + 1; this.pageSize = e.pageSize; this.load(); }
