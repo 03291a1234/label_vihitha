@@ -15,7 +15,9 @@ public class ProductService : IProductService
     public async Task<PagedResult<ProductDto>> GetAsync(ProductQuery query, CancellationToken ct = default)
     {
         var page = query.Page < 1 ? 1 : query.Page;
-        var pageSize = query.PageSize is < 1 or > 200 ? 25 : query.PageSize;
+        // Clamp large page sizes to a sane max rather than snapping back to 25 — screens that
+        // need the whole catalogue (order entry, label printing) ask for a big page on purpose.
+        var pageSize = query.PageSize < 1 ? 25 : Math.Min(query.PageSize, 1000);
 
         var q = FilteredQuery(query);
 
