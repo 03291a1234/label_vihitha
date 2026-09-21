@@ -26,7 +26,7 @@ export interface ApplyShippingData { inventoryId: number; inventoryName: string;
         on hand, adds each unit's share to its product cost, then re-prices sale = cost + markup.</p>
 
       <div class="amount-row">
-        <mat-form-field class="grow">
+        <mat-form-field class="amt">
           <mat-label>Shipping amount</mat-label>
           <span matPrefix>{{ currency === 'USD' ? '$' : '₹' }}&nbsp;</span>
           <input matInput type="number" min="0" step="0.01" [(ngModel)]="amount" (ngModelChange)="bump()" />
@@ -62,7 +62,9 @@ export interface ApplyShippingData { inventoryId: number; inventoryName: string;
   `,
   styles: [`
     .lead { margin: 0 0 14px; }
-    .amount-row { display: flex; gap: 10px; align-items: flex-start; }
+    .amount-row { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+    .amount-row .amt { flex: 1 1 160px; min-width: 0; }
+    .amount-row mat-button-toggle-group { flex: 0 0 auto; }
     .grow { width: 100%; }
     .preview { background: var(--lv-cream-2); border: 1px solid var(--lv-line); border-radius: 10px; padding: 10px 14px; margin-top: 6px; }
     .prow { display: flex; justify-content: space-between; padding: 3px 0; }
