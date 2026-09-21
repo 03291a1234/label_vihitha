@@ -4,13 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { InventoryApi } from '../../core/services/api.services';
+import { InventoryApi, ProductApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Inventory, SubCategoryCount } from '../../core/models';
+import { printProductLabels } from '../../shared/label-print';
 import { InventoryEditDialog } from './inventory-edit.dialog';
 import { InventoryBillsDialog } from './inventory-bills.dialog';
 import { BillProductsDialog } from './bill-products.dialog';
@@ -22,7 +24,7 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
   standalone: true,
   imports: [
     InrAmountPipe,
-    CurrencyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule,
+    CurrencyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule, MatMenuModule,
     MatDialogModule, MatProgressBarModule, MatSlideToggleModule
   ],
   template: `
@@ -69,6 +71,10 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
             <div class="inv-actions">
               <button mat-stroked-button [routerLink]="['/products']" [queryParams]="{ inventoryId: i.id }">
                 <mat-icon>inventory_2</mat-icon> View products
+              </button>
+              <button mat-stroked-button [matMenuTriggerFor]="labelMenu" [matMenuTriggerData]="{ inv: i }"
+                      [disabled]="!i.productCount || printingId() === i.id">
+                <mat-icon>label</mat-icon> Print labels
               </button>
               <button mat-stroked-button (click)="openBills(i)" [class.has-bills]="i.bills.length">
                 <mat-icon>receipt_long</mat-icon> Bills
@@ -146,6 +152,17 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
       }
       @if (!loading() && rows().length === 0) { <div class="card empty-state">No inventories yet.</div> }
     </div>
+
+    <mat-menu #labelMenu="matMenu">
+      <ng-template matMenuContent let-inv="inv">
+        <button mat-menu-item (click)="printLabels(inv, false)">
+          <mat-icon>label</mat-icon><span>One label per product</span>
+        </button>
+        <button mat-menu-item (click)="printLabels(inv, true)">
+          <mat-icon>inventory_2</mat-icon><span>One per unit in stock</span>
+        </button>
+      </ng-template>
+    </mat-menu>
   `,
   styles: [`
     .intro { margin: -8px 0 16px; }
@@ -191,12 +208,14 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
 })
 export class InventoryListComponent {
   private api = inject(InventoryApi);
+  private products = inject(ProductApi);
   private dialog = inject(MatDialog);
   private notify = inject(Notify);
   auth = inject(AuthService);
 
   rows = signal<Inventory[]>([]);
   loading = signal(false);
+  printingId = signal<number | null>(null);
   includeInactive = false;
 
   constructor() { this.load(); }
@@ -230,6 +249,19 @@ export class InventoryListComponent {
   openBills(i: Inventory) {
     this.dialog.open(InventoryBillsDialog, { data: i, width: '600px' }).afterClosed()
       .subscribe(changed => { if (changed) this.load(); });
+  }
+
+  /** Fetch every product in this inventory batch and open a print-ready label sheet. */
+  printLabels(i: Inventory, byStock: boolean) {
+    this.printingId.set(i.id);
+    this.products.list({ inventoryId: i.id, pageSize: 1000 }).subscribe({
+      next: (r) => {
+        this.printingId.set(null);
+        const n = printProductLabels(r.items, byStock);
+        if (n === 0) this.notify.error(`No ${byStock ? 'units in stock' : 'products'} to label in "${i.name}".`);
+      },
+      error: (e) => { this.printingId.set(null); this.notify.error(e); }
+    });
   }
 
   bulkAdd(i: Inventory) {
