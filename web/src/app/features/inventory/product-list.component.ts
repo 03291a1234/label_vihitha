@@ -1,10 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
+import JsBarcode from 'jsbarcode';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -31,7 +33,7 @@ import { SettingsService } from '../../core/services/settings.service';
   selector: 'app-product-list',
   standalone: true,
   imports: [
-    CurrencyPipe, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatIconModule,
+    CurrencyPipe, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatMenuModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatSlideToggleModule,
     MatPaginatorModule, MatProgressBarModule, MatProgressSpinnerModule, MatSortModule,
     SearchSelectComponent
@@ -55,10 +57,20 @@ import { SettingsService } from '../../core/services/settings.service';
                     title="Set who funded the products matching the current filters">
               <mat-icon>account_balance_wallet</mat-icon> Set paid by
             </button>
-            <button mat-stroked-button (click)="printLabels()" [disabled]="loading() || rows().length === 0"
+            <button mat-stroked-button [matMenuTriggerFor]="labelMenu" [disabled]="loading() || rows().length === 0"
                     title="Print price/SKU labels for the products matching the current filters">
-              <mat-icon>label</mat-icon> Print labels
+              <mat-icon>label</mat-icon> Print labels <mat-icon>arrow_drop_down</mat-icon>
             </button>
+            <mat-menu #labelMenu="matMenu">
+              <button mat-menu-item (click)="printLabels(false)">
+                <mat-icon>label</mat-icon>
+                <span>One label per product</span>
+              </button>
+              <button mat-menu-item (click)="printLabels(true)">
+                <mat-icon>inventory_2</mat-icon>
+                <span>One per unit in stock</span>
+              </button>
+            </mat-menu>
             <button mat-raised-button color="primary" (click)="openEdit(null)">
               <mat-icon>add</mat-icon> New product
             </button>
@@ -406,34 +418,86 @@ export class ProductListComponent {
       .subscribe(ok => { if (ok) { this.load(); this.loadSummary(); } });
   }
 
-  /** Bulk-set the "paid by" funder on every product matching the current filters. */
-  /** Opens a print-ready sheet of price/SKU labels for the currently listed products. */
-  printLabels() {
+  /**
+   * Opens a print-ready sheet of price/SKU labels for the currently listed products.
+   * byStock=false → one label per product; byStock=true → one label per unit in stock
+   * (per size when a product has variants), so every physical item can be tagged.
+   * Each label carries a Code128 barcode of the SKU for the phone app to scan.
+   */
+  printLabels(byStock: boolean) {
     const rate = this.inrRate;
     const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] || c));
     const inr = (usd: number) => '₹ ' + Math.round(usd * rate).toLocaleString('en-IN');
-    const labels = this.rows().map(p => `
+    const usd = (v: number) => '$' + v.toFixed(2);
+    const CAP = 2000;   // guard against an accidental thousand-page print job
+
+    // One slot per label group; byStock repeats each by its stock count so every unit gets a tag.
+    const slots: { name: string; sku: string; size: string | null; price: number; qty: number }[] = [];
+    for (const p of this.rows()) {
+      if (p.variants?.length) {
+        for (const v of p.variants) {
+          slots.push({ name: p.name, sku: p.sku, size: v.size, price: v.salePrice ?? p.salePrice,
+            qty: byStock ? v.quantityOnHand : 1 });
+        }
+      } else {
+        slots.push({ name: p.name, sku: p.sku, size: p.size ?? null, price: p.salePrice,
+          qty: byStock ? p.quantityOnHand : 1 });
+      }
+    }
+
+    const requested = slots.reduce((n, s) => n + Math.max(0, s.qty), 0);
+    let count = 0;
+    const parts: string[] = [];
+    for (const s of slots) {
+      for (let i = 0; i < s.qty && count < CAP; i++, count++) {
+        parts.push(`
       <div class="label">
         <div class="brand">Vihitha</div>
-        <div class="name">${esc(p.name)}</div>
-        <div class="sku">${esc(p.sku)}</div>
-        <div class="price">${inr(p.salePrice)}</div>
-      </div>`).join('');
+        <div class="name">${esc(s.name)}</div>
+        ${s.size ? `<div class="size">Size: ${esc(s.size)}</div>` : ''}
+        <div class="price">${usd(s.price)}</div>
+        <div class="inr">${inr(s.price)}</div>
+        <div class="bc">${this.barcodeSvg(s.sku)}</div>
+        <div class="sku">${esc(s.sku)}</div>
+      </div>`);
+      }
+    }
+
+    if (count === 0) { this.notify.error('No units in stock to label for the current filter.'); return; }
+    const capNote = requested > CAP
+      ? `<div class="note">Showing the first ${CAP} of ${requested} labels — narrow the filter to print the rest.</div>` : '';
+    const labels = parts.join('');
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Labels</title><style>
       @page { margin: 10mm; }
       * { box-sizing: border-box; }
       body { font-family: Roboto, Arial, sans-serif; margin: 0; }
+      .note { font-size: 9pt; color: #6e1f3e; margin: 0 0 4mm; }
       .sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
-      .label { border: 1px solid #d9c7cf; border-radius: 3mm; padding: 4mm; text-align: center;
-        break-inside: avoid; page-break-inside: avoid; height: 30mm; display: flex; flex-direction: column;
-        justify-content: center; gap: 1.5mm; }
-      .brand { font-family: Georgia, 'Times New Roman', serif; color: #6e1f3e; font-size: 11pt; letter-spacing: .5px; }
+      .label { border: 1px solid #d9c7cf; border-radius: 3mm; padding: 3.5mm; text-align: center;
+        break-inside: avoid; page-break-inside: avoid; height: 38mm; display: flex; flex-direction: column;
+        justify-content: center; gap: 1mm; }
+      .brand { font-family: Georgia, 'Times New Roman', serif; color: #6e1f3e; font-size: 10pt; letter-spacing: .5px; }
       .name { font-size: 9pt; color: #3a2530; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .sku { font-family: 'Courier New', monospace; font-size: 10pt; font-weight: 700; letter-spacing: 1px; }
-      .price { font-size: 12pt; font-weight: 700; color: #6e1f3e; }
-    </style></head><body onload="window.print()"><div class="sheet">${labels}</div></body></html>`;
+      .size { font-size: 8pt; color: #6b5560; }
+      .price { font-size: 13pt; font-weight: 700; color: #6e1f3e; }
+      .inr { font-size: 8pt; color: #6b5560; }
+      .bc { margin-top: 1mm; }
+      .bc svg { width: 100%; height: 9mm; }
+      .sku { font-family: 'Courier New', monospace; font-size: 8pt; font-weight: 700; letter-spacing: 1px; }
+    </style></head><body onload="window.print()">${capNote}<div class="sheet">${labels}</div></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+  }
+
+  /** Render a Code128 barcode of the SKU as a static inline SVG string (no runtime JS in the print window). */
+  private barcodeSvg(sku: string): string {
+    try {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      JsBarcode(el, sku, { format: 'CODE128', displayValue: false, margin: 0, height: 34, width: 1.4 });
+      return new XMLSerializer().serializeToString(el);
+    } catch {
+      return '';   // never let a bad SKU break the whole sheet
+    }
   }
 
   openBulkPaidBy() {
