@@ -425,9 +425,7 @@ export class ProductListComponent {
    * Each label carries a Code128 barcode of the SKU for the phone app to scan.
    */
   printLabels(byStock: boolean) {
-    const rate = this.inrRate;
     const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] || c));
-    const inr = (usd: number) => '₹ ' + Math.round(usd * rate).toLocaleString('en-IN');
     const usd = (v: number) => '$' + v.toFixed(2);
     const CAP = 2000;   // guard against an accidental thousand-page print job
 
@@ -456,7 +454,6 @@ export class ProductListComponent {
         <div class="name">${esc(s.name)}</div>
         ${s.size ? `<div class="size">Size: ${esc(s.size)}</div>` : ''}
         <div class="price">${usd(s.price)}</div>
-        <div class="inr">${inr(s.price)}</div>
         <div class="bc">${this.barcodeSvg(s.sku)}</div>
         <div class="sku">${esc(s.sku)}</div>
       </div>`);
@@ -480,7 +477,6 @@ export class ProductListComponent {
       .name { font-size: 9pt; color: #3a2530; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .size { font-size: 8pt; color: #6b5560; }
       .price { font-size: 13pt; font-weight: 700; color: #6e1f3e; }
-      .inr { font-size: 8pt; color: #6b5560; }
       .bc { margin-top: 1mm; }
       .bc svg { width: 100%; height: 9mm; }
       .sku { font-family: 'Courier New', monospace; font-size: 8pt; font-weight: 700; letter-spacing: 1px; }
