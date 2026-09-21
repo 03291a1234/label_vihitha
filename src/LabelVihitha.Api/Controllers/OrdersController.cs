@@ -25,6 +25,11 @@ public class OrdersController : ControllerBase
         [FromQuery] OrderQuery query, CancellationToken ct)
         => Ok(await _service.GetSummaryAsync(query, ct));
 
+    [HttpGet("status-counts")]
+    public async Task<ActionResult<IReadOnlyList<OrderStatusCountDto>>> GetStatusCounts(
+        [FromQuery] OrderQuery query, CancellationToken ct)
+        => Ok(await _service.GetStatusCountsAsync(query, ct));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<OrderDto>> GetById(int id, CancellationToken ct)
         => Ok(await _service.GetByIdAsync(id, ct));

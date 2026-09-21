@@ -191,6 +191,7 @@ export interface OrderFilters {
 }
 
 export interface OrderSummary { totalOrders: number; totalAmount: number; }
+export interface OrderStatusCount { status: OrderStatus; count: number; amount: number; }
 
 export interface CreateOrderItem { productId: number; quantity: number; finalPrice?: number | null; productVariantId?: number | null; }
 export interface OrderChargeInput { label: string; amount: number; }
@@ -214,6 +215,9 @@ export class OrderApi {
   }
   summary(filters: OrderFilters = {}): Observable<OrderSummary> {
     return this.http.get<OrderSummary>(`${base}/orders/summary`, { params: toParams(filters as Record<string, unknown>) });
+  }
+  statusCounts(filters: OrderFilters = {}): Observable<OrderStatusCount[]> {
+    return this.http.get<OrderStatusCount[]>(`${base}/orders/status-counts`, { params: toParams(filters as Record<string, unknown>) });
   }
   get(id: number) { return this.http.get<Order>(`${base}/orders/${id}`); }
   create(body: CreateOrder) { return this.http.post<Order>(`${base}/orders`, body); }

@@ -1,4 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
@@ -101,7 +103,8 @@ import { SettingsService } from '../../core/services/settings.service';
       <div class="toolbar-row">
         <mat-form-field>
           <mat-label>Search</mat-label>
-          <input matInput [(ngModel)]="search" (keyup.enter)="reload()" placeholder="Name or SKU" />
+          <input matInput [(ngModel)]="search" (ngModelChange)="onSearchInput()"
+                 (keyup.enter)="reload()" placeholder="Name or SKU (3+ chars)" />
           <button matSuffix mat-icon-button (click)="reload()" aria-label="Search"><mat-icon>search</mat-icon></button>
         </mat-form-field>
         <app-search-select label="Category" [items]="categories()" [(ngModel)]="categoryId"
@@ -285,6 +288,7 @@ export class ProductListComponent {
   importing = signal(false);
 
   search = '';
+  private searchInput$ = new Subject<string>();
   categoryId: number | null = null;
   subCategoryId: number | null = null;
   inventoryId: number | null = null;
@@ -307,7 +311,12 @@ export class ProductListComponent {
       this.page = 1;
       this.load();
     });
+    this.searchInput$.pipe(
+      map(s => s.trim()), debounceTime(300), distinctUntilChanged(), takeUntilDestroyed()
+    ).subscribe(term => { if (term.length >= 3 || term.length === 0) this.reload(); });
   }
+
+  onSearchInput() { this.searchInput$.next(this.search); }
 
   /** The active list/summary filters (no paging or sort). */
   private currentFilters() {

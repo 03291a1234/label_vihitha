@@ -1,4 +1,6 @@
 import { Component, Inject, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -85,9 +87,10 @@ export class CustomerEditDialog {
       <div class="toolbar-row">
         <mat-form-field>
           <mat-label>Search</mat-label>
-          <input matInput [(ngModel)]="search" (keyup.enter)="load()" placeholder="Name, phone or email" />
+          <input matInput [(ngModel)]="search" (ngModelChange)="onSearchInput()"
+                 (keyup.enter)="load()" placeholder="Name, phone or email (3+ chars)" />
+          <mat-hint>Searches after 3 characters</mat-hint>
         </mat-form-field>
-        <button mat-button (click)="load()"><mat-icon>search</mat-icon> Search</button>
       </div>
 
       @if (loading()) { <mat-progress-bar mode="indeterminate" /> }
@@ -140,8 +143,16 @@ export class CustomerListComponent {
 
   private data: Customer[] = [];
   private sort: Sort = { active: '', direction: '' };
+  private searchInput$ = new Subject<string>();
 
-  constructor() { this.load(); }
+  constructor() {
+    this.searchInput$.pipe(
+      map(s => s.trim()), debounceTime(300), distinctUntilChanged(), takeUntilDestroyed()
+    ).subscribe(term => { if (term.length >= 3 || term.length === 0) this.load(); });
+    this.load();
+  }
+
+  onSearchInput() { this.searchInput$.next(this.search); }
 
   load() {
     this.loading.set(true);

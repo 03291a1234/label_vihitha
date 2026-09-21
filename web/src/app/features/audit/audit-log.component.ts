@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { environment } from '../../../environments/environment';
 import { SearchSelectComponent } from '../../shared/search-select.component';
-import { DateInputComponent } from '../../shared/date-input.component';
+import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/date-range.component';
 
 const base = environment.apiUrl;
 
@@ -22,7 +22,7 @@ interface Change { field: string; from: unknown; to: unknown; }
   selector: 'app-audit-log',
   standalone: true,
   imports: [DatePipe, FormsModule, MatButtonModule, MatIconModule, MatProgressBarModule,
-    SearchSelectComponent, DateInputComponent],
+    SearchSelectComponent, DateRangeComponent],
   template: `
     <div class="page">
       <div class="page-header"><h1>Audit log</h1></div>
@@ -32,8 +32,7 @@ interface Change { field: string; from: unknown; to: unknown; }
           nullOption nullLabel="— All —" />
         <app-search-select class="f" label="Action" [items]="actionOptions" [(ngModel)]="action" (ngModelChange)="reload()"
           nullOption nullLabel="— All —" />
-        <app-date-input class="f" label="From" [(ngModel)]="from" (ngModelChange)="reload()" />
-        <app-date-input class="f" label="To" [(ngModel)]="to" (ngModelChange)="reload()" />
+        <app-date-range [presets]="datePresets" [initialPreset]="'today'" (rangeChange)="onRange($event)" />
         <span class="spacer"></span>
         <span class="muted">{{ total() }} change(s)</span>
       </div>
@@ -110,8 +109,10 @@ export class AuditLogComponent {
 
   entity: string | null = null;
   action: string | null = null;
-  from = '';
-  to = '';
+  // Default to today — the log is for spot-checking recent changes, not browsing history.
+  from = new Date().toISOString().slice(0, 10);
+  to = this.from;
+  datePresets: DateRangePreset[] = ['all', 'today', 'yesterday', '3m', '6m', 'ytd', 'custom'];
 
   readonly actionOptions = [{ id: 'Create', name: 'Create' }, { id: 'Update', name: 'Update' }, { id: 'Delete', name: 'Delete' }];
   entityOptions = computed(() => this.entityNames().map(n => ({ id: n, name: n })));
@@ -124,6 +125,7 @@ export class AuditLogComponent {
 
   reload() { this.page.set(1); this.load(); }
   go(p: number) { this.page.set(p); this.load(); }
+  onRange(r: DateRange) { this.from = r.from ?? ''; this.to = r.to ?? ''; this.reload(); }
 
   private load() {
     this.loading.set(true);

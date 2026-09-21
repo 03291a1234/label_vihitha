@@ -48,13 +48,26 @@ public class OrderService : IOrderService
         return new OrderSummaryDto(count, amount);
     }
 
+    public async Task<IReadOnlyList<OrderStatusCountDto>> GetStatusCountsAsync(OrderQuery query, CancellationToken ct = default)
+    {
+        // Counts per status ignore the status selection itself, so the chips always show
+        // how many orders sit in each bucket for the current date/search filters.
+        var q = Filter(_db.Orders.AsNoTracking(), query, includeStatus: false);
+        return await q.GroupBy(o => o.Status)
+            .Select(g => new OrderStatusCountDto(g.Key, g.Count(), g.Sum(o => o.GrandTotal)))
+            .ToListAsync(ct);
+    }
+
     /// <summary>Shared list/summary filter. ToDate is inclusive of the whole calendar day
     /// (orders carry a time-of-day, so a same-day upper bound must reach end of day).</summary>
-    private static IQueryable<Order> Filter(IQueryable<Order> q, OrderQuery query)
+    private static IQueryable<Order> Filter(IQueryable<Order> q, OrderQuery query, bool includeStatus = true)
     {
         if (query.CustomerId is int cid) q = q.Where(o => o.CustomerId == cid);
-        if (query.Statuses is { Count: > 0 } sts) q = q.Where(o => sts.Contains(o.Status));
-        else if (query.Status is OrderStatus st) q = q.Where(o => o.Status == st);
+        if (includeStatus)
+        {
+            if (query.Statuses is { Count: > 0 } sts) q = q.Where(o => sts.Contains(o.Status));
+            else if (query.Status is OrderStatus st) q = q.Where(o => o.Status == st);
+        }
         if (query.FromDate is DateTime from) q = q.Where(o => o.OrderDate >= from.Date);
         if (query.ToDate is DateTime to) q = q.Where(o => o.OrderDate < to.Date.AddDays(1));
         if (!string.IsNullOrWhiteSpace(query.Search))

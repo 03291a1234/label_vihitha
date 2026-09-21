@@ -85,3 +85,7 @@ public record OrderQuery(
 
 /// <summary>Totals across the whole filtered set (all pages), for the Orders list header.</summary>
 public record OrderSummaryDto(int TotalOrders, decimal TotalAmount);
+
+/// <summary>Order count and amount for one status, used by the status filter chips.
+/// Reflects the date/search filters but not the status selection itself.</summary>
+public record OrderStatusCountDto(OrderStatus Status, int Count, decimal Amount);

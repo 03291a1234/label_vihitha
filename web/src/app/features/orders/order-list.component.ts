@@ -13,7 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
-import { OrderApi, OrderSummary } from '../../core/services/api.services';
+import { OrderApi, OrderSummary, OrderStatusCount } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrderListItem, OrderStatus } from '../../core/models';
@@ -37,19 +37,23 @@ import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/dat
       </div>
 
       <div class="toolbar-row">
-        <mat-form-field>
+        <mat-form-field class="search-field">
           <mat-label>Search</mat-label>
           <input matInput [(ngModel)]="search" (ngModelChange)="onSearchInput()"
                  (keyup.enter)="reload()" placeholder="Order # or customer (3+ chars)" />
           <mat-hint>Searches order # &amp; customer after 3 characters</mat-hint>
         </mat-form-field>
-        <mat-form-field>
-          <mat-label>Status</mat-label>
-          <mat-select [(ngModel)]="selectedStatuses" (selectionChange)="reload()" multiple>
-            @for (s of statuses; track s) { <mat-option [value]="s">{{ s }}</mat-option> }
-          </mat-select>
-        </mat-form-field>
-        <button mat-button (click)="reload()"><mat-icon>search</mat-icon> Apply</button>
+      </div>
+
+      <div class="status-chips">
+        <button type="button" class="schip" [class.on]="selectedStatuses.length === 0" (click)="showAll()">
+          All <span class="cnt">{{ totalCount() }}</span>
+        </button>
+        @for (s of statuses; track s) {
+          <button type="button" class="schip {{s}}" [class.on]="isSelected(s)" (click)="toggleStatus(s)">
+            {{ s }} <span class="cnt">{{ countFor(s) }}</span>
+          </button>
+        }
       </div>
 
       <div class="toolbar-row date-row">
@@ -114,6 +118,17 @@ import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/dat
     .clickable { cursor: pointer; }
     .clickable:hover { background: #fafafa; }
     .ok { color: #2e7d32; }
+    .search-field { width: 320px; max-width: 100%; }
+    .status-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+    .status-chips .schip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--lv-line);
+      background: #fff; border-radius: 999px; padding: 6px 12px 6px 14px; cursor: pointer; font: inherit;
+      font-size: 13px; color: var(--lv-wine); transition: background .12s, border-color .12s; }
+    .status-chips .schip:hover { background: var(--lv-rose-soft); }
+    .status-chips .schip.on { background: var(--lv-wine); color: #fff; border-color: var(--lv-wine); }
+    .status-chips .cnt { display: inline-flex; align-items: center; justify-content: center; min-width: 20px;
+      height: 20px; padding: 0 6px; border-radius: 999px; background: var(--lv-rose-soft); color: var(--lv-wine);
+      font-size: 12px; font-weight: 700; }
+    .status-chips .schip.on .cnt { background: rgba(255,255,255,.24); color: #fff; }
     .date-row { margin-top: -4px; }
     .totals { display: flex; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; }
     .totals .stat { flex: 1 1 160px; min-width: 140px; border: 1px solid var(--lv-line); border-radius: 12px;
@@ -131,6 +146,7 @@ export class OrderListComponent {
   rows = signal<OrderListItem[]>([]);
   total = signal(0);
   summary = signal<OrderSummary>({ totalOrders: 0, totalAmount: 0 });
+  statusCounts = signal<OrderStatusCount[]>([]);
   loading = signal(false);
   search = '';
   selectedStatuses: OrderStatus[] = [];
@@ -181,6 +197,22 @@ export class OrderListComponent {
       next: (s) => this.summary.set(s),
       error: (e) => this.notify.error(e)
     });
+    // Per-status counts ignore the status selection (backend), so chips show every bucket.
+    this.api.statusCounts(f).subscribe({
+      next: (c) => this.statusCounts.set(c),
+      error: (e) => this.notify.error(e)
+    });
+  }
+
+  countFor(s: OrderStatus): number { return this.statusCounts().find(x => x.status === s)?.count ?? 0; }
+  totalCount(): number { return this.statusCounts().reduce((sum, x) => sum + x.count, 0); }
+  isSelected(s: OrderStatus): boolean { return this.selectedStatuses.includes(s); }
+  showAll() { if (this.selectedStatuses.length) { this.selectedStatuses = []; this.reload(); } }
+  toggleStatus(s: OrderStatus) {
+    this.selectedStatuses = this.isSelected(s)
+      ? this.selectedStatuses.filter(x => x !== s)
+      : [...this.selectedStatuses, s];
+    this.reload();
   }
 
   onRange(r: DateRange) { this.fromDate = r.from; this.toDate = r.to; this.reload(); }

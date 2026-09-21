@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DateInputComponent } from './date-input.component';
 
@@ -46,12 +46,17 @@ const PRESET_LABELS: Record<DateRangePreset, string> = {
     .custom app-date-input { width: 170px; }
   `]
 })
-export class DateRangeComponent {
+export class DateRangeComponent implements OnInit {
   @Output() rangeChange = new EventEmitter<DateRange>();
   @Input() presets: DateRangePreset[] = ['all', '3m', '6m', 'ytd', 'custom'];
+  /** Which chip is highlighted on first render. Does not emit — the parent seeds
+   * its own initial range to match (avoids a redundant reload on load). */
+  @Input() initialPreset: DateRangePreset = 'all';
 
   labels = PRESET_LABELS;
   preset = signal<DateRangePreset>('all');
+
+  ngOnInit() { this.preset.set(this.initialPreset); }
   today = new Date().toISOString().slice(0, 10);
   fromStr: string | null = null;
   toStr: string | null = null;
