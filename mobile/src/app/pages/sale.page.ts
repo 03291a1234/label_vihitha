@@ -9,7 +9,10 @@ import {
   AlertController, ToastController, LoadingController
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { logOutOutline, addCircle, trashOutline, personAddOutline } from 'ionicons/icons';
+import { logOutOutline, addCircle, trashOutline, personAddOutline, barcodeOutline, closeOutline } from 'ionicons/icons';
+import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
+import { BarcodeFormat, DecodeHintType } from '@zxing/library';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { Customer, Product, PaymentMethod } from '../core/models';
@@ -43,6 +46,9 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
         </ion-item>
       </ion-list>
 
+      <ion-button expand="block" fill="outline" class="scan-btn" (click)="startScan()">
+        <ion-icon name="barcode-outline" slot="start"></ion-icon> Scan barcode to add
+      </ion-button>
       <ion-searchbar placeholder="Add product by name / SKU" (ionInput)="search($any($event).target.value)"></ion-searchbar>
       @if (term()) {
         <ion-list>
@@ -102,6 +108,17 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
         {{ busy() ? 'Processing…' : 'Complete sale' }}
       </ion-button>
     </ion-content>
+
+    @if (scanning()) {
+      <div class="scan-overlay">
+        <video id="scan-video" playsinline muted autoplay></video>
+        <div class="scan-frame"></div>
+        <div class="scan-hint">Point the camera at the label barcode</div>
+        <ion-button class="scan-cancel" fill="solid" color="light" (click)="stopScan()">
+          <ion-icon name="close-outline" slot="start"></ion-icon> Cancel
+        </ion-button>
+      </div>
+    }
   `,
   styles: [`
     .line-inputs { display: flex; gap: 12px; align-items: flex-end; margin-top: 6px; }
@@ -109,6 +126,14 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
     .line-total { display: flex; flex-direction: column; }
     .line-total small { color: var(--ion-color-medium); }
     .grand { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 16px 16px; font-size: 20px; }
+    .scan-btn { margin: 4px 8px 0; }
+    .scan-overlay { position: fixed; inset: 0; z-index: 2000; background: #000; display: flex;
+      flex-direction: column; align-items: center; justify-content: center; }
+    .scan-overlay video { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+    .scan-frame { position: relative; width: 78%; max-width: 340px; aspect-ratio: 5 / 3;
+      border: 3px solid rgba(255,255,255,.9); border-radius: 12px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
+    .scan-hint { position: absolute; bottom: 22%; color: #fff; font-size: 15px; text-shadow: 0 1px 3px #000; }
+    .scan-cancel { position: absolute; bottom: 8%; }
     .grand strong { font-size: 26px; }
   `]
 })
@@ -124,7 +149,10 @@ export class SalePage {
   term = signal('');
   lines = signal<Line[]>([]);
   busy = signal(false);
+  scanning = signal(false);
   private v = signal(0);
+  private scanControls?: IScannerControls;
+  private scanReader?: BrowserMultiFormatReader;
 
   customerId: number | null = null;
   method: PaymentMethod = 'Zelle';
@@ -139,7 +167,7 @@ export class SalePage {
   grandTotal = computed(() => { this.v(); return this.lines().reduce((s, l) => s + (l.finalPrice || 0) * (l.quantity || 0), 0); });
 
   constructor() {
-    addIcons({ logOutOutline, addCircle, trashOutline, personAddOutline });
+    addIcons({ logOutOutline, addCircle, trashOutline, personAddOutline, barcodeOutline, closeOutline });
     this.api.customers().subscribe(c => this.customers.set(c));
     this.api.products().subscribe(r => this.allProducts.set(r.items));
   }
@@ -148,10 +176,57 @@ export class SalePage {
   bump() { this.v.update(n => n + 1); }
 
   addLine(p: Product) {
-    if (this.lines().some(l => l.product.id === p.id)) return;
-    this.lines.update(ls => [...ls, { product: p, quantity: 1, finalPrice: p.salePrice }]);
+    if (this.lines().some(l => l.product.id === p.id)) {
+      // Already in the cart — bump its quantity instead of ignoring the scan.
+      this.lines.update(ls => ls.map(l => l.product.id === p.id ? { ...l, quantity: l.quantity + 1 } : l));
+    } else {
+      this.lines.update(ls => [...ls, { product: p, quantity: 1, finalPrice: p.salePrice }]);
+    }
     this.term.set('');
     this.bump();
+  }
+
+  // ---- Barcode scanning: decode the SKU off the printed label and add to the cart ----
+  async startScan() {
+    this.scanning.set(true);
+    await new Promise(r => setTimeout(r, 60));   // let the <video> render before we bind
+    const video = document.getElementById('scan-video') as HTMLVideoElement | null;
+    if (!video) { this.stopScan(); return; }
+    const hints = new Map();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.CODE_128]);
+    this.scanReader = new BrowserMultiFormatReader(hints);
+    try {
+      this.scanControls = await this.scanReader.decodeFromVideoDevice(undefined, video, (result) => {
+        if (result) this.onScanned(result.getText());
+      });
+    } catch {
+      await this.toastMsg('Cannot open the camera. Allow camera access and try again.', 'danger');
+      this.stopScan();
+    }
+  }
+
+  stopScan() {
+    this.scanControls?.stop();
+    this.scanControls = undefined;
+    this.scanReader = undefined;
+    this.scanning.set(false);
+  }
+
+  private async onScanned(text: string) {
+    const sku = (text || '').trim();
+    if (!sku) return;
+    const p = this.allProducts().find(x => x.sku.toLowerCase() === sku.toLowerCase());
+    this.stopScan();
+    if (!p) { await this.toastMsg(`No product found for “${sku}”.`, 'danger'); return; }
+    if (p.quantityOnHand < 1) { await this.toastMsg(`${p.name} is out of stock.`, 'warning'); return; }
+    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+    this.addLine(p);
+    await this.toastMsg(`Added ${p.name}`, 'success');
+  }
+
+  private async toastMsg(message: string, color: string) {
+    const t = await this.toast.create({ message, duration: 1600, color, position: 'top' });
+    await t.present();
   }
   remove(l: Line) { this.lines.update(ls => ls.filter(x => x !== l)); this.bump(); }
 
