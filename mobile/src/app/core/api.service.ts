@@ -6,7 +6,8 @@ import { Product, Customer, Order, Invoice, PagedResult, DashboardSummary, Payme
 const base = environment.apiUrl;
 
 export interface CreateOrderItem { productId: number; quantity: number; finalPrice?: number | null; }
-export interface CreateOrder { customerId: number; notes?: string | null; items: CreateOrderItem[]; }
+export interface OrderChargeInput { label: string; amount: number; }
+export interface CreateOrder { customerId: number; notes?: string | null; items: CreateOrderItem[]; orderDiscount?: number; charges?: OrderChargeInput[]; }
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {

@@ -86,6 +86,26 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
       </ion-list>
 
       <ion-list inset="true">
+        <ion-list-header>Additional services <ion-note class="hdr-note">stitching, shipping, alteration…</ion-note></ion-list-header>
+        @for (s of services(); track $index) {
+          <ion-item>
+            <div class="svc-row">
+              <ion-input label="Service" labelPlacement="stacked" placeholder="e.g. Stitching" [(ngModel)]="s.label" (ngModelChange)="bump()"></ion-input>
+              <ion-input type="number" min="0" label="$ Amount" labelPlacement="stacked" placeholder="0.00" [(ngModel)]="s.amount" (ngModelChange)="bump()"></ion-input>
+            </div>
+            <ion-button slot="end" fill="clear" color="danger" (click)="removeService($index)"><ion-icon slot="icon-only" name="trash-outline"></ion-icon></ion-button>
+          </ion-item>
+        }
+        <ion-item lines="none">
+          <ion-button fill="clear" (click)="addService()"><ion-icon slot="start" name="add-circle"></ion-icon> Add service</ion-button>
+        </ion-item>
+      </ion-list>
+
+      <ion-list inset="true">
+        <ion-item>
+          <ion-input type="number" min="0" label="Manual discount ($)" labelPlacement="stacked"
+                     placeholder="0.00" [(ngModel)]="manualDiscount" (ionInput)="bump()"></ion-input>
+        </ion-item>
         <ion-item>
           <ion-label>Payment</ion-label>
           <ion-segment slot="end" [(ngModel)]="method">
@@ -98,6 +118,15 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
         </ion-item>
       </ion-list>
 
+      @if (discountAmount() > 0 || servicesTotal() > 0) {
+        <div class="grand sub"><span>Subtotal</span><span>{{ subTotal() | currency }}</span></div>
+        @if (discountAmount() > 0) {
+          <div class="grand sub disc"><span>Manual discount</span><span>−{{ discountAmount() | currency }}</span></div>
+        }
+        @if (servicesTotal() > 0) {
+          <div class="grand sub"><span>Services</span><span>+{{ servicesTotal() | currency }}</span></div>
+        }
+      }
       <div class="grand">
         <span>Total</span>
         <strong>{{ grandTotal() | currency }}</strong>
@@ -126,6 +155,11 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
     .line-total { display: flex; flex-direction: column; }
     .line-total small { color: var(--ion-color-medium); }
     .grand { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 16px 16px; font-size: 20px; }
+    .grand.sub { padding: 2px 16px; font-size: 15px; color: var(--ion-color-medium); }
+    .grand.sub.disc { color: var(--ion-color-primary); }
+    .svc-row { display: flex; gap: 12px; width: 100%; }
+    .svc-row ion-input { flex: 1; }
+    .hdr-note { font-weight: 400; text-transform: none; margin-left: 6px; }
     .scan-btn { margin: 4px 8px 0; }
     .scan-overlay { position: fixed; inset: 0; z-index: 2000; background: #000; display: flex;
       flex-direction: column; align-items: center; justify-content: center; }
@@ -148,6 +182,7 @@ export class SalePage {
   private allProducts = signal<Product[]>([]);
   term = signal('');
   lines = signal<Line[]>([]);
+  services = signal<{ label: string; amount: number | null }[]>([]);
   busy = signal(false);
   scanning = signal(false);
   private v = signal(0);
@@ -157,6 +192,7 @@ export class SalePage {
   customerId: number | null = null;
   method: PaymentMethod = 'Zelle';
   markPaid = true;
+  manualDiscount: number | null = null;
 
   filtered = computed(() => {
     const t = this.term().toLowerCase();
@@ -164,7 +200,10 @@ export class SalePage {
     return this.allProducts().filter(p =>
       p.name.toLowerCase().includes(t) || p.sku.toLowerCase().includes(t)).slice(0, 12);
   });
-  grandTotal = computed(() => { this.v(); return this.lines().reduce((s, l) => s + (l.finalPrice || 0) * (l.quantity || 0), 0); });
+  subTotal = computed(() => { this.v(); return this.lines().reduce((s, l) => s + (l.finalPrice || 0) * (l.quantity || 0), 0); });
+  servicesTotal = computed(() => { this.v(); return this.services().reduce((s, x) => s + (Number(x.amount) || 0), 0); });
+  discountAmount = computed(() => { this.v(); return Math.min(this.subTotal(), Math.max(0, this.manualDiscount || 0)); });
+  grandTotal = computed(() => this.subTotal() - this.discountAmount() + this.servicesTotal());
 
   constructor() {
     addIcons({ logOutOutline, addCircle, trashOutline, personAddOutline, barcodeOutline, closeOutline });
@@ -230,6 +269,9 @@ export class SalePage {
   }
   remove(l: Line) { this.lines.update(ls => ls.filter(x => x !== l)); this.bump(); }
 
+  addService() { this.services.update(s => [...s, { label: '', amount: null }]); this.bump(); }
+  removeService(i: number) { this.services.update(s => s.filter((_, idx) => idx !== i)); this.bump(); }
+
   async addCustomer() {
     const a = await this.alert.create({
       header: 'New customer',
@@ -263,7 +305,11 @@ export class SalePage {
     try {
       const order = await firstValueFrom(this.api.createOrder({
         customerId: this.customerId,
-        items: this.lines().map(l => ({ productId: l.product.id, quantity: l.quantity, finalPrice: l.finalPrice }))
+        items: this.lines().map(l => ({ productId: l.product.id, quantity: l.quantity, finalPrice: l.finalPrice })),
+        orderDiscount: this.discountAmount(),
+        charges: this.services()
+          .filter(s => s.label.trim() && (Number(s.amount) || 0) > 0)
+          .map(s => ({ label: s.label.trim(), amount: Number(s.amount) }))
       }));
       await firstValueFrom(this.api.setStatus(order.id, 'Confirmed'));
       const invoice = await firstValueFrom(this.api.createInvoice(order.id, this.method));
@@ -285,9 +331,11 @@ export class SalePage {
 
   private reset() {
     this.lines.set([]);
+    this.services.set([]);
     this.customerId = null;
     this.method = 'Zelle';
     this.markPaid = true;
+    this.manualDiscount = null;
     this.term.set('');
     this.bump();
   }
