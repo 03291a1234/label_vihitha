@@ -1,2 +1,41 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+// Label_Vihitha boutique theme — aligned with the web app (wine / gold / ivory).
+:root {
+  // Primary = wine
+  --ion-color-primary: #6e1f3e;
+  --ion-color-primary-rgb: 110, 31, 62;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #611b36;
+  --ion-color-primary-tint: #7d3551;
+
+  // Secondary = gold
+  --ion-color-secondary: #c39a3e;
+  --ion-color-secondary-rgb: 195, 154, 62;
+  --ion-color-secondary-contrast: #3a2530;
+  --ion-color-secondary-contrast-rgb: 58, 37, 48;
+  --ion-color-secondary-shade: #ac8837;
+  --ion-color-secondary-tint: #c9a451;
+
+  // Grounds & text — ivory background, plum text, white cards
+  --ion-background-color: #faf5ec;
+  --ion-background-color-rgb: 250, 245, 236;
+  --ion-text-color: #3a2530;
+  --ion-text-color-rgb: 58, 37, 48;
+
+  --ion-toolbar-background: #6e1f3e;
+  --ion-toolbar-color: #ffffff;
+  --ion-tab-bar-background: #ffffff;
+  --ion-tab-bar-color: #9a7d88;
+  --ion-tab-bar-color-selected: #6e1f3e;
+
+  --ion-item-background: #ffffff;
+  --ion-card-background: #ffffff;
+  --ion-border-color: #ece2d2;
+
+  --ion-color-step-50: #f3ead9;
+  --ion-color-step-100: #ece2d2;
+  --ion-color-step-150: #e4d8c6;
+
+  // Cormorant Garamond for headings, keep system sans for body
+  --lv-serif: "Cormorant Garamond", Georgia, serif;
+}

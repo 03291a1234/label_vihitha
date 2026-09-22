@@ -34,7 +34,7 @@ import { AuthService } from '../core/auth.service';
     </ion-content>
   `,
   styles: [`
-    .login-bg { --background: linear-gradient(135deg, #1e1e2d, #3a3a5a); }
+    .login-bg { --background: linear-gradient(135deg, #6e1f3e, #3f1228); }
     .wrap { max-width: 420px; margin: 8vh auto 0; }
     .logo { text-align: center; color: #fff; margin-bottom: 16px; }
     .logo .mark { font-size: 48px; }

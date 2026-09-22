@@ -91,17 +91,12 @@ public class StoreService : IStoreService
             discount,
             promo.Valid ? promo.Code : null), ct);
 
-        // Storefront purchases are committed immediately.
-        await _orders.UpdateStatusAsync(order.Id, new UpdateOrderStatusRequest(OrderStatus.Confirmed), ct);
-
+        // A storefront order starts as Pending — a request the owner reviews. The owner moves it to
+        // Confirmed (and invoices/takes payment) after reviewing, then Fulfilled once it's received.
         if (promo.Valid) await _promos.MarkUsedAsync(promo.Code, ct);
 
-        var invoice = await _invoices.CreateAsync(new CreateInvoiceRequest(
-            order.Id, request.PaymentMethod, null,
-            $"Online order for {customer.Name}"), ct);
-
         return new StoreCheckoutResult(
-            order.OrderNumber, invoice.InvoiceNumber, order.SubTotal, order.DiscountTotal, order.GrandTotal,
+            order.OrderNumber, "", order.SubTotal, order.DiscountTotal, order.GrandTotal,
             request.PaymentMethod.ToString(), customer.Name);
     }
 

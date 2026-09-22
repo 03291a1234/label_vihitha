@@ -265,9 +265,9 @@ type View = 'shop' | 'checkout' | 'done';
           <div class="card done-card">
             <mat-icon class="ok">check_circle</mat-icon>
             <h2>Thank you, {{ r.customerName }}!</h2>
-            <p>Your order <strong>{{ r.orderNumber }}</strong> is confirmed.</p>
+            <p>Your order <strong>{{ r.orderNumber }}</strong> has been received and is <strong>pending review</strong>. We'll confirm it shortly.</p>
             @if (r.discount > 0) { <p class="saved">You saved {{ r.discount | currency }}!</p> }
-            <p>Invoice <strong>{{ r.invoiceNumber }}</strong> for <strong>{{ r.grandTotal | currency }}</strong> — pay by {{ r.paymentMethod }}.</p>
+            <p>Total <strong>{{ r.grandTotal | currency }}</strong> — pay by {{ r.paymentMethod }} once confirmed.</p>
             <button mat-raised-button color="primary" (click)="continueShopping()">Continue shopping</button>
           </div>
         </div>

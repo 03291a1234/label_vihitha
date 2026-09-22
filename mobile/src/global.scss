@@ -32,6 +32,18 @@
  * https://ionicframework.com/docs/theming/dark-mode
  */
 
+/* Dark mode disabled — the boutique theme is a light ivory/wine palette. */
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
+/* @import '@ionic/angular/css/palettes/dark.system.css'; */
+
+/* Brand serif for titles, matching the web app. */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap');
+
+ion-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  letter-spacing: .3px;
+}
+ion-toolbar { --border-width: 0; }
+
