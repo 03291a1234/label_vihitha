@@ -106,15 +106,8 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
           <ion-input type="number" min="0" label="Manual discount ($)" labelPlacement="stacked"
                      placeholder="0.00" [(ngModel)]="manualDiscount" (ionInput)="bump()"></ion-input>
         </ion-item>
-        <ion-item>
-          <ion-label>Payment</ion-label>
-          <ion-segment slot="end" [(ngModel)]="method">
-            <ion-segment-button value="Zelle"><ion-label>Zelle</ion-label></ion-segment-button>
-            <ion-segment-button value="Cash"><ion-label>Cash</ion-label></ion-segment-button>
-          </ion-segment>
-        </ion-item>
-        <ion-item>
-          <ion-toggle [(ngModel)]="markPaid">Mark paid now</ion-toggle>
+        <ion-item lines="none">
+          <ion-note class="flow-note">Placed as <strong>Pending</strong> — confirm, fulfil &amp; invoice from Orders.</ion-note>
         </ion-item>
       </ion-list>
 
@@ -134,7 +127,7 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
 
       <ion-button expand="block" size="large" (click)="complete()"
                   [disabled]="!customerId || lines().length === 0 || busy()">
-        {{ busy() ? 'Processing…' : 'Complete sale' }}
+        {{ busy() ? 'Placing…' : 'Place order' }}
       </ion-button>
     </ion-content>
 
@@ -160,6 +153,7 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
     .svc-row { display: flex; gap: 12px; width: 100%; }
     .svc-row ion-input { flex: 1; }
     .hdr-note { font-weight: 400; text-transform: none; margin-left: 6px; }
+    .flow-note { font-size: 13px; color: var(--ion-color-medium); }
     .scan-btn { margin: 4px 8px 0; }
     .scan-overlay { position: fixed; inset: 0; z-index: 2000; background: #000; display: flex;
       flex-direction: column; align-items: center; justify-content: center; }
@@ -300,9 +294,11 @@ export class SalePage {
   async complete() {
     if (!this.customerId || this.lines().length === 0) return;
     this.busy.set(true);
-    const loading = await this.loadingCtrl.create({ message: 'Completing sale…' });
+    const loading = await this.loadingCtrl.create({ message: 'Placing order…' });
     await loading.present();
     try {
+      // Create a Pending order — same lifecycle as the web: the owner reviews it to
+      // Confirmed, then Fulfilled, and invoices/takes payment from the Orders screen.
       const order = await firstValueFrom(this.api.createOrder({
         customerId: this.customerId,
         items: this.lines().map(l => ({ productId: l.product.id, quantity: l.quantity, finalPrice: l.finalPrice })),
@@ -311,17 +307,12 @@ export class SalePage {
           .filter(s => s.label.trim() && (Number(s.amount) || 0) > 0)
           .map(s => ({ label: s.label.trim(), amount: Number(s.amount) }))
       }));
-      await firstValueFrom(this.api.setStatus(order.id, 'Confirmed'));
-      const invoice = await firstValueFrom(this.api.createInvoice(order.id, this.method));
-      if (this.markPaid) {
-        await firstValueFrom(this.api.recordPayment(invoice.id, invoice.amountDue, this.method));
-      }
-      await this.showToast(`Sale complete · ${order.orderNumber} · ${invoice.invoiceNumber}`, 'success');
+      await this.showToast(`Order ${order.orderNumber} placed — pending review.`, 'success');
       this.reset();
       // refresh stock for subsequent sales
       this.api.products().subscribe(r => this.allProducts.set(r.items));
     } catch (e: any) {
-      const msg = e?.error?.title ?? 'Could not complete the sale';
+      const msg = e?.error?.title ?? 'Could not place the order';
       await this.showToast(msg, 'danger');
     } finally {
       this.busy.set(false);
