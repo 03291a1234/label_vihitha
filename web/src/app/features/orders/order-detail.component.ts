@@ -277,7 +277,12 @@ export class OrderDetailComponent {
     if (!o) return;
     const confirmCancel = status === 'Cancelled';
     const run = () => this.api.setStatus(o.id, status).subscribe({
-      next: (u) => { this.order.set(u); this.notify.success(`Order ${status}`); },
+      next: () => {
+        this.notify.success(`Order ${status}`);
+        // Return to the orders list (keeping the status filter) so the queue can be worked through.
+        const back = this.route.snapshot.queryParamMap.get('status');
+        this.router.navigate(['/orders'], back ? { queryParams: { status: back } } : {});
+      },
       error: (e) => this.notify.error(e)
     });
     if (confirmCancel) {

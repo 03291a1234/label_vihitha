@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime, distinctUntilChanged, map } from 'rxjs';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -106,7 +106,8 @@ import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/dat
             </td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="cols"></tr>
-          <tr mat-row *matRowDef="let row; columns: cols" class="clickable" [routerLink]="['/orders', row.id]"></tr>
+          <tr mat-row *matRowDef="let row; columns: cols" class="clickable"
+              [routerLink]="['/orders', row.id]" [queryParams]="{ status: statusParam() || null }"></tr>
         </table>
         @if (!loading() && rows().length === 0) { <div class="empty-state">No orders yet.</div> }
         <mat-paginator [length]="total()" [pageSize]="pageSize" [pageIndex]="page - 1"
@@ -141,6 +142,8 @@ import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/dat
 export class OrderListComponent {
   private api = inject(OrderApi);
   private notify = inject(Notify);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   auth = inject(AuthService);
 
   rows = signal<OrderListItem[]>([]);
@@ -162,6 +165,9 @@ export class OrderListComponent {
   private searchInput$ = new Subject<string>();
 
   constructor() {
+    // Restore the status filter from the URL (so returning from an order keeps the pending view).
+    const st = this.route.snapshot.queryParamMap.get('status');
+    if (st) this.selectedStatuses = st.split(',').filter(Boolean) as OrderStatus[];
     // Search as you type: fire once there are 3+ characters, or when cleared (reset to all).
     this.searchInput$.pipe(
       map(s => s.trim()),
@@ -175,6 +181,16 @@ export class OrderListComponent {
   }
 
   onSearchInput() { this.searchInput$.next(this.search); }
+
+  /** Keep the status filter in the URL so opening an order and returning preserves it. */
+  statusParam(): string { return this.selectedStatuses.join(','); }
+  private syncStatusUrl() {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { status: this.selectedStatuses.length ? this.statusParam() : null },
+      queryParamsHandling: 'merge', replaceUrl: true
+    });
+  }
 
   private filters() {
     return {
@@ -207,11 +223,12 @@ export class OrderListComponent {
   countFor(s: OrderStatus): number { return this.statusCounts().find(x => x.status === s)?.count ?? 0; }
   totalCount(): number { return this.statusCounts().reduce((sum, x) => sum + x.count, 0); }
   isSelected(s: OrderStatus): boolean { return this.selectedStatuses.includes(s); }
-  showAll() { if (this.selectedStatuses.length) { this.selectedStatuses = []; this.reload(); } }
+  showAll() { if (this.selectedStatuses.length) { this.selectedStatuses = []; this.syncStatusUrl(); this.reload(); } }
   toggleStatus(s: OrderStatus) {
     this.selectedStatuses = this.isSelected(s)
       ? this.selectedStatuses.filter(x => x !== s)
       : [...this.selectedStatuses, s];
+    this.syncStatusUrl();
     this.reload();
   }
 
