@@ -27,6 +27,7 @@ public record InvoiceDto(
     PaymentStatus PaymentStatus,
     DateTime? PaidDate,
     string? Notes,
+    OrderStatus OrderStatus,
     IReadOnlyList<PaymentDto> Payments);
 
 public record InvoiceListItemDto(
@@ -39,7 +40,8 @@ public record InvoiceListItemDto(
     PaymentMethod PaymentMethod,
     decimal AmountDue,
     decimal AmountPaid,
-    PaymentStatus PaymentStatus);
+    PaymentStatus PaymentStatus,
+    OrderStatus OrderStatus);
 
 public record CreateInvoiceRequest(
     int OrderId,

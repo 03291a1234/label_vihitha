@@ -35,7 +35,7 @@ public class InvoiceService : IInvoiceService
             .Take(pageSize)
             .Select(i => new InvoiceListItemDto(
                 i.Id, i.InvoiceNumber, i.OrderId, i.Order.OrderNumber, i.Order.Customer.Name,
-                i.InvoiceDate, i.PaymentMethod, i.AmountDue, i.AmountPaid, i.PaymentStatus))
+                i.InvoiceDate, i.PaymentMethod, i.AmountDue, i.AmountPaid, i.PaymentStatus, i.Order.Status))
             .ToListAsync(ct);
 
         return new PagedResult<InvoiceListItemDto>
@@ -114,10 +114,13 @@ public class InvoiceService : IInvoiceService
     public async Task<InvoiceDto> RecordPaymentAsync(int invoiceId, RecordPaymentRequest request, CancellationToken ct = default)
     {
         var invoice = await _db.Invoices
+            .Include(i => i.Order)
             .Include(i => i.Payments.Where(p => !p.IsDeleted))
             .FirstOrDefaultAsync(i => i.Id == invoiceId, ct)
             ?? throw new NotFoundException(nameof(Invoice), invoiceId);
 
+        if (invoice.Order?.Status == OrderStatus.Cancelled)
+            throw new ConflictException("This order was cancelled — its invoice is void. Record a refund instead if money was collected.");
         if (request.Amount <= 0m)
             throw new ConflictException("Payment amount must be greater than zero.");
 
@@ -263,6 +266,7 @@ public class InvoiceService : IInvoiceService
         i.PaymentStatus,
         i.PaidDate,
         i.Notes,
+        i.Order?.Status ?? OrderStatus.Confirmed,
         i.Payments.Where(p => !p.IsDeleted)
             .OrderBy(p => p.PaymentDate)
             .Select(p => new PaymentDto(p.Id, p.Amount, p.Method, p.PaymentDate, p.ReferenceNumber, p.RecordedBy, p.IsRefund, p.Notes))

@@ -470,6 +470,7 @@ export interface Invoice {
   paymentStatus: PaymentStatus;
   paidDate?: string | null;
   notes?: string | null;
+  orderStatus: OrderStatus;
   payments: Payment[];
 }
 
@@ -484,6 +485,7 @@ export interface InvoiceListItem {
   amountDue: number;
   amountPaid: number;
   paymentStatus: PaymentStatus;
+  orderStatus: OrderStatus;
 }
 
 export interface FollowUp {

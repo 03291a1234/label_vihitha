@@ -79,12 +79,23 @@ import { InvoiceListItem, PaymentMethod, PaymentStatus } from '../../core/models
             <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Paid</th>
             <td mat-cell *matCellDef="let i" class="text-right mono">{{ i.amountPaid | currency }}</td>
           </ng-container>
+          <ng-container matColumnDef="orderStatus">
+            <th mat-header-cell *matHeaderCellDef>Order</th>
+            <td mat-cell *matCellDef="let i"><span class="chip {{i.orderStatus}}">{{ i.orderStatus }}</span></td>
+          </ng-container>
           <ng-container matColumnDef="paymentStatus">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-            <td mat-cell *matCellDef="let i"><span class="chip {{i.paymentStatus}}">{{ i.paymentStatus }}</span></td>
+            <td mat-cell *matCellDef="let i">
+              @if (i.orderStatus === 'Cancelled') {
+                <span class="chip void">Void</span>
+              } @else {
+                <span class="chip {{i.paymentStatus}}">{{ i.paymentStatus }}</span>
+              }
+            </td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="cols"></tr>
-          <tr mat-row *matRowDef="let row; columns: cols" class="clickable" [routerLink]="['/invoices', row.id]"></tr>
+          <tr mat-row *matRowDef="let row; columns: cols" class="clickable"
+              [class.voided]="row.orderStatus === 'Cancelled'" [routerLink]="['/invoices', row.id]"></tr>
         </table>
         @if (!loading() && rows().length === 0) { <div class="empty-state">No invoices yet.</div> }
         <mat-paginator [length]="total()" [pageSize]="pageSize" [pageIndex]="page - 1"
@@ -98,6 +109,9 @@ import { InvoiceListItem, PaymentMethod, PaymentStatus } from '../../core/models
       text-decoration: none; padding: 2px 8px; border-radius: 999px; background: var(--lv-rose-soft); transition: background .12s; }
     .order-link:hover { background: #ecd4de; }
     .order-link mat-icon { font-size: 16px; height: 16px; width: 16px; }
+    tr.voided td:not(:nth-child(2)) { opacity: .5; }
+    tr.voided td .mono { text-decoration: line-through; }
+    .chip.void { background: #efe4e8; color: #7a5563; border: 1px solid #d9c3cc; }
   `]
 })
 export class InvoiceListComponent {
@@ -114,7 +128,7 @@ export class InvoiceListComponent {
   sortDir: string | null = null;
   page = 1;
   pageSize = 25;
-  cols = ['invoiceNumber', 'orderNumber', 'customerName', 'invoiceDate', 'paymentMethod', 'amountDue', 'amountPaid', 'paymentStatus'];
+  cols = ['invoiceNumber', 'orderNumber', 'customerName', 'invoiceDate', 'paymentMethod', 'amountDue', 'amountPaid', 'orderStatus', 'paymentStatus'];
 
   constructor() { this.load(); }
 

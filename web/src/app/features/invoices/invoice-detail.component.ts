@@ -28,10 +28,15 @@ import { RecordRefundDialog } from './record-refund.dialog';
         <div class="page-header">
           <h1>
             <button mat-icon-button routerLink="/invoices"><mat-icon>arrow_back</mat-icon></button>
-            {{ inv.invoiceNumber }} <span class="chip {{inv.paymentStatus}}">{{ inv.paymentStatus }}</span>
+            {{ inv.invoiceNumber }}
+            @if (inv.orderStatus === 'Cancelled') {
+              <span class="chip void">Void</span>
+            } @else {
+              <span class="chip {{inv.paymentStatus}}">{{ inv.paymentStatus }}</span>
+            }
           </h1>
           <div class="toolbar-row">
-            @if (auth.canManageSales() && inv.amountRemaining > 0 && inv.paymentStatus !== 'Refunded') {
+            @if (auth.canManageSales() && inv.orderStatus !== 'Cancelled' && inv.amountRemaining > 0 && inv.paymentStatus !== 'Refunded') {
               <button mat-raised-button color="primary" (click)="recordPayment(inv)">
                 <mat-icon>add_card</mat-icon> Record payment
               </button>
@@ -44,8 +49,19 @@ import { RecordRefundDialog } from './record-refund.dialog';
           </div>
         </div>
 
+        @if (inv.orderStatus === 'Cancelled') {
+          <div class="card void-banner">
+            <mat-icon>block</mat-icon>
+            <div>
+              <strong>This order was cancelled — the invoice is void.</strong>
+              <div class="muted">No payment is due and it's excluded from outstanding balances.
+                @if (inv.amountPaid > 0) { Money was collected — use <em>Record refund</em> to return it. }</div>
+            </div>
+          </div>
+        }
+
         <div class="meta card">
-          <div><span class="muted">Order</span><div><a class="order-link" [routerLink]="['/orders', inv.orderId]"><mat-icon>receipt_long</mat-icon>{{ inv.orderNumber }}</a></div></div>
+          <div><span class="muted">Order</span><div class="order-cell"><a class="order-link" [routerLink]="['/orders', inv.orderId]"><mat-icon>receipt_long</mat-icon>{{ inv.orderNumber }}</a><span class="chip {{inv.orderStatus}}">{{ inv.orderStatus }}</span></div></div>
           <div><span class="muted">Customer</span><div>{{ inv.customerName }}</div></div>
           <div><span class="muted">Invoice date</span><div>{{ inv.invoiceDate | date:'medium' }}</div></div>
           <div><span class="muted">Method</span><div>{{ inv.paymentMethod }}@if (inv.paymentReference) { · {{ inv.paymentReference }} }</div></div>
@@ -99,6 +115,11 @@ import { RecordRefundDialog } from './record-refund.dialog';
     .notes { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; background: #fffde7; }
     .card { margin-bottom: 16px; }
     h3 { margin: 4px 0 12px; }
+    .order-cell { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .void-banner { display: flex; gap: 12px; align-items: flex-start; background: #fbeef1; border: 1px solid #e3c6d0; }
+    .void-banner mat-icon { color: #a13b57; }
+    .void-banner .muted { font-size: 13px; margin-top: 2px; }
+    .chip.void { background: #efe4e8; color: #7a5563; border: 1px solid #d9c3cc; }
   `]
 })
 export class InvoiceDetailComponent {
