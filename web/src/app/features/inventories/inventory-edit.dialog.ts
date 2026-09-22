@@ -34,14 +34,10 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     <h2 mat-dialog-title>{{ data ? 'Edit inventory' : 'New inventory' }}</h2>
     <mat-dialog-content>
       @if (busy()) { <mat-progress-bar mode="indeterminate" /> }
-      <form [formGroup]="form" class="dialog-form">
+      <form [formGroup]="form" class="grid2">
         <mat-form-field>
           <mat-label>Name</mat-label>
           <input matInput formControlName="name" placeholder="e.g. Inventory 2" />
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Description</mat-label>
-          <textarea matInput rows="2" formControlName="description" placeholder="Batch / collection details"></textarea>
         </mat-form-field>
         <mat-form-field>
           <mat-label>Paid by</mat-label>
@@ -49,9 +45,13 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
             <mat-option [value]="null">— None (jointly funded) —</mat-option>
             @for (o of owners(); track o.id) { <mat-option [value]="o.id">{{ o.name }}</mat-option> }
           </mat-select>
-          <mat-hint>Owner whose capital funded this whole batch (optional)</mat-hint>
+          <mat-hint>Owner whose capital funded this batch (optional)</mat-hint>
         </mat-form-field>
-        @if (data) { <mat-slide-toggle formControlName="isActive">Active</mat-slide-toggle> }
+        <mat-form-field class="span2">
+          <mat-label>Description</mat-label>
+          <textarea matInput rows="2" formControlName="description" placeholder="Batch / collection details"></textarea>
+        </mat-form-field>
+        @if (data) { <mat-slide-toggle class="span2" formControlName="isActive">Active</mat-slide-toggle> }
       </form>
 
       <!-- Bills -->
@@ -81,25 +81,25 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
           </div>
         }
 
-        <div class="add-bill">
-          <button mat-stroked-button type="button" (click)="fileInput.click()" [disabled]="busy()">
-            <mat-icon>upload_file</mat-icon> {{ pendingName() || 'Choose file (image / PDF, optional)' }}
+        <div class="add-bill grid2">
+          <button mat-stroked-button type="button" class="filebtn" (click)="fileInput.click()" [disabled]="busy()">
+            <mat-icon>upload_file</mat-icon> {{ pendingName() || 'Choose file (optional)' }}
           </button>
           <input #fileInput type="file" hidden accept="image/*,application/pdf" (change)="onFile($event)" />
           <app-search-select label="Vendor" [items]="vendors()" [(ngModel)]="billVendorId" [ngModelOptions]="{standalone:true}"
             nullOption nullLabel="— No vendor —" searchPlaceholder="Search vendors…" />
-          <div class="bfields">
-            <app-money-input class="famt" label="Amount" [(ngModel)]="billAmount" [ngModelOptions]="{standalone:true}" />
-            <app-date-input class="fdate" label="Bill date" [(ngModel)]="billDate" [ngModelOptions]="{standalone:true}" />
-          </div>
-          <mat-form-field appearance="outline" class="fnote">
+          <app-money-input label="Amount" [(ngModel)]="billAmount" [ngModelOptions]="{standalone:true}" />
+          <app-date-input label="Bill date" [(ngModel)]="billDate" [ngModelOptions]="{standalone:true}" />
+          <mat-form-field appearance="outline" class="span2">
             <mat-label>Note (vendor, what it covers…)</mat-label>
             <input matInput [(ngModel)]="billNote" [ngModelOptions]="{standalone:true}" />
           </mat-form-field>
-          <button mat-stroked-button type="button" (click)="addBill()" [disabled]="!canAddBill() || busy()">
-            <mat-icon>add</mat-icon> Add bill
-          </button>
-          <p class="add-hint muted">Attach an invoice or just enter a vendor and amount — add as many as you need.</p>
+          <div class="span2 add-row">
+            <span class="add-hint muted">Attach an invoice or just enter a vendor and amount.</span>
+            <button mat-stroked-button type="button" (click)="addBill()" [disabled]="!canAddBill() || busy()">
+              <mat-icon>add</mat-icon> Add bill
+            </button>
+          </div>
         </div>
       </div>
 
@@ -129,7 +129,15 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     </mat-dialog-actions>
   `,
   styles: [`
-    mat-dialog-content { min-width: min(460px, 84vw); }
+    mat-dialog-content { min-width: min(720px, 92vw); max-height: 78vh; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; align-items: start; }
+    .grid2 > * { min-width: 0; }
+    .grid2 .span2 { grid-column: 1 / -1; }
+    .grid2 mat-slide-toggle { margin: 2px 0 4px; }
+    .grid2 app-search-select, .grid2 app-money-input, .grid2 app-date-input { display: block; width: 100%; }
+    .grid2 .filebtn { justify-self: start; align-self: center; }
+    .add-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 2px; }
+    @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } .grid2 .span2 { grid-column: auto; } }
     .bills-panel { border-top: 1px solid var(--lv-line); margin-top: 8px; padding-top: 12px; }
     .bills-panel h3 { margin: 0 0 8px; color: var(--lv-wine); font-size: 15px; }
     .bill { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px;
@@ -140,11 +148,8 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     .vtag { background: var(--lv-rose-soft); color: var(--lv-wine); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; margin-left: 6px; }
     a.fname:hover { text-decoration: underline; }
     .amt { font-weight: 700; white-space: nowrap; }
-    .add-bill { margin-top: 8px; }
-    .add-hint { font-size: 12px; margin: 6px 2px 0; }
-    .bfields { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-    .famt, .fdate { flex: 1; }
-    .fnote { width: 100%; }
+    .add-bill { margin-top: 10px; }
+    .add-hint { font-size: 12px; }
     .muted { color: rgba(58,37,48,.6); }
     .pricing-panel { border-top: 1px solid var(--lv-line); margin-top: 12px; padding-top: 12px; }
     .pricing-panel h3 { margin: 0 0 8px; color: var(--lv-wine); font-size: 15px; }
