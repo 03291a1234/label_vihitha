@@ -431,6 +431,10 @@ public class InventoryShippingConfiguration : IEntityTypeConfiguration<Inventory
             .WithMany()
             .HasForeignKey(x => x.InventoryId)
             .OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(x => x.Category)
+            .WithMany()
+            .HasForeignKey(x => x.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
         b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

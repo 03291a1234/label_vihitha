@@ -282,7 +282,10 @@ export class InventoryListComponent {
 
   addShipping(i: Inventory) {
     this.dialog.open(ApplyShippingDialog, {
-      data: { inventoryId: i.id, inventoryName: i.name, totalUnits: i.totalUnits }, width: '480px'
+      data: {
+        inventoryId: i.id, inventoryName: i.name, totalUnits: i.totalUnits,
+        categories: i.categories.map(c => ({ id: c.categoryId, name: c.categoryName, units: c.totalUnits }))
+      }, width: '480px'
     }).afterClosed().subscribe(applied => { if (applied) this.load(); });
   }
 

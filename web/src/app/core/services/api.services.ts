@@ -102,13 +102,13 @@ export class InventoryApi {
   removeBill(inventoryId: number, billId: number) {
     return this.http.delete<void>(`${base}/inventories/${inventoryId}/bills/${billId}`);
   }
-  applyShipping(inventoryId: number, body: { amountUsd: number; markupPercent: number; note?: string | null }) {
+  applyShipping(inventoryId: number, body: { amountUsd: number; markupPercent: number; note?: string | null; categoryId?: number | null }) {
     return this.http.post<ApplyShippingResult>(`${base}/inventories/${inventoryId}/shipping`, body);
   }
   getShipping(inventoryId: number) {
     return this.http.get<Shipping[]>(`${base}/inventories/${inventoryId}/shipping`);
   }
-  updateShipping(inventoryId: number, shippingId: number, body: { amountUsd: number; markupPercent: number; note?: string | null }) {
+  updateShipping(inventoryId: number, shippingId: number, body: { amountUsd: number; markupPercent: number; note?: string | null; categoryId?: number | null }) {
     return this.http.put<Shipping>(`${base}/inventories/${inventoryId}/shipping/${shippingId}`, body);
   }
   deleteShipping(inventoryId: number, shippingId: number) {

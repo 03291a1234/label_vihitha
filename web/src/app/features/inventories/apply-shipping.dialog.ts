@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { InventoryApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
@@ -15,13 +16,16 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 import { Shipping } from '../../core/models';
 
-export interface ApplyShippingData { inventoryId: number; inventoryName: string; totalUnits: number; }
+export interface ApplyShippingData {
+  inventoryId: number; inventoryName: string; totalUnits: number;
+  categories: { id: number; name: string; units: number }[];
+}
 
 @Component({
   selector: 'app-apply-shipping-dialog',
   standalone: true,
   imports: [CurrencyPipe, DecimalPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatButtonModule, MatButtonToggleModule, MatIconModule, InrAmountPipe],
+    MatButtonModule, MatButtonToggleModule, MatSelectModule, MatIconModule, InrAmountPipe],
   template: `
     <h2 mat-dialog-title>Shipping · {{ data.inventoryName }}</h2>
     <mat-dialog-content>
@@ -32,7 +36,7 @@ export interface ApplyShippingData { inventoryId: number; inventoryName: string;
           @for (s of shippings(); track s.id) {
             <div class="srow" [class.editing]="editingId() === s.id">
               <div class="sinfo">
-                <strong>{{ s.amountUsd | currency }}</strong>
+                <strong>{{ s.amountUsd | currency }} <span class="cat">{{ s.categoryName || 'All categories' }}</span></strong>
                 <span class="muted">{{ s.perUnitUsd | currency:'USD':'symbol':'1.2-4' }}/unit · {{ s.markupPercent }}% markup · {{ s.productsAffected }} product{{ s.productsAffected === 1 ? '' : 's' }}</span>
                 <span class="muted date">{{ s.appliedAt | date:'mediumDate' }}@if (s.note) { · {{ s.note }} }</span>
               </div>
@@ -46,8 +50,19 @@ export interface ApplyShippingData { inventoryId: number; inventoryName: string;
       }
 
       <div class="sec">{{ editingId() ? 'Edit shipping' : 'Add shipping' }}</div>
-      <p class="muted lead">Splits the amount evenly across the <strong>{{ data.totalUnits }}</strong> unit{{ data.totalUnits === 1 ? '' : 's' }}
-        on hand, adds each unit's share to product cost, then re-prices sale = cost × markup.</p>
+
+      <mat-form-field class="grow">
+        <mat-label>Apply to</mat-label>
+        <mat-select [(ngModel)]="category" (selectionChange)="bump()">
+          <mat-option [value]="null">All categories ({{ data.totalUnits }} units)</mat-option>
+          @for (c of data.categories; track c.id) {
+            <mat-option [value]="c.id">{{ c.name }} ({{ c.units }} unit{{ c.units === 1 ? '' : 's' }})</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <p class="muted lead">Splits the amount evenly across the <strong>{{ selUnits() }}</strong> unit{{ selUnits() === 1 ? '' : 's' }}
+        {{ category ? 'in this category' : 'on hand' }}, adds each unit's share to product cost, then re-prices sale = cost × markup.</p>
 
       <div class="amount-row">
         <mat-form-field class="amt">
@@ -72,17 +87,17 @@ export interface ApplyShippingData { inventoryId: number; inventoryName: string;
         <input matInput [(ngModel)]="note" placeholder="e.g. DHL air freight" />
       </mat-form-field>
 
-      @if (usd() > 0 && data.totalUnits > 0) {
+      @if (usd() > 0 && selUnits() > 0) {
         <div class="preview">
           <div class="prow"><span>Shipping (USD)</span><strong>{{ usd() | currency }}</strong></div>
-          <div class="prow"><span>Per unit ({{ data.totalUnits }} units)</span><strong>{{ perUnit() | currency:'USD':'symbol':'1.2-4' }}</strong></div>
+          <div class="prow"><span>Per unit ({{ selUnits() }} units)</span><strong>{{ perUnit() | currency:'USD':'symbol':'1.2-4' }}</strong></div>
         </div>
       }
       @if (editingId()) { <button mat-button (click)="cancelEdit()">Cancel edit</button> }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button (click)="ref.close(changed)">Done</button>
-      <button mat-raised-button color="primary" (click)="save()" [disabled]="usd() <= 0 || data.totalUnits < 1 || busy()">
+      <button mat-raised-button color="primary" (click)="save()" [disabled]="usd() <= 0 || selUnits() < 1 || busy()">
         {{ editingId() ? 'Update shipping' : 'Apply shipping' }}
       </button>
     </mat-dialog-actions>
@@ -93,6 +108,7 @@ export interface ApplyShippingData { inventoryId: number; inventoryName: string;
     .srow { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--lv-line); border-radius: 10px; margin-bottom: 6px; }
     .srow.editing { border-color: var(--lv-wine); background: var(--lv-rose-soft); }
     .sinfo { display: flex; flex-direction: column; }
+    .sinfo .cat { font-weight: 600; font-size: 12px; color: var(--lv-wine); background: var(--lv-rose-soft); border-radius: 999px; padding: 1px 8px; margin-left: 4px; }
     .sinfo .muted { font-size: 12px; }
     .sinfo .date { font-size: 11px; }
     .lead { margin: 0 0 14px; }
@@ -115,6 +131,7 @@ export class ApplyShippingDialog {
   currency: 'USD' | 'INR' = 'USD';
   markup = 100;
   note = '';
+  category: number | null = null;
   busy = signal(false);
   shippings = signal<Shipping[]>([]);
   editingId = signal<number | null>(null);
@@ -131,7 +148,12 @@ export class ApplyShippingDialog {
     const a = this.amount || 0;
     return this.currency === 'INR' ? a / this.settings.inrPerUsd() : a;
   });
-  perUnit = computed(() => this.data.totalUnits > 0 ? this.usd() / this.data.totalUnits : 0);
+  selUnits = computed(() => {
+    this.v();
+    if (this.category == null) return this.data.totalUnits;
+    return this.data.categories.find(c => c.id === this.category)?.units ?? 0;
+  });
+  perUnit = computed(() => this.selUnits() > 0 ? this.usd() / this.selUnits() : 0);
 
   startEdit(s: Shipping) {
     this.editingId.set(s.id);
@@ -139,14 +161,15 @@ export class ApplyShippingDialog {
     this.currency = 'USD';
     this.markup = s.markupPercent;
     this.note = s.note ?? '';
+    this.category = s.categoryId ?? null;
     this.bump();
   }
-  cancelEdit() { this.editingId.set(null); this.amount = null; this.markup = 100; this.note = ''; this.bump(); }
+  cancelEdit() { this.editingId.set(null); this.amount = null; this.markup = 100; this.note = ''; this.category = null; this.bump(); }
 
   save() {
     if (this.usd() <= 0) return;
     this.busy.set(true);
-    const body = { amountUsd: +this.usd().toFixed(4), markupPercent: this.markup || 0, note: this.note.trim() || null };
+    const body = { amountUsd: +this.usd().toFixed(4), markupPercent: this.markup || 0, note: this.note.trim() || null, categoryId: this.category };
     const id = this.editingId();
     const req: Observable<unknown> = id
       ? this.api.updateShipping(this.data.inventoryId, id, body)

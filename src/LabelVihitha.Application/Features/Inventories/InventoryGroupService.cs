@@ -206,9 +206,9 @@ public class InventoryGroupService : IInventoryGroupService
         if (request.AmountUsd <= 0) throw new ConflictException("Shipping amount must be greater than zero.");
         if (request.MarkupPercent < 0) throw new ConflictException("Markup can't be negative.");
 
-        var products = await LoadBatchProductsAsync(inventoryId, ct);
+        var products = await LoadBatchProductsAsync(inventoryId, request.CategoryId, ct);
         var totalUnits = products.Sum(p => p.QuantityOnHand);
-        if (totalUnits <= 0) throw new ConflictException("This inventory has no units on hand to spread shipping across.");
+        if (totalUnits <= 0) throw new ConflictException("No units on hand to spread shipping across for this selection.");
 
         var perUnit = request.AmountUsd / totalUnits;          // full precision; money columns round on save
         var affected = AddPerUnitCost(products, perUnit, request.MarkupPercent);
@@ -216,6 +216,7 @@ public class InventoryGroupService : IInventoryGroupService
         _db.InventoryShippings.Add(new InventoryShipping
         {
             InventoryId = inventoryId,
+            CategoryId = request.CategoryId,
             AmountUsd = request.AmountUsd,
             PerUnitUsd = perUnit,
             UnitsCovered = totalUnits,
@@ -232,7 +233,7 @@ public class InventoryGroupService : IInventoryGroupService
             .Where(s => s.InventoryId == inventoryId)
             .OrderByDescending(s => s.CreatedAt)
             .Select(s => new ShippingDto(s.Id, s.AmountUsd, s.PerUnitUsd, s.UnitsCovered, s.MarkupPercent,
-                s.CreatedAt, s.ProductIds.Count, s.Note))
+                s.CreatedAt, s.ProductIds.Count, s.Note, s.CategoryId, s.Category != null ? s.Category.Name : null))
             .ToListAsync(ct);
 
     public async Task<ShippingDto> UpdateShippingAsync(int shippingId, ApplyShippingRequest request, CancellationToken ct = default)
@@ -242,14 +243,16 @@ public class InventoryGroupService : IInventoryGroupService
         var ship = await _db.InventoryShippings.FirstOrDefaultAsync(s => s.Id == shippingId, ct)
             ?? throw new NotFoundException(nameof(InventoryShipping), shippingId);
 
-        // Reverse the old allocation, then re-apply the new amount across the batch's current units.
+        // Reverse the old allocation, then re-apply the new amount across the current selection.
         await ReversePerUnitCostAsync(ship, ct);
-        var products = await LoadBatchProductsAsync(ship.InventoryId, ct);
+        var category = request.CategoryId ?? ship.CategoryId;
+        var products = await LoadBatchProductsAsync(ship.InventoryId, category, ct);
         var totalUnits = products.Sum(p => p.QuantityOnHand);
-        if (totalUnits <= 0) throw new ConflictException("This inventory has no units on hand to spread shipping across.");
+        if (totalUnits <= 0) throw new ConflictException("No units on hand to spread shipping across for this selection.");
 
         var perUnit = request.AmountUsd / totalUnits;
         var affected = AddPerUnitCost(products, perUnit, request.MarkupPercent);
+        ship.CategoryId = category;
         ship.AmountUsd = request.AmountUsd;
         ship.PerUnitUsd = perUnit;
         ship.UnitsCovered = totalUnits;
@@ -258,8 +261,10 @@ public class InventoryGroupService : IInventoryGroupService
         ship.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
         ship.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+        var catName = category == null ? null
+            : await _db.Categories.AsNoTracking().Where(c => c.Id == category).Select(c => c.Name).FirstOrDefaultAsync(ct);
         return new ShippingDto(ship.Id, ship.AmountUsd, ship.PerUnitUsd, ship.UnitsCovered, ship.MarkupPercent,
-            ship.CreatedAt, affected.Count, ship.Note);
+            ship.CreatedAt, affected.Count, ship.Note, category, catName);
     }
 
     public async Task DeleteShippingAsync(int shippingId, CancellationToken ct = default)
@@ -272,11 +277,14 @@ public class InventoryGroupService : IInventoryGroupService
         await _db.SaveChangesAsync(ct);
     }
 
-    private async Task<List<Product>> LoadBatchProductsAsync(int inventoryId, CancellationToken ct) =>
-        await _db.Products
+    private async Task<List<Product>> LoadBatchProductsAsync(int inventoryId, int? categoryId, CancellationToken ct)
+    {
+        var q = _db.Products
             .Include(p => p.Variants.Where(v => !v.IsDeleted))
-            .Where(p => p.InventoryId == inventoryId && !p.IsDeleted)
-            .ToListAsync(ct);
+            .Where(p => p.InventoryId == inventoryId && !p.IsDeleted);
+        if (categoryId is int cid) q = q.Where(p => p.CategoryId == cid);
+        return await q.ToListAsync(ct);
+    }
 
     /// <summary>Add a per-unit shipping share to each in-stock product's cost and re-price to markup.
     /// Returns the ids of the products touched.</summary>

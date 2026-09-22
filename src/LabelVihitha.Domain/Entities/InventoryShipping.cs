@@ -12,6 +12,10 @@ public class InventoryShipping : BaseEntity
     public int InventoryId { get; set; }
     public Inventory Inventory { get; set; } = null!;
 
+    /// <summary>Optional: shipping applied only to products in this category (null = whole batch).</summary>
+    public int? CategoryId { get; set; }
+    public Category? Category { get; set; }
+
     /// <summary>Total shipping in USD.</summary>
     public decimal AmountUsd { get; set; }
 

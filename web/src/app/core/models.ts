@@ -84,6 +84,8 @@ export interface Shipping {
   appliedAt: string;
   productsAffected: number;
   note?: string | null;
+  categoryId?: number | null;
+  categoryName?: string | null;
 }
 
 export interface InventoryBill {
