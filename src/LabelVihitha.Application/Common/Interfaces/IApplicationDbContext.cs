@@ -30,6 +30,7 @@ public interface IApplicationDbContext
     DbSet<OwnerTransaction> OwnerTransactions { get; }
     DbSet<CashAccount> CashAccounts { get; }
     DbSet<CashMovement> CashMovements { get; }
+    DbSet<InventoryShipping> InventoryShippings { get; }
     DbSet<PromoCode> PromoCodes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

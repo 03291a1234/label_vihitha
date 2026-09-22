@@ -206,39 +206,118 @@ public class InventoryGroupService : IInventoryGroupService
         if (request.AmountUsd <= 0) throw new ConflictException("Shipping amount must be greater than zero.");
         if (request.MarkupPercent < 0) throw new ConflictException("Markup can't be negative.");
 
-        var products = await _db.Products
-            .Include(p => p.Variants.Where(v => !v.IsDeleted))
-            .Include(p => p.CostComponents.Where(c => !c.IsDeleted))
-            .Where(p => p.InventoryId == inventoryId && !p.IsDeleted)
-            .ToListAsync(ct);
-
+        var products = await LoadBatchProductsAsync(inventoryId, ct);
         var totalUnits = products.Sum(p => p.QuantityOnHand);
         if (totalUnits <= 0) throw new ConflictException("This inventory has no units on hand to spread shipping across.");
 
         var perUnit = request.AmountUsd / totalUnits;          // full precision; money columns round on save
-        var mult = 1m + request.MarkupPercent / 100m;
-        var updated = 0;
+        var affected = AddPerUnitCost(products, perUnit, request.MarkupPercent);
 
+        _db.InventoryShippings.Add(new InventoryShipping
+        {
+            InventoryId = inventoryId,
+            AmountUsd = request.AmountUsd,
+            PerUnitUsd = perUnit,
+            UnitsCovered = totalUnits,
+            MarkupPercent = request.MarkupPercent,
+            ProductIds = affected,
+            Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim()
+        });
+        await _db.SaveChangesAsync(ct);
+        return new ApplyShippingResult(affected.Count, totalUnits, decimal.Round(perUnit, 4), request.AmountUsd, request.MarkupPercent);
+    }
+
+    public async Task<IReadOnlyList<ShippingDto>> GetShippingsAsync(int inventoryId, CancellationToken ct = default) =>
+        await _db.InventoryShippings.AsNoTracking()
+            .Where(s => s.InventoryId == inventoryId)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new ShippingDto(s.Id, s.AmountUsd, s.PerUnitUsd, s.UnitsCovered, s.MarkupPercent,
+                s.CreatedAt, s.ProductIds.Count, s.Note))
+            .ToListAsync(ct);
+
+    public async Task<ShippingDto> UpdateShippingAsync(int shippingId, ApplyShippingRequest request, CancellationToken ct = default)
+    {
+        if (request.AmountUsd <= 0) throw new ConflictException("Shipping amount must be greater than zero.");
+        if (request.MarkupPercent < 0) throw new ConflictException("Markup can't be negative.");
+        var ship = await _db.InventoryShippings.FirstOrDefaultAsync(s => s.Id == shippingId, ct)
+            ?? throw new NotFoundException(nameof(InventoryShipping), shippingId);
+
+        // Reverse the old allocation, then re-apply the new amount across the batch's current units.
+        await ReversePerUnitCostAsync(ship, ct);
+        var products = await LoadBatchProductsAsync(ship.InventoryId, ct);
+        var totalUnits = products.Sum(p => p.QuantityOnHand);
+        if (totalUnits <= 0) throw new ConflictException("This inventory has no units on hand to spread shipping across.");
+
+        var perUnit = request.AmountUsd / totalUnits;
+        var affected = AddPerUnitCost(products, perUnit, request.MarkupPercent);
+        ship.AmountUsd = request.AmountUsd;
+        ship.PerUnitUsd = perUnit;
+        ship.UnitsCovered = totalUnits;
+        ship.MarkupPercent = request.MarkupPercent;
+        ship.ProductIds = affected;
+        ship.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+        ship.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return new ShippingDto(ship.Id, ship.AmountUsd, ship.PerUnitUsd, ship.UnitsCovered, ship.MarkupPercent,
+            ship.CreatedAt, affected.Count, ship.Note);
+    }
+
+    public async Task DeleteShippingAsync(int shippingId, CancellationToken ct = default)
+    {
+        var ship = await _db.InventoryShippings.FirstOrDefaultAsync(s => s.Id == shippingId, ct)
+            ?? throw new NotFoundException(nameof(InventoryShipping), shippingId);
+        await ReversePerUnitCostAsync(ship, ct);
+        ship.IsDeleted = true;
+        ship.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private async Task<List<Product>> LoadBatchProductsAsync(int inventoryId, CancellationToken ct) =>
+        await _db.Products
+            .Include(p => p.Variants.Where(v => !v.IsDeleted))
+            .Where(p => p.InventoryId == inventoryId && !p.IsDeleted)
+            .ToListAsync(ct);
+
+    /// <summary>Add a per-unit shipping share to each in-stock product's cost and re-price to markup.
+    /// Returns the ids of the products touched.</summary>
+    private static List<int> AddPerUnitCost(List<Product> products, decimal perUnit, decimal markupPercent)
+    {
+        var mult = 1m + markupPercent / 100m;
+        var affected = new List<int>();
         foreach (var p in products.Where(p => p.QuantityOnHand > 0))
         {
-            // Add each unit's shipping share to the per-unit cost. Keep the cost-component ledger in
-            // step for products that use it, so a later re-sum doesn't drop the shipping.
-            if (p.CostComponents.Count > 0)
-                p.CostComponents.Add(new ProductCostComponent { Label = "Shipping (allocated)", Amount = decimal.Round(perUnit, 2) });
             p.OriginalPrice = decimal.Round(p.OriginalPrice + perUnit, 2);
             p.SalePrice = decimal.Round(p.OriginalPrice * mult, 2);
-
             foreach (var v in p.Variants.Where(v => v.CostPrice != null))
             {
                 v.CostPrice = decimal.Round(v.CostPrice!.Value + perUnit, 2);
                 v.SalePrice = decimal.Round(v.CostPrice.Value * mult, 2);
             }
             p.UpdatedAt = DateTime.UtcNow;
-            updated++;
+            affected.Add(p.Id);
         }
+        return affected;
+    }
 
-        await _db.SaveChangesAsync(ct);
-        return new ApplyShippingResult(updated, totalUnits, decimal.Round(perUnit, 4), request.AmountUsd, request.MarkupPercent);
+    /// <summary>Subtract a recorded shipping's per-unit share back off exactly the products it touched.</summary>
+    private async Task ReversePerUnitCostAsync(InventoryShipping ship, CancellationToken ct)
+    {
+        if (ship.ProductIds.Count == 0) return;
+        var products = await _db.Products.Include(p => p.Variants.Where(v => !v.IsDeleted))
+            .Where(p => ship.ProductIds.Contains(p.Id) && !p.IsDeleted)
+            .ToListAsync(ct);
+        var mult = 1m + ship.MarkupPercent / 100m;
+        foreach (var p in products)
+        {
+            p.OriginalPrice = decimal.Round(Math.Max(0m, p.OriginalPrice - ship.PerUnitUsd), 2);
+            p.SalePrice = decimal.Round(p.OriginalPrice * mult, 2);
+            foreach (var v in p.Variants.Where(v => v.CostPrice != null))
+            {
+                v.CostPrice = decimal.Round(Math.Max(0m, v.CostPrice!.Value - ship.PerUnitUsd), 2);
+                v.SalePrice = decimal.Round(v.CostPrice.Value * mult, 2);
+            }
+            p.UpdatedAt = DateTime.UtcNow;
+        }
     }
 
     /// <summary>Reset every product's sale price to the given markup over its current cost. Cost is

@@ -417,6 +417,24 @@ public class CashAccountConfiguration : IEntityTypeConfiguration<CashAccount>
     }
 }
 
+public class InventoryShippingConfiguration : IEntityTypeConfiguration<InventoryShipping>
+{
+    public void Configure(EntityTypeBuilder<InventoryShipping> b)
+    {
+        b.Property(x => x.Note).HasMaxLength(300);
+        b.Property(x => x.AmountUsd).HasPrecision(18, 2);
+        b.Property(x => x.PerUnitUsd).HasPrecision(18, 6);
+        b.Property(x => x.MarkupPercent).HasPrecision(9, 2);
+        // Affected product ids stored as a JSON array (EF Core 8 primitive collection).
+        b.PrimitiveCollection(x => x.ProductIds);
+        b.HasOne(x => x.Inventory)
+            .WithMany()
+            .HasForeignKey(x => x.InventoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.HasQueryFilter(x => !x.IsDeleted);
+    }
+}
+
 public class CashMovementConfiguration : IEntityTypeConfiguration<CashMovement>
 {
     public void Configure(EntityTypeBuilder<CashMovement> b)

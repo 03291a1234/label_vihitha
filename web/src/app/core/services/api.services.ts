@@ -7,7 +7,7 @@ import {
   FollowUp, PagedResult, OrderStatus, PaymentMethod, PaymentStatus,
   ExpenseCategory, Expense, Owner, OwnerTransaction, OwnerTransactionType, ProfitLossReport, ProductImportResult,
   BulkSetPaidByRequest, BulkSetPaidByResult, ProductTotals, ProductFilterOptions, PromoCode,
-  CashAccount, CashMovement, CashOverview, CashMovementKind, ApplyShippingResult, RepriceResult
+  CashAccount, CashMovement, CashOverview, CashMovementKind, ApplyShippingResult, RepriceResult, Shipping
 } from '../models';
 
 const base = environment.apiUrl;
@@ -102,8 +102,17 @@ export class InventoryApi {
   removeBill(inventoryId: number, billId: number) {
     return this.http.delete<void>(`${base}/inventories/${inventoryId}/bills/${billId}`);
   }
-  applyShipping(inventoryId: number, body: { amountUsd: number; markupPercent: number }) {
+  applyShipping(inventoryId: number, body: { amountUsd: number; markupPercent: number; note?: string | null }) {
     return this.http.post<ApplyShippingResult>(`${base}/inventories/${inventoryId}/shipping`, body);
+  }
+  getShipping(inventoryId: number) {
+    return this.http.get<Shipping[]>(`${base}/inventories/${inventoryId}/shipping`);
+  }
+  updateShipping(inventoryId: number, shippingId: number, body: { amountUsd: number; markupPercent: number; note?: string | null }) {
+    return this.http.put<Shipping>(`${base}/inventories/${inventoryId}/shipping/${shippingId}`, body);
+  }
+  deleteShipping(inventoryId: number, shippingId: number) {
+    return this.http.delete<void>(`${base}/inventories/${inventoryId}/shipping/${shippingId}`);
   }
   reprice(inventoryId: number, markupPercent: number) {
     return this.http.post<RepriceResult>(`${base}/inventories/${inventoryId}/reprice`, { markupPercent });

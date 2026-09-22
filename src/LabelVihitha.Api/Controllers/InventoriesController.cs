@@ -65,6 +65,24 @@ public class InventoriesController : ControllerBase
     public async Task<ActionResult<ApplyShippingResult>> ApplyShipping(int id, ApplyShippingRequest request, CancellationToken ct)
         => Ok(await _service.ApplyShippingAsync(id, request, ct));
 
+    [HttpGet("{id:int}/shipping")]
+    [Authorize(Roles = "Admin,Inventory,Owner")]
+    public async Task<ActionResult<IReadOnlyList<ShippingDto>>> GetShippings(int id, CancellationToken ct)
+        => Ok(await _service.GetShippingsAsync(id, ct));
+
+    [HttpPut("{id:int}/shipping/{shippingId:int}")]
+    [Authorize(Roles = "Admin,Inventory,Owner")]
+    public async Task<ActionResult<ShippingDto>> UpdateShipping(int id, int shippingId, ApplyShippingRequest request, CancellationToken ct)
+        => Ok(await _service.UpdateShippingAsync(shippingId, request, ct));
+
+    [HttpDelete("{id:int}/shipping/{shippingId:int}")]
+    [Authorize(Roles = "Admin,Inventory,Owner")]
+    public async Task<IActionResult> DeleteShipping(int id, int shippingId, CancellationToken ct)
+    {
+        await _service.DeleteShippingAsync(shippingId, ct);
+        return NoContent();
+    }
+
     [HttpPost("{id:int}/reprice")]
     [Authorize(Roles = "Admin,Inventory,Owner")]
     public async Task<ActionResult<RepriceResult>> Reprice(int id, RepriceRequest request, CancellationToken ct)

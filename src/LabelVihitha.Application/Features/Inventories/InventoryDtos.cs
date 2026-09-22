@@ -36,10 +36,15 @@ public record AddInventoryBillRequest(string FileUrl, string FileName, decimal? 
 
 /// <summary>Capitalise a shipping cost (in USD) across the inventory's on-hand units, then re-price
 /// each affected product's sale price at the given markup over its new cost.</summary>
-public record ApplyShippingRequest(decimal AmountUsd, decimal MarkupPercent = 100m);
+public record ApplyShippingRequest(decimal AmountUsd, decimal MarkupPercent = 100m, string? Note = null);
 
 public record ApplyShippingResult(
     int ProductsUpdated, int UnitsCovered, decimal PerUnitUsd, decimal TotalUsd, decimal MarkupPercent);
+
+/// <summary>A recorded shipping charge on an inventory batch (capitalised into product cost).</summary>
+public record ShippingDto(
+    int Id, decimal AmountUsd, decimal PerUnitUsd, int UnitsCovered, decimal MarkupPercent,
+    DateTime AppliedAt, int ProductsAffected, string? Note);
 
 /// <summary>Recompute every product's sale price to the given markup over its current cost,
 /// without changing the cost (unlike shipping, which also adds to cost).</summary>

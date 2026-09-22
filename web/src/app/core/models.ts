@@ -75,6 +75,17 @@ export interface RepriceResult {
   markupPercent: number;
 }
 
+export interface Shipping {
+  id: number;
+  amountUsd: number;
+  perUnitUsd: number;
+  unitsCovered: number;
+  markupPercent: number;
+  appliedAt: string;
+  productsAffected: number;
+  note?: string | null;
+}
+
 export interface InventoryBill {
   id: number;
   fileUrl: string;

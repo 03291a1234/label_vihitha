@@ -172,7 +172,7 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
     <mat-menu #priceMenu="matMenu">
       <ng-template matMenuContent let-inv="inv">
         <button mat-menu-item (click)="addShipping(inv)">
-          <mat-icon>local_shipping</mat-icon><span>Add shipping (splits into cost + re-prices)</span>
+          <mat-icon>local_shipping</mat-icon><span>Shipping (add / edit / remove)</span>
         </button>
         <button mat-menu-item (click)="reprice(inv)">
           <mat-icon>percent</mat-icon><span>Re-price only (markup, no shipping)</span>
