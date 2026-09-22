@@ -11,6 +11,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { StoreApi } from './store.api';
 import { CartService } from './cart.service';
+import { AuthService } from '../core/auth/auth.service';
 import { StoreProduct } from './store.models';
 import { CheckoutResult } from './store.models';
 import { resolveImageUrl } from '../core/services/api.services';
@@ -226,18 +227,21 @@ type View = 'shop' | 'checkout' | 'done';
               </div>
               @if (promoMsg()) { <div class="promo-msg" [class.ok]="appliedDiscount() > 0" [class.err]="appliedDiscount() === 0">{{ promoMsg() }}</div> }
 
-              <div class="manual">
-                <mat-form-field class="md-field" subscriptSizing="dynamic">
-                  <mat-label>Manual discount</mat-label>
-                  <input matInput type="number" min="0" [(ngModel)]="manualValue" />
-                  <span matTextPrefix>{{ manualType === 'amount' ? '$ ' : '' }}</span>
-                  <span matTextSuffix>{{ manualType === 'percent' ? '%' : '' }}</span>
-                </mat-form-field>
-                <mat-button-toggle-group [(ngModel)]="manualType" aria-label="Discount type">
-                  <mat-button-toggle value="amount">$</mat-button-toggle>
-                  <mat-button-toggle value="percent">%</mat-button-toggle>
-                </mat-button-toggle-group>
-              </div>
+              @if (auth.canManageSales()) {
+                <div class="manual">
+                  <mat-form-field class="md-field" subscriptSizing="dynamic">
+                    <mat-label>Manual discount</mat-label>
+                    <input matInput type="number" min="0" [(ngModel)]="manualValue" />
+                    <span matTextPrefix>{{ manualType === 'amount' ? '$ ' : '' }}</span>
+                    <span matTextSuffix>{{ manualType === 'percent' ? '%' : '' }}</span>
+                  </mat-form-field>
+                  <mat-button-toggle-group [(ngModel)]="manualType" aria-label="Discount type">
+                    <mat-button-toggle value="amount">$</mat-button-toggle>
+                    <mat-button-toggle value="percent">%</mat-button-toggle>
+                  </mat-button-toggle-group>
+                </div>
+                <span class="staff-note"><mat-icon>lock</mat-icon> Owner only</span>
+              }
 
               <div class="sline sub"><span>Subtotal</span><span class="mono">{{ cart.total() | currency }}</span></div>
               @if (appliedDiscount() > 0) {
@@ -361,6 +365,8 @@ type View = 'shop' | 'checkout' | 'done';
     .promo-msg.ok { color: #1e7d3a; } .promo-msg.err { color: #b3261e; }
     .manual { display: flex; gap: 8px; align-items: center; margin: 10px 0 4px; }
     .manual .md-field { flex: 1; }
+    .staff-note { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--lv-wine); opacity: .75; white-space: nowrap; }
+    .staff-note mat-icon { font-size: 14px; height: 14px; width: 14px; }
     .manual mat-button-toggle-group { height: 40px; }
     .saved { color: #1e7d3a; font-weight: 700; }
     .done { display: grid; place-items: center; min-height: 60vh; }
@@ -395,6 +401,7 @@ export class ShopComponent {
   private api = inject(StoreApi);
   private notify = inject(Notify);
   cart = inject(CartService);
+  auth = inject(AuthService);
 
   allProducts = signal<StoreProduct[]>([]);
   loading = signal(false);
