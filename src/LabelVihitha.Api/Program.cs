@@ -117,12 +117,6 @@ if (System.IO.Directory.Exists(mDir))
     var mProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(mDir);
     app.UseStaticFiles(new StaticFileOptions { FileProvider = mProvider, RequestPath = "/m" });
 }
-// Temporary diagnostic — lists what actually landed on disk under wwwroot/m.
-app.MapGet("/api/_mdiag", () =>
-    System.IO.Directory.Exists(mDir)
-        ? Results.Ok(new { dir = mDir, files = System.IO.Directory.GetFiles(mDir).Select(System.IO.Path.GetFileName).ToArray() })
-        : Results.Ok(new { dir = mDir, files = new string[0], missing = true }));
-
 app.UseCors(CorsPolicy);
 app.UseRateLimiter();
 app.UseAuthentication();
