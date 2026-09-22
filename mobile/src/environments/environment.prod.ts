@@ -1,4 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'http://localhost:5080/api'
+  // Hosted under /m/ on the same App Service as the API — relative path keeps it same-origin (no CORS).
+  apiUrl: '/api'
 };

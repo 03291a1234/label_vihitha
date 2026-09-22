@@ -112,7 +112,10 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-// Serve the built Angular SPA for any non-API route (single App Service hosts API + web,
+// The mobile app (Ionic) is served under /m/ from wwwroot/m — deep links fall back to its own
+// index.html; its static assets are handled by UseStaticFiles above.
+app.MapFallbackToFile("/m/{*path}", "m/index.html");
+// Serve the built Angular SPA for any other non-API route (single App Service hosts API + web,
 // same-origin). Harmless in dev where wwwroot has no index.html (returns 404, web runs separately).
 app.MapFallbackToFile("index.html");
 

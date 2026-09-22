@@ -17,12 +17,18 @@ EOF
   (cd "$ROOT/web" && npm ci && npx ng build --configuration production)
 fi
 
-echo "==> Publishing the API + bundling the SPA"
+if [ ! -d "$ROOT/mobile/www" ]; then
+  echo "==> Building the mobile app (Ionic) under base-href /m/"
+  (cd "$ROOT/mobile" && npm ci && npx ng build --configuration production --base-href /m/)
+fi
+
+echo "==> Publishing the API + bundling the SPA + mobile app"
 PUB="$ROOT/.deploy-publish"
 rm -rf "$PUB"
 dotnet publish "$ROOT/src/LabelVihitha.Api/LabelVihitha.Api.csproj" -c Release -o "$PUB"
-mkdir -p "$PUB/wwwroot"
+mkdir -p "$PUB/wwwroot" "$PUB/wwwroot/m"
 cp -R "$ROOT/web/dist/labelvihitha-web/browser/." "$PUB/wwwroot/"
+cp -R "$ROOT/mobile/www/." "$PUB/wwwroot/m/"
 
 echo "==> Zip deploy to $APP"
 ZIP="$ROOT/.deploy-publish.zip"
