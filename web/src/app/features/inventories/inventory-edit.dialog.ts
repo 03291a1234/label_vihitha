@@ -1,7 +1,7 @@
 import { Component, Inject, inject, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -17,6 +17,9 @@ import { Inventory, InventoryBill, Owner, Vendor } from '../../core/models';
 import { SearchSelectComponent } from '../../shared/search-select.component';
 import { DateInputComponent } from '../../shared/date-input.component';
 import { MoneyInputComponent } from '../../shared/money-input.component';
+import { AuthService } from '../../core/auth/auth.service';
+import { ApplyShippingDialog } from './apply-shipping.dialog';
+import { RepriceDialog } from './reprice.dialog';
 
 interface StagedBill { fileUrl: string; fileName: string; amount: number | null; billDate: string; note: string; vendorId: number | null; vendorName: string | null; }
 
@@ -99,9 +102,29 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
           <p class="add-hint muted">Attach an invoice or just enter a vendor and amount — add as many as you need.</p>
         </div>
       </div>
+
+      <!-- Pricing (existing inventory with stock only) -->
+      @if (data && auth.canManageInventory()) {
+        <div class="pricing-panel">
+          <h3>Pricing <span class="muted">(shipping &amp; sale price)</span></h3>
+          @if (data.totalUnits > 0) {
+            <div class="price-actions">
+              <button mat-stroked-button type="button" (click)="openShipping()">
+                <mat-icon>local_shipping</mat-icon> Shipping (add / edit / remove)
+              </button>
+              <button mat-stroked-button type="button" (click)="openReprice()">
+                <mat-icon>percent</mat-icon> Re-price only (markup, no shipping)
+              </button>
+            </div>
+            <p class="add-hint muted">Splits shipping across units into product cost, then re-prices sale = cost × markup.</p>
+          } @else {
+            <p class="add-hint muted">Add products to this inventory first to apply shipping or re-price.</p>
+          }
+        </div>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button (click)="ref.close(false)">Cancel</button>
+      <button mat-button (click)="ref.close(pricingChanged())">Cancel</button>
       <button mat-raised-button color="primary" (click)="save()" [disabled]="form.invalid || busy()">Save</button>
     </mat-dialog-actions>
   `,
@@ -123,6 +146,9 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     .famt, .fdate { flex: 1; }
     .fnote { width: 100%; }
     .muted { color: rgba(58,37,48,.6); }
+    .pricing-panel { border-top: 1px solid var(--lv-line); margin-top: 12px; padding-top: 12px; }
+    .pricing-panel h3 { margin: 0 0 8px; color: var(--lv-wine); font-size: 15px; }
+    .price-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   `]
 })
 export class InventoryEditDialog {
@@ -131,8 +157,11 @@ export class InventoryEditDialog {
   private ownerApi = inject(OwnerApi);
   private vendorApi = inject(VendorApi);
   private notify = inject(Notify);
+  private dialog = inject(MatDialog);
+  auth = inject(AuthService);
   ref = inject(MatDialogRef<InventoryEditDialog>);
   busy = signal(false);
+  pricingChanged = signal(false);
   owners = signal<Owner[]>([]);
   vendors = signal<Vendor[]>([]);
 
@@ -219,6 +248,24 @@ export class InventoryEditDialog {
     });
   }
   removeStaged(i: number) { this.staged.update(l => l.filter((_, idx) => idx !== i)); }
+
+  openShipping() {
+    if (!this.data) return;
+    const i = this.data;
+    this.dialog.open(ApplyShippingDialog, {
+      data: {
+        inventoryId: i.id, inventoryName: i.name, totalUnits: i.totalUnits,
+        categories: i.categories.map(c => ({ id: c.categoryId, name: c.categoryName, units: c.totalUnits }))
+      }, width: '480px'
+    }).afterClosed().subscribe(applied => { if (applied) this.pricingChanged.set(true); });
+  }
+
+  openReprice() {
+    if (!this.data) return;
+    this.dialog.open(RepriceDialog, {
+      data: { inventoryId: this.data.id, inventoryName: this.data.name }, width: '440px'
+    }).afterClosed().subscribe(done => { if (done) this.pricingChanged.set(true); });
+  }
 
   save() {
     if (this.form.invalid) return;

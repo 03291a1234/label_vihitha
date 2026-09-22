@@ -13,11 +13,7 @@ import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Inventory, SubCategoryCount } from '../../core/models';
 import { printProductLabels } from '../../shared/label-print';
-import { ApplyShippingDialog } from './apply-shipping.dialog';
-import { RepriceDialog } from './reprice.dialog';
 import { InventoryEditDialog } from './inventory-edit.dialog';
-import { InventoryBillsDialog } from './inventory-bills.dialog';
-import { BillProductsDialog } from './bill-products.dialog';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 import { InrAmountPipe } from '../../shared/inr-amount.pipe';
 
@@ -78,21 +74,9 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
                       [disabled]="!i.productCount || printingId() === i.id">
                 <mat-icon>label</mat-icon> Print labels
               </button>
-              <button mat-stroked-button (click)="openBills(i)" [class.has-bills]="i.bills.length">
-                <mat-icon>receipt_long</mat-icon> Bills
-                @if (i.bills.length) { <span class="bills-badge">{{ i.bills.length }}</span> }
-              </button>
               @if (auth.canManageInventory()) {
-                <button mat-stroked-button (click)="bulkAdd(i)">
-                  <mat-icon>library_add</mat-icon> Bulk add
-                </button>
-                <button mat-stroked-button [matMenuTriggerFor]="priceMenu" [matMenuTriggerData]="{ inv: i }" [disabled]="!i.totalUnits">
-                  <mat-icon>sell</mat-icon> Pricing <mat-icon>arrow_drop_down</mat-icon>
-                </button>
-              }
-              @if (auth.canManageInventory()) {
-                <button mat-icon-button (click)="openEdit(i)"><mat-icon>edit</mat-icon></button>
-                <button mat-icon-button color="warn" (click)="remove(i)"><mat-icon>delete</mat-icon></button>
+                <button mat-stroked-button (click)="openEdit(i)"><mat-icon>edit</mat-icon> Manage</button>
+                <button mat-icon-button color="warn" (click)="remove(i)" title="Delete"><mat-icon>delete</mat-icon></button>
               }
             </div>
           </div>
@@ -168,17 +152,6 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
         </button>
       </ng-template>
     </mat-menu>
-
-    <mat-menu #priceMenu="matMenu">
-      <ng-template matMenuContent let-inv="inv">
-        <button mat-menu-item (click)="addShipping(inv)">
-          <mat-icon>local_shipping</mat-icon><span>Shipping (add / edit / remove)</span>
-        </button>
-        <button mat-menu-item (click)="reprice(inv)">
-          <mat-icon>percent</mat-icon><span>Re-price only (markup, no shipping)</span>
-        </button>
-      </ng-template>
-    </mat-menu>
   `,
   styles: [`
     .intro { margin: -8px 0 16px; }
@@ -217,9 +190,6 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
     .pcell .pv.pos { color: #2e7d32; }
     .pcell .pv.neg { color: #b3261e; }
     .pcell .pinr { font-size: 11px; color: rgba(58,37,48,.55); }
-    .bills-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
-      padding: 0 5px; margin-left: 6px; border-radius: 999px; background: var(--lv-wine); color: #fff; font-size: 11px; font-weight: 700; }
-    .has-bills { border-color: var(--lv-wine); }
   `]
 })
 export class InventoryListComponent {
@@ -262,11 +232,6 @@ export class InventoryListComponent {
     });
   }
 
-  openBills(i: Inventory) {
-    this.dialog.open(InventoryBillsDialog, { data: i, width: '600px' }).afterClosed()
-      .subscribe(changed => { if (changed) this.load(); });
-  }
-
   /** Fetch every product in this inventory batch and open a print-ready label sheet. */
   printLabels(i: Inventory, byStock: boolean) {
     this.printingId.set(i.id);
@@ -278,28 +243,6 @@ export class InventoryListComponent {
       },
       error: (e) => { this.printingId.set(null); this.notify.error(e); }
     });
-  }
-
-  addShipping(i: Inventory) {
-    this.dialog.open(ApplyShippingDialog, {
-      data: {
-        inventoryId: i.id, inventoryName: i.name, totalUnits: i.totalUnits,
-        categories: i.categories.map(c => ({ id: c.categoryId, name: c.categoryName, units: c.totalUnits }))
-      }, width: '480px'
-    }).afterClosed().subscribe(applied => { if (applied) this.load(); });
-  }
-
-  reprice(i: Inventory) {
-    this.dialog.open(RepriceDialog, {
-      data: { inventoryId: i.id, inventoryName: i.name }, width: '440px'
-    }).afterClosed().subscribe(done => { if (done) this.load(); });
-  }
-
-  bulkAdd(i: Inventory) {
-    this.dialog.open(BillProductsDialog, {
-      data: { inventoryId: i.id, inventoryName: i.name, bill: null },
-      width: '920px', maxWidth: '95vw'
-    }).afterClosed().subscribe(created => { if (created) this.load(); });
   }
 
   openEdit(i: Inventory | null) {
