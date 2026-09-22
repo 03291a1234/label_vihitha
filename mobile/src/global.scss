@@ -47,3 +47,10 @@ ion-title {
 }
 ion-toolbar { --border-width: 0; }
 
+/* Wine focus/valid highlight on inputs (Ionic defaults to green) — match the web theme. */
+ion-input, ion-item, ion-searchbar, ion-select, ion-textarea {
+  --highlight-color-focused: var(--ion-color-primary);
+  --highlight-color-valid: var(--ion-color-primary);
+}
+
+
