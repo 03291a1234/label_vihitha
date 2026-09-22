@@ -107,6 +107,22 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles(); // serves wwwroot (uploaded product photos under /uploads)
+
+// The Ionic mobile app lives in wwwroot/m and is served under /m with its own file provider, so
+// its assets resolve unambiguously regardless of the SPA fallback below.
+var mWebRoot = app.Environment.WebRootPath ?? System.IO.Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+var mDir = System.IO.Path.Combine(mWebRoot, "m");
+if (System.IO.Directory.Exists(mDir))
+{
+    var mProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(mDir);
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = mProvider, RequestPath = "/m" });
+}
+// Temporary diagnostic — lists what actually landed on disk under wwwroot/m.
+app.MapGet("/api/_mdiag", () =>
+    System.IO.Directory.Exists(mDir)
+        ? Results.Ok(new { dir = mDir, files = System.IO.Directory.GetFiles(mDir).Select(System.IO.Path.GetFileName).ToArray() })
+        : Results.Ok(new { dir = mDir, files = new string[0], missing = true }));
+
 app.UseCors(CorsPolicy);
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -114,7 +130,7 @@ app.UseAuthorization();
 app.MapControllers();
 // The mobile app (Ionic) is served under /m/ from wwwroot/m — deep links fall back to its own
 // index.html; its static assets are handled by UseStaticFiles above.
-app.MapFallbackToFile("/m/{*path}", "m/index.html");
+app.MapFallbackToFile("/m/{*path:nonfile}", "m/index.html");
 // Serve the built Angular SPA for any other non-API route (single App Service hosts API + web,
 // same-origin). Harmless in dev where wwwroot has no index.html (returns 404, web runs separately).
 app.MapFallbackToFile("index.html");
