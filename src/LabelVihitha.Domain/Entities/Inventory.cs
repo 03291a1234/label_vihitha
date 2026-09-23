@@ -13,6 +13,11 @@ public class Inventory : BaseEntity
     public string? Description { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>When false, this batch's products are hidden from the customer-facing storefront
+    /// (they stay fully usable in the back office). Independent of <see cref="IsActive"/>, which
+    /// controls whether the inventory shows in the admin list.</summary>
+    public bool IsVisibleOnStore { get; set; } = true;
+
     /// <summary>Which owner/partner funded this inventory/batch (whose capital it represents). Optional.</summary>
     public int? PaidByOwnerId { get; set; }
     public Owner? PaidByOwner { get; set; }

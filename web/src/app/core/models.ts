@@ -46,6 +46,7 @@ export interface Inventory {
   name: string;
   description?: string | null;
   isActive: boolean;
+  isVisibleOnStore: boolean;
   paidByOwnerId?: number | null;
   paidByOwnerName?: string | null;
   productCount: number;

@@ -46,7 +46,10 @@ public class StoreService : IStoreService
 
     public async Task<IReadOnlyList<StoreProductDto>> GetProductsAsync(string? search, int? categoryId, CancellationToken ct = default)
     {
-        var q = _db.Products.AsNoTracking().Where(p => p.IsActive);
+        // Only sell products that are active AND belong to a store-visible inventory
+        // (products with no inventory stay visible).
+        var q = _db.Products.AsNoTracking()
+            .Where(p => p.IsActive && (p.Inventory == null || p.Inventory.IsVisibleOnStore));
         if (categoryId is int cid) q = q.Where(p => p.CategoryId == cid);
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -73,6 +76,13 @@ public class StoreService : IStoreService
     {
         if (request.Items is null || request.Items.Count == 0)
             throw new ConflictException("Your cart is empty.");
+
+        // Block any item whose inventory has since been hidden from the store (stale cart).
+        var itemIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
+        var unavailable = await _db.Products.AsNoTracking()
+            .AnyAsync(p => itemIds.Contains(p.Id) && (!p.IsActive || (p.Inventory != null && !p.Inventory.IsVisibleOnStore)), ct);
+        if (unavailable)
+            throw new ConflictException("Some items in your cart are no longer available. Please review your cart.");
 
         var customer = await FindOrCreateCustomerAsync(request, ct);
 

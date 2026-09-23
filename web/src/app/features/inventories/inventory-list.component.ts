@@ -47,6 +47,7 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
             <div class="inv-title">
               <strong>{{ i.name }}</strong>
               @if (!i.isActive) { <span class="chip Cancelled">inactive</span> }
+              @if (!i.isVisibleOnStore) { <span class="chip off-store"><mat-icon>visibility_off</mat-icon>Hidden on store</span> }
               @if (i.paidByOwnerName) { <span class="paid-by"><mat-icon>account_balance_wallet</mat-icon>{{ i.paidByOwnerName }}</span> }
               <div class="muted">{{ i.description }}</div>
             </div>
@@ -75,6 +76,10 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
                 <mat-icon>label</mat-icon> Print labels
               </button>
               @if (auth.canManageInventory()) {
+                <mat-slide-toggle class="store-toggle" [checked]="i.isVisibleOnStore"
+                    [disabled]="togglingId() === i.id" (change)="toggleStore(i, $event.checked)">
+                  <span class="st-label"><mat-icon>storefront</mat-icon> On storefront</span>
+                </mat-slide-toggle>
                 <button mat-stroked-button (click)="openEdit(i)"><mat-icon>edit</mat-icon> Manage</button>
                 <button mat-icon-button color="warn" (click)="remove(i)" title="Delete"><mat-icon>delete</mat-icon></button>
               }
@@ -168,7 +173,12 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
     .stat .v { font-size: 22px; font-weight: 700; color: var(--lv-wine); line-height: 1.1; }
     .stat .l { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: rgba(58,37,48,.55); }
     .stat.cost .inr { font-size: 11px; color: rgba(58,37,48,.55); margin-top: 1px; }
-    .inv-actions { display: flex; align-items: center; gap: 4px; }
+    .inv-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .store-toggle .st-label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+    .store-toggle mat-icon { font-size: 16px; height: 16px; width: 16px; }
+    .off-store { display: inline-flex; align-items: center; gap: 3px; background: #efe4e8; color: #7a5563;
+      border: 1px solid #d9c3cc; }
+    .off-store mat-icon { font-size: 14px; height: 14px; width: 14px; }
     .breakdown { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--lv-line);
       display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     .cat-block { border: 1px solid var(--lv-line); border-radius: 10px; padding: 12px; background: #fffdfb; }
@@ -202,6 +212,7 @@ export class InventoryListComponent {
   rows = signal<Inventory[]>([]);
   loading = signal(false);
   printingId = signal<number | null>(null);
+  togglingId = signal<number | null>(null);
   includeInactive = false;
 
   constructor() { this.load(); }
@@ -242,6 +253,22 @@ export class InventoryListComponent {
         if (n === 0) this.notify.error(`No ${byStock ? 'units in stock' : 'products'} to label in "${i.name}".`);
       },
       error: (e) => { this.printingId.set(null); this.notify.error(e); }
+    });
+  }
+
+  /** Quick storefront on/off from the card — persists immediately via the inventory update. */
+  toggleStore(i: Inventory, visible: boolean) {
+    this.togglingId.set(i.id);
+    this.api.update(i.id, {
+      name: i.name, description: i.description ?? null, isActive: i.isActive,
+      paidByOwnerId: i.paidByOwnerId ?? null, isVisibleOnStore: visible
+    }).subscribe({
+      next: () => {
+        this.togglingId.set(null);
+        this.rows.update(list => list.map(r => r.id === i.id ? { ...r, isVisibleOnStore: visible } : r));
+        this.notify.success(visible ? `"${i.name}" is now shown on the storefront` : `"${i.name}" is hidden from the storefront`);
+      },
+      error: (e) => { this.togglingId.set(null); this.notify.error(e); }
     });
   }
 

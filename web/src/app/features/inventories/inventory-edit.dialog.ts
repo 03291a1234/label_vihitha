@@ -52,6 +52,12 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
           <textarea matInput rows="2" formControlName="description" placeholder="Batch / collection details"></textarea>
         </mat-form-field>
         @if (data) { <mat-slide-toggle class="span2" formControlName="isActive">Active</mat-slide-toggle> }
+        <div class="span2 store-toggle">
+          <mat-slide-toggle formControlName="isVisibleOnStore">
+            <mat-icon>storefront</mat-icon> Show on storefront
+          </mat-slide-toggle>
+          <span class="muted hint">When off, this batch's products are hidden from the customer-facing website (still usable in the back office).</span>
+        </div>
       </form>
 
       <!-- Bills -->
@@ -151,6 +157,9 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
     .add-bill { margin-top: 10px; }
     .add-hint { font-size: 12px; }
     .muted { color: rgba(58,37,48,.6); }
+    .store-toggle { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 2px; }
+    .store-toggle mat-icon { font-size: 18px; height: 18px; width: 18px; vertical-align: middle; }
+    .store-toggle .hint { font-size: 12px; }
     .pricing-panel { border-top: 1px solid var(--lv-line); margin-top: 12px; padding-top: 12px; }
     .pricing-panel h3 { margin: 0 0 8px; color: var(--lv-wine); font-size: 15px; }
     .price-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -183,7 +192,8 @@ export class InventoryEditDialog {
     name: ['', [Validators.required, Validators.maxLength(100)]],
     description: [''],
     paidByOwnerId: [null as number | null],
-    isActive: [true]
+    isActive: [true],
+    isVisibleOnStore: [true]
   });
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: Inventory | null) {
@@ -191,7 +201,8 @@ export class InventoryEditDialog {
     this.vendorApi.list(false).subscribe(vs => this.vendors.set(vs));
     if (data) {
       this.form.patchValue({ name: data.name, description: data.description ?? '',
-        paidByOwnerId: data.paidByOwnerId ?? null, isActive: data.isActive });
+        paidByOwnerId: data.paidByOwnerId ?? null, isActive: data.isActive,
+        isVisibleOnStore: data.isVisibleOnStore });
       this.savedBills.set([...(data.bills ?? [])]);
     }
   }
@@ -277,13 +288,13 @@ export class InventoryEditDialog {
     this.busy.set(true);
     const v = this.form.getRawValue();
     if (this.data) {
-      this.api.update(this.data.id, { name: v.name, description: v.description || null, isActive: v.isActive, paidByOwnerId: v.paidByOwnerId }).subscribe({
+      this.api.update(this.data.id, { name: v.name, description: v.description || null, isActive: v.isActive, paidByOwnerId: v.paidByOwnerId, isVisibleOnStore: v.isVisibleOnStore }).subscribe({
         next: () => { this.notify.success('Inventory saved'); this.ref.close(true); },
         error: (e) => { this.busy.set(false); this.notify.error(e); }
       });
     } else {
       // Create the inventory, then attach any staged bills.
-      this.api.create({ name: v.name, description: v.description || null, paidByOwnerId: v.paidByOwnerId }).pipe(
+      this.api.create({ name: v.name, description: v.description || null, paidByOwnerId: v.paidByOwnerId, isVisibleOnStore: v.isVisibleOnStore }).pipe(
         switchMap(inv => {
           const pend = this.staged();
           if (pend.length === 0) return of(inv);

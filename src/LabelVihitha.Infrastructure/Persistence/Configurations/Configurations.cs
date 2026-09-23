@@ -121,6 +121,7 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
     {
         b.Property(x => x.Name).IsRequired().HasMaxLength(100);
         b.Property(x => x.Description).HasMaxLength(500);
+        b.Property(x => x.IsVisibleOnStore).HasDefaultValue(true);
         b.HasIndex(x => x.Name).IsUnique().HasFilter("[IsDeleted] = 0");
 
         b.HasOne(x => x.PaidByOwner)

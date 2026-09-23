@@ -7,6 +7,7 @@ public record InventoryDto(
     string Name,
     string? Description,
     bool IsActive,
+    bool IsVisibleOnStore,
     int? PaidByOwnerId,
     string? PaidByOwnerName,
     int ProductCount,
@@ -23,9 +24,9 @@ public record InventoryDto(
     decimal AllocatedExpenseUsd,          // share of operating expenses, by this inventory's sales share
     decimal NetProfitUsd);                // ProfitUsd − AllocatedExpenseUsd (net P&L to date)
 
-public record CreateInventoryRequest(string Name, string? Description, int? PaidByOwnerId);
+public record CreateInventoryRequest(string Name, string? Description, int? PaidByOwnerId, bool IsVisibleOnStore = true);
 
-public record UpdateInventoryRequest(string Name, string? Description, bool IsActive, int? PaidByOwnerId);
+public record UpdateInventoryRequest(string Name, string? Description, bool IsActive, int? PaidByOwnerId, bool IsVisibleOnStore = true);
 
 // ---- Supplier bills attached to an inventory batch (one or more per vendor) ----
 public record InventoryBillDto(int Id, string FileUrl, string FileName, decimal? Amount, DateTime? BillDate, string? Note,

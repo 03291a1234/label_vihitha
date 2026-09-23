@@ -22,7 +22,7 @@ public class InventoryGroupService : IInventoryGroupService
         if (!includeInactive) q = q.Where(i => i.IsActive);
 
         var inventories = await q.OrderBy(i => i.Name)
-            .Select(i => new { i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId,
+            .Select(i => new { i.Id, i.Name, i.Description, i.IsActive, i.IsVisibleOnStore, i.PaidByOwnerId,
                 PaidByOwnerName = i.PaidByOwner != null ? i.PaidByOwner.Name : null })
             .ToListAsync(ct);
         var ids = inventories.Select(i => i.Id).ToList();
@@ -44,7 +44,7 @@ public class InventoryGroupService : IInventoryGroupService
             // (Bills are capital, not expenses — they go into the initial cost below, not here.)
             var direct = directExp.GetValueOrDefault(i.Id);
             var alloc = Math.Round(direct + (totalInvRev > 0 ? unattributedExp * (rev / totalInvRev) : 0m), 2);
-            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
+            return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.IsVisibleOnStore, i.PaidByOwnerId, i.PaidByOwnerName,
                 count, units, cost, cats, bl, billTotal,
                 rev, cogs, cost + cogs + billTotal, rev - cogs, alloc, rev - cogs - alloc);
         }).ToList();
@@ -54,7 +54,7 @@ public class InventoryGroupService : IInventoryGroupService
     {
         var i = await _db.Inventories.AsNoTracking()
             .Where(x => x.Id == id)
-            .Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.PaidByOwnerId,
+            .Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.IsVisibleOnStore, x.PaidByOwnerId,
                 PaidByOwnerName = x.PaidByOwner != null ? x.PaidByOwner.Name : null })
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException(nameof(Inventory), id);
@@ -72,7 +72,7 @@ public class InventoryGroupService : IInventoryGroupService
         var billTotal = bl.Sum(x => x.Amount ?? 0m);
         var direct = directExp.GetValueOrDefault(id);
         var alloc = Math.Round(direct + (totalInvRev > 0 ? unattributedExp * (rev / totalInvRev) : 0m), 2);
-        return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.PaidByOwnerId, i.PaidByOwnerName,
+        return new InventoryDto(i.Id, i.Name, i.Description, i.IsActive, i.IsVisibleOnStore, i.PaidByOwnerId, i.PaidByOwnerName,
             cats.Sum(c => c.ProductCount), units, cost, cats, bl, billTotal,
             rev, cogs, cost + cogs + billTotal, rev - cogs, alloc, rev - cogs - alloc);
     }
@@ -401,7 +401,7 @@ public class InventoryGroupService : IInventoryGroupService
         await EnsureNameUniqueAsync(request.Name, null, ct);
         await EnsureOwnerValidAsync(request.PaidByOwnerId, ct);
         var entity = new Inventory { Name = request.Name.Trim(), Description = request.Description,
-            PaidByOwnerId = request.PaidByOwnerId, IsActive = true };
+            PaidByOwnerId = request.PaidByOwnerId, IsActive = true, IsVisibleOnStore = request.IsVisibleOnStore };
         _db.Inventories.Add(entity);
         await _db.SaveChangesAsync(ct);
         return await GetByIdAsync(entity.Id, ct);
@@ -418,6 +418,7 @@ public class InventoryGroupService : IInventoryGroupService
         entity.Name = request.Name.Trim();
         entity.Description = request.Description;
         entity.IsActive = request.IsActive;
+        entity.IsVisibleOnStore = request.IsVisibleOnStore;
         entity.PaidByOwnerId = request.PaidByOwnerId;
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);

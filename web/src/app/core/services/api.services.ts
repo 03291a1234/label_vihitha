@@ -87,10 +87,10 @@ export class InventoryApi {
     return this.http.get<Inventory[]>(`${base}/inventories`, { params: toParams({ includeInactive }) });
   }
   get(id: number) { return this.http.get<Inventory>(`${base}/inventories/${id}`); }
-  create(body: { name: string; description?: string | null; paidByOwnerId?: number | null }) {
+  create(body: { name: string; description?: string | null; paidByOwnerId?: number | null; isVisibleOnStore?: boolean }) {
     return this.http.post<Inventory>(`${base}/inventories`, body);
   }
-  update(id: number, body: { name: string; description?: string | null; isActive: boolean; paidByOwnerId?: number | null }) {
+  update(id: number, body: { name: string; description?: string | null; isActive: boolean; paidByOwnerId?: number | null; isVisibleOnStore?: boolean }) {
     return this.http.put<Inventory>(`${base}/inventories/${id}`, body);
   }
   remove(id: number) { return this.http.delete<void>(`${base}/inventories/${id}`); }
