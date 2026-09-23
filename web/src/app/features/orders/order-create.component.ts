@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -24,7 +25,7 @@ type SortCol = 'product' | 'size' | 'quantity' | 'salePrice' | 'finalPrice' | 'l
   standalone: true,
   providers: [provideNativeDateAdapter()],
   imports: [
-    CurrencyPipe, FormsModule, RouterLink, MatCardModule, MatTableModule, MatButtonModule,
+    MoneyPipe, FormsModule, RouterLink, MatCardModule, MatTableModule, MatButtonModule,
     MatIconModule, MatFormFieldModule, MatInputModule, MatDatepickerModule,
     SearchSelectComponent, MoneyInputComponent
   ],

@@ -1,12 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { MoneyPipe } from '../core/money.pipe';
+import { PrivacyService } from '../core/privacy.service';
+
 import {
   IonHeader, IonToolbar, IonTitle, IonContent, IonSearchbar, IonList, IonItem,
   IonLabel, IonBadge, IonNote, IonButtons, IonButton, IonIcon, IonRefresher,
   IonRefresherContent
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { logOutOutline } from 'ionicons/icons';
+import { logOutOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { Product } from '../core/models';
@@ -15,7 +17,7 @@ import { Product } from '../core/models';
   selector: 'app-lookup',
   standalone: true,
   imports: [
-    CurrencyPipe, IonHeader, IonToolbar, IonTitle, IonContent, IonSearchbar, IonList,
+    MoneyPipe, IonHeader, IonToolbar, IonTitle, IonContent, IonSearchbar, IonList,
     IonItem, IonLabel, IonBadge, IonNote, IonButtons, IonButton, IonIcon,
     IonRefresher, IonRefresherContent
   ],
@@ -24,6 +26,7 @@ import { Product } from '../core/models';
       <ion-toolbar color="primary">
         <ion-title>Inventory</ion-title>
         <ion-buttons slot="end">
+          <ion-button (click)="privacy.toggle()"><ion-icon slot="icon-only" [name]="privacy.hidden() ? 'eye-off-outline' : 'eye-outline'"></ion-icon></ion-button>
           <ion-button (click)="auth.logout()"><ion-icon slot="icon-only" name="log-out-outline"></ion-icon></ion-button>
         </ion-buttons>
       </ion-toolbar>
@@ -56,12 +59,13 @@ import { Product } from '../core/models';
 export class LookupPage {
   private api = inject(ApiService);
   auth = inject(AuthService);
+  privacy = inject(PrivacyService);
   products = signal<Product[]>([]);
   loading = signal(false);
   private term = '';
 
   constructor() {
-    addIcons({ logOutOutline });
+    addIcons({ logOutOutline, eyeOutline, eyeOffOutline });
     this.load();
   }
 

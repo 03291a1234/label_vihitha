@@ -10,6 +10,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { AuthService } from '../core/auth/auth.service';
+import { PrivacyService } from '../core/services/privacy.service';
 
 interface NavItem { label: string; icon: string; path: string; show: () => boolean; }
 
@@ -45,6 +46,10 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
         <mat-toolbar class="topbar">
           <button mat-icon-button (click)="snav.toggle()"><mat-icon>menu</mat-icon></button>
           <span class="spacer"></span>
+          <button mat-icon-button (click)="privacy.toggle()"
+                  [title]="privacy.hidden() ? 'Amounts hidden — click to show' : 'Hide amounts'">
+            <mat-icon>{{ privacy.hidden() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
           <button mat-button [matMenuTriggerFor]="menu">
             <mat-icon>account_circle</mat-icon>
             {{ auth.userName() }}
@@ -114,6 +119,7 @@ interface NavItem { label: string; icon: string; path: string; show: () => boole
 })
 export class ShellComponent {
   auth = inject(AuthService);
+  privacy = inject(PrivacyService);
   private bp = inject(BreakpointObserver);
 
   /** True on phones/tablets, where the sidenav becomes an overlay drawer that starts closed. */

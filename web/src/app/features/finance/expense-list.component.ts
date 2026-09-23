@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,7 +26,7 @@ import { SettingsService } from '../../core/services/settings.service';
   selector: 'app-expense-list',
   standalone: true,
   imports: [DateInputComponent, 
-    CurrencyPipe, DatePipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
+    MoneyPipe, DatePipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatProgressBarModule, MatPaginatorModule, MatSortModule,
     SearchSelectComponent
   ],

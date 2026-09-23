@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
@@ -18,7 +19,7 @@ import { RecordRefundDialog } from './record-refund.dialog';
   selector: 'app-invoice-detail',
   standalone: true,
   imports: [
-    CurrencyPipe, DatePipe, RouterLink, MatCardModule, MatTableModule,
+    MoneyPipe, DatePipe, RouterLink, MatCardModule, MatTableModule,
     MatButtonModule, MatIconModule, MatProgressBarModule
   ],
   template: `

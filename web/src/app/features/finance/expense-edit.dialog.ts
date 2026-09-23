@@ -1,4 +1,5 @@
 import { Component, Inject, inject, signal } from '@angular/core';
+import { MoneyPipe } from '../../shared/money.pipe';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,7 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { CurrencyPipe } from '@angular/common';
+
 import { ExpenseApi, ExpenseCategoryApi, OwnerApi, InventoryApi, resolveImageUrl } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { Expense, ExpenseCategory, Owner, Inventory } from '../../core/models';
@@ -16,12 +17,11 @@ import { DateInputComponent } from '../../shared/date-input.component';
 import { SearchSelectComponent } from '../../shared/search-select.component';
 import { SettingsService } from '../../core/services/settings.service';
 
-
 @Component({
   selector: 'app-expense-edit',
   standalone: true,
   imports: [DateInputComponent, 
-    ReactiveFormsModule, CurrencyPipe, MatDialogModule, MatFormFieldModule, MatInputModule,
+    ReactiveFormsModule, MoneyPipe, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule,
     SearchSelectComponent
   ],

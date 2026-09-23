@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,7 +18,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   selector: 'app-promo-code-list',
   standalone: true,
   imports: [
-    CurrencyPipe, DatePipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
+    MoneyPipe, DatePipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
     MatSlideToggleModule, MatProgressBarModule, MatDialogModule
   ],
   template: `

@@ -1,8 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
+import { MoneyPipe } from '../../shared/money.pipe';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { printProductLabels } from '../../shared/label-print';
 import { Subject, debounceTime, distinctUntilChanged, map } from 'rxjs';
-import { CurrencyPipe } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,7 +34,7 @@ import { SettingsService } from '../../core/services/settings.service';
   selector: 'app-product-list',
   standalone: true,
   imports: [
-    CurrencyPipe, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatMenuModule, MatIconModule,
+    MoneyPipe, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatMenuModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatSlideToggleModule,
     MatPaginatorModule, MatProgressBarModule, MatProgressSpinnerModule, MatSortModule,
     SearchSelectComponent

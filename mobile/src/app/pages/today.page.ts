@@ -1,12 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MoneyPipe } from '../core/money.pipe';
+import { PrivacyService } from '../core/privacy.service';
+import { DecimalPipe } from '@angular/common';
 import {
   IonHeader, IonToolbar, IonTitle, IonContent, IonGrid, IonRow, IonCol, IonCard,
   IonCardHeader, IonCardTitle, IonCardContent, IonRefresher, IonRefresherContent,
   IonButtons, IonButton, IonIcon
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { logOutOutline } from 'ionicons/icons';
+import { logOutOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { DashboardSummary } from '../core/models';
@@ -15,7 +17,7 @@ import { DashboardSummary } from '../core/models';
   selector: 'app-today',
   standalone: true,
   imports: [
-    CurrencyPipe, DecimalPipe, IonHeader, IonToolbar, IonTitle, IonContent, IonGrid, IonRow,
+    MoneyPipe, DecimalPipe, IonHeader, IonToolbar, IonTitle, IonContent, IonGrid, IonRow,
     IonCol, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonRefresher,
     IonRefresherContent, IonButtons, IonButton, IonIcon
   ],
@@ -24,6 +26,7 @@ import { DashboardSummary } from '../core/models';
       <ion-toolbar color="primary">
         <ion-title>Summary</ion-title>
         <ion-buttons slot="end">
+          <ion-button (click)="privacy.toggle()"><ion-icon slot="icon-only" [name]="privacy.hidden() ? 'eye-off-outline' : 'eye-outline'"></ion-icon></ion-button>
           <ion-button (click)="auth.logout()"><ion-icon slot="icon-only" name="log-out-outline"></ion-icon></ion-button>
         </ion-buttons>
       </ion-toolbar>
@@ -58,10 +61,11 @@ import { DashboardSummary } from '../core/models';
 export class TodayPage {
   private api = inject(ApiService);
   auth = inject(AuthService);
+  privacy = inject(PrivacyService);
   s = signal<DashboardSummary | null>(null);
 
   constructor() {
-    addIcons({ logOutOutline });
+    addIcons({ logOutOutline, eyeOutline, eyeOffOutline });
     this.load();
   }
 

@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,7 +23,7 @@ import { InrAmountPipe } from '../../shared/inr-amount.pipe';
   standalone: true,
   imports: [
     InrAmountPipe,
-    CurrencyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule, MatMenuModule,
+    MoneyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule, MatMenuModule,
     MatDialogModule, MatProgressBarModule, MatSlideToggleModule
   ],
   template: `

@@ -1,5 +1,6 @@
 import { Component, Inject, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,7 +18,7 @@ import { MoneyInputComponent } from '../../shared/money-input.component';
   selector: 'app-owner-transactions',
   standalone: true,
   imports: [DateInputComponent, 
-    CurrencyPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule,
+    MoneyPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule,
     MatInputModule, MatSelectModule, MatButtonModule, MatIconModule, MoneyInputComponent
   ],
   template: `

@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,7 +19,7 @@ import { ConfirmDialog } from '../../shared/confirm.dialog';
   selector: 'app-owner-list',
   standalone: true,
   imports: [
-    CurrencyPipe, DecimalPipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
+    MoneyPipe, DecimalPipe, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
     MatProgressBarModule, MatSlideToggleModule
   ],
   template: `

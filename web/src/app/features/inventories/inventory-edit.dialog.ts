@@ -1,5 +1,6 @@
 import { Component, Inject, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -27,7 +28,7 @@ interface StagedBill { fileUrl: string; fileName: string; amount: number | null;
   selector: 'app-inventory-edit',
   standalone: true,
   imports: [DateInputComponent, SearchSelectComponent, MoneyInputComponent,
-    CurrencyPipe, FormsModule, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
+    MoneyPipe, FormsModule, ReactiveFormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatSelectModule, MatButtonModule, MatIconModule, MatSlideToggleModule, MatProgressBarModule
   ],
   template: `

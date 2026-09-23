@@ -1,5 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { MoneyPipe } from '../core/money.pipe';
+import { PrivacyService } from '../core/privacy.service';
+
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -9,7 +11,7 @@ import {
   AlertController, ToastController, LoadingController
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { logOutOutline, addCircle, trashOutline, personAddOutline, barcodeOutline, closeOutline } from 'ionicons/icons';
+import { logOutOutline, addCircle, trashOutline, personAddOutline, barcodeOutline, closeOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { BarcodeFormat, DecodeHintType } from '@zxing/library';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -23,7 +25,7 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
   selector: 'app-sale',
   standalone: true,
   imports: [
-    CurrencyPipe, FormsModule, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem,
+    MoneyPipe, FormsModule, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem,
     IonLabel, IonInput, IonButton, IonIcon, IonNote, IonSelect, IonSelectOption, IonSegment,
     IonSegmentButton, IonToggle, IonButtons, IonSearchbar, IonListHeader
   ],
@@ -32,6 +34,7 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
       <ion-toolbar color="primary">
         <ion-title>New sale</ion-title>
         <ion-buttons slot="end">
+          <ion-button (click)="privacy.toggle()"><ion-icon slot="icon-only" [name]="privacy.hidden() ? 'eye-off-outline' : 'eye-outline'"></ion-icon></ion-button>
           <ion-button (click)="auth.logout()"><ion-icon slot="icon-only" name="log-out-outline"></ion-icon></ion-button>
         </ion-buttons>
       </ion-toolbar>
@@ -168,6 +171,7 @@ interface Line { product: Product; quantity: number; finalPrice: number; }
 export class SalePage {
   private api = inject(ApiService);
   auth = inject(AuthService);
+  privacy = inject(PrivacyService);
   private alert = inject(AlertController);
   private toast = inject(ToastController);
   private loadingCtrl = inject(LoadingController);
@@ -200,7 +204,7 @@ export class SalePage {
   grandTotal = computed(() => this.subTotal() - this.discountAmount() + this.servicesTotal());
 
   constructor() {
-    addIcons({ logOutOutline, addCircle, trashOutline, personAddOutline, barcodeOutline, closeOutline });
+    addIcons({ logOutOutline, addCircle, trashOutline, personAddOutline, barcodeOutline, closeOutline, eyeOutline, eyeOffOutline });
     this.api.customers().subscribe(c => this.customers.set(c));
     this.api.products().subscribe(r => this.allProducts.set(r.items));
   }

@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
@@ -18,7 +19,7 @@ import { InvoiceListItem, PaymentMethod, PaymentStatus } from '../../core/models
   selector: 'app-invoice-list',
   standalone: true,
   imports: [
-    CurrencyPipe, DatePipe, FormsModule, RouterLink, MatTableModule, MatButtonModule,
+    MoneyPipe, DatePipe, FormsModule, RouterLink, MatTableModule, MatButtonModule,
     MatIconModule, MatFormFieldModule, MatSelectModule, MatPaginatorModule, MatProgressBarModule, MatSortModule
   ],
   template: `

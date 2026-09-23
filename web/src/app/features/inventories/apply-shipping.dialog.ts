@@ -1,6 +1,7 @@
 import { Component, Inject, inject, signal, computed } from '@angular/core';
+import { MoneyPipe } from '../../shared/money.pipe';
 import { Observable } from 'rxjs';
-import { CurrencyPipe, DecimalPipe, DatePipe } from '@angular/common';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -24,7 +25,7 @@ export interface ApplyShippingData {
 @Component({
   selector: 'app-apply-shipping-dialog',
   standalone: true,
-  imports: [CurrencyPipe, DecimalPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
+  imports: [MoneyPipe, DecimalPipe, DatePipe, FormsModule, MatDialogModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatButtonToggleModule, MatSelectModule, MatIconModule, InrAmountPipe],
   template: `
     <h2 mat-dialog-title>Shipping · {{ data.inventoryName }}</h2>

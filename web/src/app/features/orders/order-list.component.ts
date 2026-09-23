@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
+import { MoneyPipe } from '../../shared/money.pipe';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime, distinctUntilChanged, map } from 'rxjs';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
@@ -23,7 +24,7 @@ import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/dat
   selector: 'app-order-list',
   standalone: true,
   imports: [
-    CurrencyPipe, DatePipe, FormsModule, RouterLink, MatTableModule, MatButtonModule,
+    MoneyPipe, DatePipe, FormsModule, RouterLink, MatTableModule, MatButtonModule,
     MatIconModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MatPaginatorModule, MatProgressBarModule, MatSortModule, DateRangeComponent
   ],

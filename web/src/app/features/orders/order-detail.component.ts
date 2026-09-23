@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -21,7 +22,7 @@ import { DateInputComponent } from '../../shared/date-input.component';
   selector: 'app-order-detail',
   standalone: true,
   imports: [
-    CurrencyPipe, DatePipe, FormsModule, RouterLink, MatCardModule, MatTableModule,
+    MoneyPipe, DatePipe, FormsModule, RouterLink, MatCardModule, MatTableModule,
     MatButtonModule, MatIconModule, MatProgressBarModule, MatDividerModule, DateInputComponent
   ],
   template: `

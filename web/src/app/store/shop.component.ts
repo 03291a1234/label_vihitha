@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { MoneyPipe } from '../shared/money.pipe';
+
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -23,7 +24,7 @@ type View = 'shop' | 'checkout' | 'done';
   selector: 'app-shop',
   standalone: true,
   imports: [
-    CurrencyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule,
+    MoneyPipe, FormsModule, RouterLink, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonToggleModule, MatProgressBarModule
   ],
   template: `

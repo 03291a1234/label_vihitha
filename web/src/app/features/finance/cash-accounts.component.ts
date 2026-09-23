@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -14,7 +15,7 @@ import { CashAccountDialog } from './cash-account.dialog';
 @Component({
   selector: 'app-cash-accounts',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, MatButtonModule, MatIconModule, MatProgressBarModule, MatDialogModule],
+  imports: [MoneyPipe, DatePipe, MatButtonModule, MatIconModule, MatProgressBarModule, MatDialogModule],
   template: `
     <div class="page">
       <div class="page-header">

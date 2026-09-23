@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { MoneyPipe } from '../../shared/money.pipe';
+import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
@@ -26,7 +27,7 @@ const PALETTE = ['#5b5bd6', '#2e7d32', '#e65100', '#1565c0', '#c62828', '#00897b
   selector: 'app-analytics',
   standalone: true,
   imports: [
-    CurrencyPipe, DecimalPipe, FormsModule, MatCardModule, MatFormFieldModule, MatInputModule,
+    MoneyPipe, DecimalPipe, FormsModule, MatCardModule, MatFormFieldModule, MatInputModule,
     MatButtonModule, MatIconModule, MatTableModule, MatProgressBarModule, ChartComponent, DateRangeComponent
   ],
   template: `
