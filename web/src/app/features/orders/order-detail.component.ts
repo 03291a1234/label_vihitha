@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MoneyPipe } from '../../shared/money.pipe';
 import { todayLocal } from '../../shared/date-util';
 import { DatePipe } from '@angular/common';
@@ -11,20 +11,22 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
-import { OrderApi, InvoiceApi, FollowUpApi } from '../../core/services/api.services';
+import { OrderApi, ProductApi, InvoiceApi, FollowUpApi } from '../../core/services/api.services';
 import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Order, OrderStatus, FollowUp } from '../../core/models';
+import { Order, OrderStatus, FollowUp, Product } from '../../core/models';
 import { ConfirmDialog } from '../../shared/confirm.dialog';
 import { FollowUpAddDialog } from './followup-add.dialog';
 import { DateInputComponent } from '../../shared/date-input.component';
+import { SearchSelectComponent } from '../../shared/search-select.component';
 
 @Component({
   selector: 'app-order-detail',
   standalone: true,
   imports: [
     MoneyPipe, DatePipe, FormsModule, RouterLink, MatCardModule, MatTableModule,
-    MatButtonModule, MatIconModule, MatProgressBarModule, MatDividerModule, DateInputComponent
+    MatButtonModule, MatIconModule, MatProgressBarModule, MatDividerModule, DateInputComponent,
+    SearchSelectComponent
   ],
   template: `
     <div class="page">
@@ -134,6 +136,21 @@ import { DateInputComponent } from '../../shared/date-input.component';
             <tr mat-row *matRowDef="let row; columns: itemCols"></tr>
           </table>
 
+          @if (editable(o) && auth.canManageSales()) {
+            <div class="add-line">
+              <div class="al-prod">
+                <app-search-select label="Add product" [items]="productOptions()" labelField="label"
+                  [(ngModel)]="pickProductId" (selectionChange)="pickVariantId = null" searchPlaceholder="Search by SKU or name…" />
+              </div>
+              <div class="al-size">
+                <app-search-select label="Size" [items]="sizeOptions()" labelField="label"
+                  [(ngModel)]="pickVariantId" [disabled]="!pickProductId" searchPlaceholder="Size…" />
+              </div>
+              <input class="inline-num al-qty" type="number" min="1" [(ngModel)]="pickQty" title="Quantity" />
+              <button mat-stroked-button (click)="addProduct(o)" [disabled]="!pickProductId"><mat-icon>add</mat-icon> Add product</button>
+            </div>
+          }
+
           <div class="totals">
             <div><span class="muted">Subtotal (list)</span> <span class="mono">{{ o.subTotal | currency }}</span></div>
             <div><span class="muted">Discount</span> <span class="mono">−{{ o.discountTotal | currency }}</span></div>
@@ -212,6 +229,11 @@ import { DateInputComponent } from '../../shared/date-input.component';
     .notes { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; background: #fffde7; }
     .card { margin-bottom: 16px; }
     .inline-num { width: 84px; text-align: right; border: 1px solid #ddd; border-radius: 6px; padding: 6px; font: inherit; }
+    .add-line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0 4px;
+      padding: 10px 12px; border: 1px dashed var(--lv-line); border-radius: 10px; background: #fffdfb; }
+    .add-line .al-prod { flex: 1; min-width: 240px; }
+    .add-line .al-size { min-width: 150px; }
+    .add-line .al-qty { width: 70px; }
     .totals { margin-top: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
     .totals > div { display: flex; gap: 24px; min-width: 260px; justify-content: space-between; }
     .totals .grand { font-size: 18px; font-weight: 600; border-top: 1px solid #eee; padding-top: 8px; margin-top: 4px; }
@@ -247,9 +269,24 @@ export class OrderDetailComponent {
 
   itemCols = ['product', 'quantity', 'salePriceAtSale', 'finalPriceAtSale', 'discountAmount', 'lineTotal', 'actions'];
 
+  // "Add product" picker (correcting an order — add the right product, then remove the wrong line).
+  private productApi = inject(ProductApi);
+  products = signal<Product[]>([]);
+  pickProductId: number | null = null;
+  pickVariantId: number | null = null;
+  pickQty = 1;
+  productOptions = computed(() => this.products().map(p => ({
+    id: p.id, label: `${p.sku} — ${p.name} (${p.quantityOnHand} in stock)`
+  })));
+  sizeOptions() {
+    const p = this.products().find(x => x.id === this.pickProductId);
+    return (p?.variants ?? []).map(v => ({ id: v.id, label: `${v.size} (${v.quantityOnHand} in stock)` }));
+  }
+
   constructor() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.load(id);
+    this.productApi.list({ pageSize: 500, isActive: true }).subscribe(r => this.products.set(r.items));
   }
 
   // Corrections are allowed on any live order (not once cancelled); edits adjust stock and, if an
@@ -305,6 +342,22 @@ export class OrderDetailComponent {
   removeItem(o: Order, itemId: number) {
     this.api.removeItem(o.id, itemId).subscribe({
       next: (u) => { this.order.set(u); this.syncEdit(u); this.notify.success('Line removed'); },
+      error: (err) => this.notify.error(err)
+    });
+  }
+
+  addProduct(o: Order) {
+    const p = this.products().find(x => x.id === this.pickProductId);
+    if (!p) { this.notify.error(null, 'Pick a product'); return; }
+    const variant = (p.variants ?? []).find(v => v.id === this.pickVariantId);
+    if (!variant) { this.notify.error(null, 'Pick a size'); return; }
+    const qty = Math.max(1, Math.floor(this.pickQty || 1));
+    this.api.addItem(o.id, { productId: p.id, quantity: qty, productVariantId: variant.id, finalPrice: variant.salePrice ?? p.salePrice }).subscribe({
+      next: (u) => {
+        this.order.set(u); this.syncEdit(u);
+        this.pickProductId = null; this.pickVariantId = null; this.pickQty = 1;
+        this.notify.success(`Added ${p.name}${variant.size ? ' · ' + variant.size : ''}`);
+      },
       error: (err) => this.notify.error(err)
     });
   }

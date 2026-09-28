@@ -52,7 +52,7 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<OrderDto>> UpdateDate(int id, UpdateOrderDateRequest request, CancellationToken ct)
         => Ok(await _service.UpdateOrderDateAsync(id, request, ct));
 
-    // ---- line items (only while Pending) ----
+    // ---- line items (editable on any live order; a cancelled order is locked) ----
 
     [HttpPost("{id:int}/items")]
     [Authorize(Roles = ManageRoles)]
