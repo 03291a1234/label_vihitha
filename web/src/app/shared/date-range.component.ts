@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DateInputComponent } from './date-input.component';
+import { easternToday, easternDatePlusDays, easternMonthsAgo, easternYear } from './date-util';
 
 export type DateRangePreset = 'all' | 'today' | 'yesterday' | '3m' | '6m' | 'ytd' | 'custom';
 export interface DateRange { from: string | null; to: string | null; }
@@ -57,26 +58,21 @@ export class DateRangeComponent implements OnInit {
   preset = signal<DateRangePreset>('all');
 
   ngOnInit() { this.preset.set(this.initialPreset); }
-  today = new Date().toISOString().slice(0, 10);
+  // All dates are on the business (US Eastern) clock — see date-util. Never UTC/browser-local,
+  // so "Today" is the same calendar day for every viewer and matches how rows are stored.
+  today = easternToday();
   fromStr: string | null = null;
   toStr: string | null = null;
-
-  private fmt(d: Date): string {
-    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-  private monthsAgo(n: number): string { const d = new Date(); d.setMonth(d.getMonth() - n); return this.fmt(d); }
-  private daysAgo(n: number): string { const d = new Date(); d.setDate(d.getDate() - n); return this.fmt(d); }
 
   setPreset(p: DateRangePreset) {
     this.preset.set(p);
     switch (p) {
       case 'all': this.emit(null, null); break;
       case 'today': this.emit(this.today, this.today); break;
-      case 'yesterday': { const y = this.daysAgo(1); this.emit(y, y); break; }
-      case '3m': this.emit(this.monthsAgo(3), this.today); break;
-      case '6m': this.emit(this.monthsAgo(6), this.today); break;
-      case 'ytd': this.emit(`${new Date().getFullYear()}-01-01`, this.today); break;
+      case 'yesterday': { const y = easternDatePlusDays(-1); this.emit(y, y); break; }
+      case '3m': this.emit(easternMonthsAgo(3), this.today); break;
+      case '6m': this.emit(easternMonthsAgo(6), this.today); break;
+      case 'ytd': this.emit(`${easternYear()}-01-01`, this.today); break;
       case 'custom': this.onCustom(); break;   // emit whatever's already picked
     }
   }

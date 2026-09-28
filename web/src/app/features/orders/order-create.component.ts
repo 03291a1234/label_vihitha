@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MoneyPipe } from '../../shared/money.pipe';
+import { easternToday, localDateStr } from '../../shared/date-util';
 
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -236,10 +237,12 @@ export class OrderCreateComponent {
   services = signal<OrderChargeInput[]>([]);
   saving = signal(false);
 
-  todayDate = new Date();
-  private today = this.todayDate.toISOString().slice(0, 10);
+  // Order date defaults to "today" on the business (Eastern) clock; the datepicker holds it as
+  // that day's local midnight so the picked calendar date reads back cleanly.
+  private today = easternToday();
+  todayDate = new Date(this.today + 'T00:00:00');
   customerId: number | null = null;
-  orderDateObj: Date = new Date();
+  orderDateObj: Date = new Date(this.today + 'T00:00:00');
   notes = '';
   pickProductId: number | null = null;
   pickVariantId: number | null = null;
@@ -387,8 +390,8 @@ export class OrderCreateComponent {
     const items: CreateOrderItem[] = this.lines().map(l => ({
       productId: l.product.id, quantity: l.quantity, finalPrice: l.finalPrice, productVariantId: l.variant.id
     }));
-    // Local date → UTC midnight; null when it's today (server defaults to now).
-    const picked = this.orderDateObj ? this.orderDateObj.toISOString().slice(0, 10) : this.today;
+    // Read the picked calendar date as-is; send it only when backdated (else server uses now).
+    const picked = this.orderDateObj ? localDateStr(this.orderDateObj) : this.today;
     const orderDate = picked !== this.today ? new Date(picked + 'T00:00:00Z').toISOString() : null;
     this.orderApi.create({
       customerId: this.customerId, notes: this.notes || null, items,

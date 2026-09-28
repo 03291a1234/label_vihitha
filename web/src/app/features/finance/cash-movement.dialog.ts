@@ -1,4 +1,5 @@
 import { Component, Inject, inject, signal } from '@angular/core';
+import { easternToday } from '../../shared/date-util';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -77,7 +78,7 @@ export class CashMovementDialog {
   fromId: number | null = null;
   toId: number | null = null;
   amount: number | null = null;
-  date = new Date().toISOString().slice(0, 10);
+  date = easternToday();
   note = '';
   busy = signal(false);
 

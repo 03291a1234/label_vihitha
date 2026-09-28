@@ -1,4 +1,5 @@
 import { Component, Inject, inject, signal } from '@angular/core';
+import { easternToday } from '../../shared/date-util';
 import { MoneyPipe } from '../../shared/money.pipe';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -86,7 +87,7 @@ export class OwnerTransactionsDialog {
 
   type: OwnerTransactionType = 'Contribution';
   amount: number | null = null;
-  date = new Date().toISOString().slice(0, 10);
+  date = easternToday();
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: Owner) { this.load(); }
 

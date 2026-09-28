@@ -1,4 +1,5 @@
 import { Component, Inject, inject, signal } from '@angular/core';
+import { easternToday } from '../../shared/date-util';
 import { MoneyPipe } from '../../shared/money.pipe';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -118,7 +119,7 @@ export class ExpenseEditDialog {
 
   form = this.fb.nonNullable.group({
     expenseCategoryId: [null as number | null, Validators.required],
-    date: [new Date().toISOString().slice(0, 10), Validators.required],
+    date: [easternToday(), Validators.required],
     amount: [0, [Validators.required, Validators.min(0)]],
     description: [''],
     notes: [''],

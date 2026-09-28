@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { easternToday } from '../../shared/date-util';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -110,7 +111,7 @@ export class AuditLogComponent {
   entity: string | null = null;
   action: string | null = null;
   // Default to today — the log is for spot-checking recent changes, not browsing history.
-  from = new Date().toISOString().slice(0, 10);
+  from = easternToday();
   to = this.from;
   datePresets: DateRangePreset[] = ['all', 'today', 'yesterday', '3m', '6m', 'ytd', 'custom'];
 
