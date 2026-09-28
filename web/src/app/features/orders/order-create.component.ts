@@ -392,7 +392,7 @@ export class OrderCreateComponent {
     }));
     // Read the picked calendar date as-is; send it only when backdated (else server uses now).
     const picked = this.orderDateObj ? localDateStr(this.orderDateObj) : this.today;
-    const orderDate = picked !== this.today ? new Date(picked + 'T00:00:00Z').toISOString() : null;
+    const orderDate = picked !== this.today ? new Date(picked + 'T00:00:00').toISOString() : null;
     this.orderApi.create({
       customerId: this.customerId, notes: this.notes || null, items,
       charges: this.services(), orderDate,

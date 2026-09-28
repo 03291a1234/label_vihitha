@@ -61,7 +61,7 @@ export class FollowUpAddDialog {
     this.api.createForOrder(this.data.orderId, {
       note: v.note,
       orderItemId: v.orderItemId,
-      followUpDate: v.followUpDate ? new Date(v.followUpDate).toISOString() : null
+      followUpDate: v.followUpDate ? new Date(v.followUpDate + 'T00:00:00').toISOString() : null
     }).subscribe({
       next: () => { this.notify.success('Follow-up added'); this.ref.close(true); },
       error: (e) => { this.saving.set(false); this.notify.error(e); }

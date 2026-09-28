@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MoneyPipe } from '../../shared/money.pipe';
-import { todayLocal } from '../../shared/date-util';
+import { todayLocal, localDateStr } from '../../shared/date-util';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -362,10 +362,12 @@ export class OrderDetailComponent {
     });
   }
 
-  startEditDate(o: Order) { this.dateDraft = o.orderDate.slice(0, 10); this.editingDate.set(true); }
+  // Seed and save the picker on the viewer's LOCAL calendar day (dates are stored UTC but shown
+  // locally, so use local midnight — not UTC midnight, which would render as the previous evening).
+  startEditDate(o: Order) { this.dateDraft = localDateStr(new Date(o.orderDate)); this.editingDate.set(true); }
   saveDate(o: Order) {
     if (!this.dateDraft) { this.editingDate.set(false); return; }
-    const iso = new Date(this.dateDraft + 'T00:00:00Z').toISOString();
+    const iso = new Date(this.dateDraft + 'T00:00:00').toISOString();
     this.api.setDate(o.id, iso).subscribe({
       next: (u) => { this.order.set(u); this.editingDate.set(false); this.notify.success('Order date updated'); },
       error: (e) => this.notify.error(e)

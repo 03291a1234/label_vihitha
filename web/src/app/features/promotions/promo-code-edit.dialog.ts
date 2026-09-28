@@ -121,8 +121,8 @@ export class PromoCodeEditDialog {
       discountType: v.discountType,
       value: Number(v.value),
       minOrderAmount: v.minOrderAmount != null && v.minOrderAmount !== ('' as unknown) ? Number(v.minOrderAmount) : null,
-      validFrom: v.validFrom ? new Date(v.validFrom).toISOString() : null,
-      validTo: v.validTo ? new Date(v.validTo).toISOString() : null,
+      validFrom: v.validFrom ? new Date(v.validFrom + 'T00:00:00').toISOString() : null,
+      validTo: v.validTo ? new Date(v.validTo + 'T00:00:00').toISOString() : null,
       maxUses: v.maxUses != null && v.maxUses !== ('' as unknown) ? Number(v.maxUses) : null,
       isActive: v.isActive
     };
