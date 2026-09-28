@@ -58,8 +58,8 @@ public class OrderService : IOrderService
             .ToListAsync(ct);
     }
 
-    /// <summary>Shared list/summary filter. ToDate is inclusive of the whole calendar day
-    /// (orders carry a time-of-day, so a same-day upper bound must reach end of day).</summary>
+    /// <summary>Shared list/summary filter. FromDate/ToDate are UTC instants (from inclusive,
+    /// to exclusive) that the client derives from the viewer's local calendar day.</summary>
     private static IQueryable<Order> Filter(IQueryable<Order> q, OrderQuery query, bool includeStatus = true)
     {
         if (query.CustomerId is int cid) q = q.Where(o => o.CustomerId == cid);
@@ -68,8 +68,9 @@ public class OrderService : IOrderService
             if (query.Statuses is { Count: > 0 } sts) q = q.Where(o => sts.Contains(o.Status));
             else if (query.Status is OrderStatus st) q = q.Where(o => o.Status == st);
         }
-        if (query.FromDate is DateTime from) q = q.Where(o => o.OrderDate >= from.Date);
-        if (query.ToDate is DateTime to) q = q.Where(o => o.OrderDate < to.Date.AddDays(1));
+        // OrderDate is stored UTC; the client sends UTC instant bounds (from inclusive, to exclusive).
+        if (query.FromDate is DateTimeOffset from) q = q.Where(o => o.OrderDate >= from.UtcDateTime);
+        if (query.ToDate is DateTimeOffset to) q = q.Where(o => o.OrderDate < to.UtcDateTime);
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = query.Search.Trim();

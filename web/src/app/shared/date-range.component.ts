@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DateInputComponent } from './date-input.component';
-import { easternToday, easternDatePlusDays, easternMonthsAgo, easternYear } from './date-util';
+import { todayLocal, daysAgoLocal, monthsAgoLocal, yearLocal } from './date-util';
 
 export type DateRangePreset = 'all' | 'today' | 'yesterday' | '3m' | '6m' | 'ytd' | 'custom';
 export interface DateRange { from: string | null; to: string | null; }
@@ -58,9 +58,9 @@ export class DateRangeComponent implements OnInit {
   preset = signal<DateRangePreset>('all');
 
   ngOnInit() { this.preset.set(this.initialPreset); }
-  // All dates are on the business (US Eastern) clock — see date-util. Never UTC/browser-local,
-  // so "Today" is the same calendar day for every viewer and matches how rows are stored.
-  today = easternToday();
+  // Local calendar dates (yyyy-mm-dd) — the viewer's own day. Emits date strings; consumers
+  // that filter instant timestamps convert them to that local day's UTC bounds (see date-util).
+  today = todayLocal();
   fromStr: string | null = null;
   toStr: string | null = null;
 
@@ -69,10 +69,10 @@ export class DateRangeComponent implements OnInit {
     switch (p) {
       case 'all': this.emit(null, null); break;
       case 'today': this.emit(this.today, this.today); break;
-      case 'yesterday': { const y = easternDatePlusDays(-1); this.emit(y, y); break; }
-      case '3m': this.emit(easternMonthsAgo(3), this.today); break;
-      case '6m': this.emit(easternMonthsAgo(6), this.today); break;
-      case 'ytd': this.emit(`${easternYear()}-01-01`, this.today); break;
+      case 'yesterday': { const y = daysAgoLocal(1); this.emit(y, y); break; }
+      case '3m': this.emit(monthsAgoLocal(3), this.today); break;
+      case '6m': this.emit(monthsAgoLocal(6), this.today); break;
+      case 'ytd': this.emit(`${yearLocal()}-01-01`, this.today); break;
       case 'custom': this.onCustom(); break;   // emit whatever's already picked
     }
   }

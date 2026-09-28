@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MoneyPipe } from '../../shared/money.pipe';
-import { easternToday, localDateStr } from '../../shared/date-util';
+import { todayLocal, localDateStr } from '../../shared/date-util';
 
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -239,7 +239,7 @@ export class OrderCreateComponent {
 
   // Order date defaults to "today" on the business (Eastern) clock; the datepicker holds it as
   // that day's local midnight so the picked calendar date reads back cleanly.
-  private today = easternToday();
+  private today = todayLocal();
   todayDate = new Date(this.today + 'T00:00:00');
   customerId: number | null = null;
   orderDateObj: Date = new Date(this.today + 'T00:00:00');

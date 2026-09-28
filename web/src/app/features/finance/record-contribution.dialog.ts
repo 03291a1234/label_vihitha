@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { easternToday } from '../../shared/date-util';
+import { todayLocal } from '../../shared/date-util';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -45,7 +45,7 @@ export class RecordContributionDialog {
 
   owners = signal<Owner[]>([]);
   saving = signal(false);
-  today = easternToday();
+  today = todayLocal();
   ownerId: number | null = null;
   amount: number | null = null;
   date = this.today;

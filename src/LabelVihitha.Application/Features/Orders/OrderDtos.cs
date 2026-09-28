@@ -75,8 +75,10 @@ public record OrderQuery(
     int? CustomerId = null,
     OrderStatus? Status = null,
     IReadOnlyList<OrderStatus>? Statuses = null,
-    DateTime? FromDate = null,
-    DateTime? ToDate = null,
+    // UTC instant bounds for the viewer's local day: FromDate inclusive, ToDate exclusive.
+    // DateTimeOffset keeps the 'Z'/offset the client sends, so there's no server-local ambiguity.
+    DateTimeOffset? FromDate = null,
+    DateTimeOffset? ToDate = null,
     string? Search = null,
     string? SortBy = null,
     string? SortDir = null,

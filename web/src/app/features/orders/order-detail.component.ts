@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { MoneyPipe } from '../../shared/money.pipe';
-import { easternToday } from '../../shared/date-util';
+import { todayLocal } from '../../shared/date-util';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -242,7 +242,7 @@ export class OrderDetailComponent {
   edit: Record<number, { quantity: number; finalPrice: number }> = {};
   newCharge: { label: string; amount: number | null } = { label: '', amount: null };
   editingDate = signal(false);
-  today = easternToday();
+  today = todayLocal();
   dateDraft = '';
 
   itemCols = ['product', 'quantity', 'salePriceAtSale', 'finalPriceAtSale', 'discountAmount', 'lineTotal', 'actions'];

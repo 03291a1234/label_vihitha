@@ -19,6 +19,7 @@ import { Notify } from '../../core/services/notify.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrderListItem, OrderStatus } from '../../core/models';
 import { DateRangeComponent, DateRange, DateRangePreset } from '../../shared/date-range.component';
+import { localDayStartUtc, localDayEndUtc } from '../../shared/date-util';
 
 @Component({
   selector: 'app-order-list',
@@ -233,7 +234,13 @@ export class OrderListComponent {
     this.reload();
   }
 
-  onRange(r: DateRange) { this.fromDate = r.from; this.toDate = r.to; this.reload(); }
+  // Order timestamps are stored in UTC; translate the viewer's local day into UTC instant
+  // bounds so "Today" catches an order placed late evening (already tomorrow in UTC).
+  onRange(r: DateRange) {
+    this.fromDate = r.from ? localDayStartUtc(r.from) : null;
+    this.toDate = r.to ? localDayEndUtc(r.to) : null;
+    this.reload();
+  }
 
   reload() { this.page = 1; this.load(); }
   onPage(e: PageEvent) { this.page = e.pageIndex + 1; this.pageSize = e.pageSize; this.load(); }

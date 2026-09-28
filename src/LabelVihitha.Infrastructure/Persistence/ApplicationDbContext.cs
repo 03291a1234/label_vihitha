@@ -5,6 +5,7 @@ using LabelVihitha.Domain.Entities;
 using LabelVihitha.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace LabelVihitha.Infrastructure.Persistence;
 
@@ -61,6 +62,33 @@ public class ApplicationDbContext
         {
             property.SetPrecision(18);
             property.SetScale(2);
+        }
+
+        // Convention: DateTime columns are UTC instants — mark them Kind=Utc on read so they
+        // serialize with a trailing 'Z' and the client renders them in the viewer's local zone.
+        // Date-only columns (a user-picked calendar date, timezone-independent) are excluded so
+        // they don't shift a day on display.
+        var dateOnlyColumns = new HashSet<string>
+        {
+            $"{nameof(Expense)}.{nameof(Expense.Date)}",
+            $"{nameof(CashMovement)}.{nameof(CashMovement.Date)}",
+            $"{nameof(OwnerTransaction)}.{nameof(OwnerTransaction.Date)}",
+            $"{nameof(InventoryBill)}.{nameof(InventoryBill.BillDate)}",
+        };
+        var utc = new ValueConverter<DateTime, DateTime>(
+            v => v.Kind == DateTimeKind.Local ? v.ToUniversalTime() : DateTime.SpecifyKind(v, DateTimeKind.Utc),
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+        var utcNullable = new ValueConverter<DateTime?, DateTime?>(
+            v => v.HasValue ? (v.Value.Kind == DateTimeKind.Local ? v.Value.ToUniversalTime() : DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)) : v,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+        foreach (var entityType in builder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (dateOnlyColumns.Contains($"{entityType.ClrType.Name}.{property.Name}")) continue;
+                if (property.ClrType == typeof(DateTime)) property.SetValueConverter(utc);
+                else if (property.ClrType == typeof(DateTime?)) property.SetValueConverter(utcNullable);
+            }
         }
     }
 
