@@ -81,12 +81,16 @@ public class OrderService : IOrderService
 
     public async Task<OrderDto> GetByIdAsync(int id, CancellationToken ct = default)
     {
-        var order = await _db.Orders.AsNoTracking()
+        // IgnoreQueryFilters so a line whose product was later soft-deleted still shows: the sale is
+        // real and stays in the P&L, and otherwise the visible lines wouldn't sum to the grand total
+        // (Product is a required navigation, so its soft-delete filter would drop the whole line).
+        // Re-apply the order's own not-deleted guard, and keep filtering deleted line items/charges.
+        var order = await _db.Orders.AsNoTracking().IgnoreQueryFilters()
             .Include(o => o.Customer)
             .Include(o => o.Items.Where(i => !i.IsDeleted)).ThenInclude(i => i.Product)
             .Include(o => o.Charges.Where(c => !c.IsDeleted))
             .Include(o => o.Invoice)
-            .FirstOrDefaultAsync(o => o.Id == id, ct);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted, ct);
         return order is null ? throw new NotFoundException(nameof(Order), id) : MapToDto(order);
     }
 
